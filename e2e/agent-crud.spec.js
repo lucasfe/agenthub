@@ -1,10 +1,20 @@
 import { test, expect } from '@playwright/test'
+import { cleanupTestData } from './helpers.js'
 
 const BASE = '/ai/agenthub'
 const DATA_TIMEOUT = 15000
 
 // Generate unique ID to avoid conflicts between test runs
 const uniqueId = () => `e2e-test-${Date.now()}`
+
+// Clean up all e2e test agents and teams after all tests
+test.afterAll(async () => {
+  await cleanupTestData('agents', 'test-agent-e2e-test-')
+  await cleanupTestData('agents', 'full-agent-e2e-test-')
+  await cleanupTestData('agents', 'dup-agent-e2e-test-')
+  await cleanupTestData('agents', 'loading-agent-e2e-test-')
+  await cleanupTestData('agents', 'detail-agent-e2e-test-')
+})
 
 test.describe('Agent Creation', () => {
   test('create agent with minimal fields', async ({ page }) => {
@@ -55,7 +65,6 @@ test.describe('Agent Creation', () => {
   })
 
   test('create agent shows error on duplicate ID', async ({ page }) => {
-    // First, create an agent
     const agentName = `Dup Agent ${uniqueId()}`
 
     await page.goto(`${BASE}/create`)
@@ -85,7 +94,6 @@ test.describe('Agent Creation', () => {
     await page.getByRole('button', { name: /create agent/i }).click()
 
     // Either shows "Creating..." briefly or navigates quickly — both are OK
-    // The key assertion is that it doesn't crash
     const creatingOrNavigated = page.getByText('Creating...').or(page.getByText('Back to agents'))
     await expect(creatingOrNavigated.first()).toBeVisible({ timeout: DATA_TIMEOUT })
   })

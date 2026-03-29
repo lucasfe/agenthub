@@ -108,7 +108,7 @@ export default function TeamDetailPage() {
             {teamAgents.map((agent) => {
               const ac = agentColorMap[agent.color] || agentColorMap.blue
               const Ic = Icons[agent.icon] || Icons.Bot
-              const categorySlug = agent.category.toLowerCase().replace(/\s+/g, '-')
+              const categorySlug = (agent.category || '').toLowerCase().replace(/\s+/g, '-')
               return (
                 <Link
                   key={agent.id}

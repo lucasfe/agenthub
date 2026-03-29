@@ -109,15 +109,8 @@ jobs:
           echo "Running Playwright against: $PREVIEW_URL"
           PLAYWRIGHT_BASE_URL="$PREVIEW_URL" npx playwright test --project=chromium
 
-<<<<<<< HEAD
       # On push: skip E2E (local dev server can't reliably connect to Supabase in CI)
       # E2E runs against Vercel preview on PRs where the full environment is available
       - name: Skip E2E on push
         if: github.event_name == 'push'
         run: echo "E2E tests skipped on push — will run against Vercel preview on PR"
-=======
-      # On push: run E2E against local dev server
-      - name: Run E2E locally
-        if: github.event_name == 'push'
-        run: npm run test:e2e
->>>>>>> origin/main

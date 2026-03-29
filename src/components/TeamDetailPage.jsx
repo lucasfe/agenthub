@@ -1,7 +1,8 @@
+import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router'
 import * as Icons from 'lucide-react'
-import teamsData from '../data/teams.json'
-import agentsData from '../data/agents.json'
+import { useData } from '../context/DataContext'
+import { fetchTeam } from '../lib/api'
 
 const colorMap = {
   blue: { bg: 'from-blue-500/15 to-blue-600/5', border: 'border-blue-500/20', icon: 'text-blue-400', tag: 'bg-blue-500/10 text-blue-300' },

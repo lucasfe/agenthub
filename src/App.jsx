@@ -56,7 +56,18 @@ function AgentListPage() {
     return results
   }, [agents, searchQuery, category, sortBy])
 
-  if (loading) return <div className="p-8 text-text-muted">Loading...</div>
+  if (loading) return <div className="p-8 text-text-muted">Loading agents...</div>
+
+  if (error && agents.length === 0) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="text-center">
+          <p className="text-text-muted text-lg">Failed to load agents</p>
+          <p className="text-text-muted/60 text-sm mt-1">{error}</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <>

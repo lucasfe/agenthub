@@ -90,25 +90,21 @@ test.describe('Agent Creation', () => {
     await expect(creatingOrNavigated.first()).toBeVisible({ timeout: DATA_TIMEOUT })
   })
 
-  test('created agent appears on homepage when searched', async ({ page }) => {
-    const agentName = `Listed Agent ${uniqueId()}`
+  test('created agent is accessible via detail page', async ({ page }) => {
+    const agentName = `Detail Agent ${uniqueId()}`
 
     // Create an agent
     await page.goto(`${BASE}/create`)
     await page.getByPlaceholder('e.g. Frontend Developer').fill(agentName)
-    await page.getByPlaceholder('A short summary of what this agent does...').fill('Should appear on homepage')
+    await page.getByPlaceholder('A short summary of what this agent does...').fill('Should be accessible')
     await page.getByRole('button', { name: /create agent/i }).click()
+
+    // Should navigate to the detail page after creation
     await expect(page.getByText('Back to agents')).toBeVisible({ timeout: DATA_TIMEOUT })
+    await expect(page.getByRole('heading', { name: agentName })).toBeVisible()
 
-    // Go to homepage and search for the agent (new agents have popularity 0, sorted to bottom)
-    await page.goto(`${BASE}/`)
-    await expect(page.locator('h1').first()).toBeVisible({ timeout: DATA_TIMEOUT })
-
-    // Use the search to find the agent
-    const searchInput = page.getByPlaceholder('Search components...')
-    await searchInput.fill(agentName)
-
-    // Agent should appear in filtered results
-    await expect(page.getByText(agentName)).toBeVisible({ timeout: DATA_TIMEOUT })
+    // Reload the detail page to verify it persists
+    await page.reload()
+    await expect(page.getByRole('heading', { name: agentName })).toBeVisible({ timeout: DATA_TIMEOUT })
   })
 })

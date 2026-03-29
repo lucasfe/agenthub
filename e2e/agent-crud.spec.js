@@ -201,19 +201,10 @@ test.describe('Agent Creation', () => {
     // Switch to Code view
     await page.getByRole('button', { name: 'Code' }).click()
 
-    // Capture console logs for debugging
-    const logs = []
-    page.on('console', msg => logs.push(msg.text()))
-
     // Edit content in the textarea
     const textarea = page.locator('textarea')
     await expect(textarea).toBeVisible()
-    // Verify initial content is loaded
-    const initialValue = await textarea.inputValue()
-    console.log('Initial textarea value:', JSON.stringify(initialValue))
     await textarea.fill('## Updated Content\n\nNew paragraph here.')
-    const newValue = await textarea.inputValue()
-    console.log('New textarea value:', JSON.stringify(newValue))
 
     // Unsaved changes indicator should appear
     await expect(page.getByText('Unsaved changes')).toBeVisible()
@@ -221,15 +212,7 @@ test.describe('Agent Creation', () => {
     // Save should be enabled now
     const saveBtn = page.getByRole('button', { name: /^save$/i })
     await expect(saveBtn).toBeEnabled()
-
-    // Intercept the PATCH request to see what happens
-    const [response] = await Promise.all([
-      page.waitForResponse(resp => resp.url().includes('/rest/v1/agents') && resp.request().method() === 'PATCH'),
-      saveBtn.click(),
-    ])
-    const responseBody = await response.json()
-    console.log('PATCH status:', response.status())
-    console.log('PATCH response:', JSON.stringify(responseBody))
+    await saveBtn.click()
 
     // Should show saved confirmation
     await expect(page.getByText('Saved')).toBeVisible({ timeout: DATA_TIMEOUT })

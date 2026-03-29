@@ -39,8 +39,9 @@ test.describe('Smoke Tests', () => {
   test('teams page loads and finishes loading', async ({ page }) => {
     await page.goto(`${BASE}/teams`)
 
-    // Wait for loading to finish — either team cards or "No teams found"
-    const loaded = page.locator('h1, text="No teams found"').first()
-    await expect(loaded).toBeVisible({ timeout: DATA_TIMEOUT })
+    // Wait for loading to finish — either team cards appear or "No teams found" message
+    const teamCards = page.locator(`a[href*="${BASE}/teams/"]`).first()
+    const noTeams = page.getByText('No teams found')
+    await expect(teamCards.or(noTeams).first()).toBeVisible({ timeout: DATA_TIMEOUT })
   })
 })

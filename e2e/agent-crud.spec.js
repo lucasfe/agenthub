@@ -164,4 +164,69 @@ test.describe('Agent Creation', () => {
     await page.reload()
     await expect(page.getByRole('heading', { name: agentName })).toBeVisible({ timeout: DATA_TIMEOUT })
   })
+
+  test('code tab shows editable textarea and save button', async ({ page }) => {
+    await page.goto(`${BASE}/agent/development-team/frontend-developer`)
+    await expect(page.getByText('Back to agents')).toBeVisible({ timeout: DATA_TIMEOUT })
+
+    // Click Description tab to see Code/Preview toggle
+    await page.getByRole('button', { name: 'Description' }).click()
+
+    // Switch to Code view
+    await page.getByRole('button', { name: 'Code' }).click()
+
+    // Should show a textarea
+    const textarea = page.locator('textarea')
+    await expect(textarea).toBeVisible()
+
+    // Save button should exist but be disabled (no changes yet)
+    const saveBtn = page.getByRole('button', { name: /save/i })
+    await expect(saveBtn).toBeVisible()
+    await expect(saveBtn).toBeDisabled()
+  })
+
+  test('editing content enables save and persists on save', async ({ page }) => {
+    const agentName = `Edit Agent ${uniqueId()}`
+    const agentId = agentName.toLowerCase().replace(/\s+/g, '-')
+    createdAgentIds.push(agentId)
+
+    // Create agent with initial content
+    await page.goto(`${BASE}/create`)
+    await page.getByPlaceholder('e.g. Frontend Developer').fill(agentName)
+    await page.getByPlaceholder('A short summary of what this agent does...').fill('Agent for edit test')
+    await page.getByPlaceholder(/You are a senior developer/).fill('## Initial Content')
+    await page.getByRole('button', { name: /create agent/i }).click()
+    await expect(page.getByRole('heading', { name: agentName })).toBeVisible({ timeout: DATA_TIMEOUT })
+
+    // Switch to Code view
+    await page.getByRole('button', { name: 'Code' }).click()
+
+    // Edit content
+    const textarea = page.locator('textarea')
+    await textarea.clear()
+    await textarea.fill('## Updated Content\n\nNew paragraph here.')
+
+    // Save should be enabled now
+    const saveBtn = page.getByRole('button', { name: /save/i })
+    await expect(saveBtn).toBeEnabled()
+    await saveBtn.click()
+
+    // Should show saved confirmation
+    await expect(page.getByText('Saved')).toBeVisible({ timeout: DATA_TIMEOUT })
+
+    // Switch to Preview and verify rendered markdown
+    await page.getByRole('button', { name: 'Preview' }).click()
+    await expect(page.getByRole('heading', { name: 'Updated Content' })).toBeVisible()
+    await expect(page.getByText('New paragraph here.')).toBeVisible()
+  })
+
+  test('preview tab renders markdown properly', async ({ page }) => {
+    await page.goto(`${BASE}/agent/development-team/frontend-developer`)
+    await expect(page.getByText('Back to agents')).toBeVisible({ timeout: DATA_TIMEOUT })
+
+    // Should default to Preview view and render markdown headings
+    await page.getByRole('button', { name: 'Preview' }).click()
+    // The frontend-developer content has H2 headings like "Communication Protocol"
+    await expect(page.getByRole('heading', { name: 'Communication Protocol' })).toBeVisible()
+  })
 })

@@ -28,12 +28,13 @@ export default function TeamCard({ team }) {
   const teamAgents = (team.agents || [])
     .map((id) => agents.find((a) => a.id === id))
     .filter(Boolean)
-  const allInStack = hasAllAgents(team.agents)
+  const agentIds = team.agents || []
+  const allInStack = hasAllAgents(agentIds)
 
   const handleToggleStack = (e) => {
     e.preventDefault()
     e.stopPropagation()
-    addAgents(team.agents)
+    addAgents(agentIds)
   }
 
   return (

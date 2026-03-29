@@ -227,19 +227,7 @@ test.describe('Agent Creation', () => {
     await expect(page.getByText('Saved')).toBeVisible({ timeout: DATA_TIMEOUT })
 
     // Check browser console for any errors
-    console.log('Browser logs:', logs.filter(l => l.includes('error') || l.includes('Error') || l.includes('update')).join('\n'))
-
-    // Verify DB was actually updated via network request
-    const dbContent = await page.evaluate(async (id) => {
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/agents?id=eq.${id}&select=content`, {
-        headers: {
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        }
-      })
-      return res.json()
-    }, agentId)
-    console.log('DB content after save:', JSON.stringify(dbContent))
+    console.log('Browser logs:', logs.join(' | '))
 
     // Reload to verify persistence and check preview
     await page.reload()

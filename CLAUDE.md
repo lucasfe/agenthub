@@ -221,12 +221,31 @@ AgentDetailPage has a custom markdown parser (no library). It supports:
 ## Development Commands
 
 ```bash
-npm install       # Install dependencies
-npm run dev       # Start dev server (localhost:5173)
-npm run build     # Production build
-npm run preview   # Preview production build
-npm run lint      # ESLint check
+npm install          # Install dependencies
+npm run dev          # Start dev server (localhost:5173)
+npm run build        # Production build
+npm run preview      # Preview production build
+npm run lint         # ESLint check
+npm test             # Run all tests (vitest)
+npm run test:watch   # Run tests in watch mode
+npm run test:coverage # Run tests with coverage report
 ```
+
+## Testing
+
+- **Framework**: Vitest 2 + @testing-library/react
+- **Config**: `vitest.config.js` (jsdom environment, automatic JSX)
+- **Setup**: `src/test/setup.js` (jest-dom matchers, matchMedia mock)
+- **Utils**: `src/test/test-utils.jsx` — `renderWithProviders()` wraps components with BrowserRouter + ThemeProvider + StackProvider
+- **Convention**: Test files live next to their source: `Component.test.jsx`
+
+## Branching & CI/CD
+
+- **`main`** — production branch, protected, receives PRs only
+- **`dev`** — development branch, receives auto-commits from Claude Code
+- **Auto-commit hook**: Every file edit triggers `git add → commit → push dev`
+- **CI pipeline** (`.github/workflows/ci.yml`): Lint → Test → Build on every push
+- **Auto-PR** (`.github/workflows/auto-pr.yml`): Creates/updates a single PR from `dev → main` on every push
 
 ## Adding a New Agent
 

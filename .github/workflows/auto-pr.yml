@@ -1,0 +1,50 @@
+name: Auto PR
+
+on:
+  push:
+    branches: [dev]
+
+jobs:
+  create-or-update-pr:
+    name: Create or Update PR
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create or update PR from dev to main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Check if an open PR from dev->main already exists
+          EXISTING_PR=$(gh pr list --head dev --base main --state open --json number --jq '.[0].number')
+
+          if [ -n "$EXISTING_PR" ]; then
+            echo "PR #$EXISTING_PR already exists — new commits pushed automatically"
+          else
+            # Get recent commit messages for PR body
+            COMMITS=$(git log origin/main..HEAD --oneline | head -20)
+
+            gh pr create \
+              --title "dev → main" \
+              --base main \
+              --head dev \
+              --body "$(cat <<EOF
+          ## Auto-generated PR
+
+          Latest commits from \`dev\`:
+
+          \`\`\`
+          $COMMITS
+          \`\`\`
+
+          ---
+          🤖 Generated automatically on push to \`dev\`
+          EOF
+          )"
+            echo "New PR created"
+          fi

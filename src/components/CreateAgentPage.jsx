@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import * as Icons from 'lucide-react'
+import { createAgent } from '../lib/api'
+import { useData } from '../context/DataContext'
 
 const iconOptions = ['Bot', 'Monitor', 'Server', 'Layers', 'Brain', 'Sparkles', 'Shield', 'Database', 'Terminal', 'MessageSquare', 'Eye', 'Network', 'Palette', 'Smartphone', 'FileText', 'Microscope', 'Languages', 'Scale', 'BarChart3', 'GitPullRequest', 'Container', 'ShieldCheck', 'Cpu', 'Wrench', 'Zap']
 
@@ -21,6 +23,7 @@ const modelOptions = ['Claude Sonnet', 'Claude Opus', 'Claude Haiku']
 
 export default function CreateAgentPage() {
   const navigate = useNavigate()
+  const { refreshAgents } = useData()
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState('Development Team')
@@ -31,6 +34,8 @@ export default function CreateAgentPage() {
   const [model, setModel] = useState('Claude Sonnet')
   const [content, setContent] = useState('')
   const [iconPickerOpen, setIconPickerOpen] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState(null)
 
   const IconPreview = Icons[icon] || Icons.Bot
 
@@ -40,10 +45,33 @@ export default function CreateAgentPage() {
     )
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    // Backend integration later
-    navigate('/')
+    setSubmitting(true)
+    setError(null)
+
+    const agentId = name.toLowerCase().replace(/\s+/g, '-')
+    const categorySlug = category.toLowerCase().replace(/\s+/g, '-')
+
+    try {
+      await createAgent({
+        id: agentId,
+        name,
+        category,
+        description,
+        tags: tags.split(',').map((t) => t.trim()).filter(Boolean),
+        icon,
+        color,
+        featured: false,
+        popularity: 0,
+        content,
+      })
+      await refreshAgents()
+      navigate(`/agent/${categorySlug}/${agentId}`)
+    } catch (err) {
+      setError(err.message)
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -247,13 +275,20 @@ export default function CreateAgentPage() {
           </section>
 
           {/* Actions */}
+          {error && (
+            <div className="flex items-center gap-2 px-4 py-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-sm text-rose-400">
+              <Icons.AlertCircle size={16} />
+              {error}
+            </div>
+          )}
           <div className="flex items-center gap-3 pt-4 border-t border-border-subtle">
             <button
               type="submit"
-              className="flex items-center gap-2 px-6 py-2.5 bg-accent-blue text-white text-sm font-medium rounded-xl hover:bg-accent-blue/90 transition-colors"
+              disabled={submitting}
+              className="flex items-center gap-2 px-6 py-2.5 bg-accent-blue text-white text-sm font-medium rounded-xl hover:bg-accent-blue/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Icons.Plus size={16} />
-              Create Agent
+              {submitting ? <Icons.Loader2 size={16} className="animate-spin" /> : <Icons.Plus size={16} />}
+              {submitting ? 'Creating...' : 'Create Agent'}
             </button>
             <Link
               to="/"

@@ -1,4 +1,6 @@
 -- Agents table
+-- NOTE: When modifying this schema, also apply changes to the live Supabase DB
+-- via SQL Editor. This file is the source of truth for the expected schema.
 create table if not exists agents (
   id text primary key,
   name text not null,

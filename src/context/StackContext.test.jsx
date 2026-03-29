@@ -64,4 +64,18 @@ describe('StackContext', () => {
     expect(result.current.hasAllAgents(['a', 'b'])).toBe(true)
     expect(result.current.hasAllAgents(['a', 'd'])).toBe(false)
   })
+
+  it('removeAgents batch removes multiple agents', () => {
+    const { result } = renderHook(() => useStack(), { wrapper })
+    act(() => result.current.addAgents(['a', 'b', 'c', 'd']))
+    act(() => result.current.removeAgents(['b', 'c']))
+    expect(result.current.stack).toEqual(['a', 'd'])
+  })
+
+  it('removeAgents ignores IDs not in stack', () => {
+    const { result } = renderHook(() => useStack(), { wrapper })
+    act(() => result.current.addAgents(['a', 'b']))
+    act(() => result.current.removeAgents(['b', 'x', 'y']))
+    expect(result.current.stack).toEqual(['a'])
+  })
 })

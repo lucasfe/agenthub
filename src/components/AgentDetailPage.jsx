@@ -216,6 +216,23 @@ export default function AgentDetailPage() {
     }
   }
 
+  const handleSaveContent = async () => {
+    setIsSaving(true)
+    setSaveStatus(null)
+    try {
+      const updated = await updateAgent(agentId, { content: editContent })
+      setAgent(updated)
+      setSaveStatus('saved')
+      setTimeout(() => setSaveStatus(null), 2000)
+    } catch (err) {
+      setSaveStatus('error')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const hasContentChanges = agent && editContent !== (agent.content || '')
+
   if (agentLoading) {
     return <div className="p-8 text-text-muted">Loading...</div>
   }

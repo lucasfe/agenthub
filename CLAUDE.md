@@ -1,10 +1,10 @@
-# CLAUDE.md — Eero AIHub
+# CLAUDE.md — Lucas AI Hub
 
 This file provides guidance to any AI assistant working on this codebase.
 
 ## Project Overview
 
-Eero AIHub is an internal web app for browsing, creating, and managing AI agent templates. It mimics the layout and UX of [aitmpl.com/agents](https://www.aitmpl.com/agents). The app is frontend-only (no backend yet) with static JSON data. Built with React 19, Vite 8, and Tailwind CSS 4.
+Lucas AI Hub is an internal web app for browsing, creating, and managing AI agent templates. It mimics the layout and UX of [aitmpl.com/agents](https://www.aitmpl.com/agents). The app is frontend-only (no backend yet) with static JSON data. Built with React 19, Vite 8, and Tailwind CSS 4.
 
 ## Tech Stack
 

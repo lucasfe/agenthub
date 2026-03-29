@@ -1,4 +1,4 @@
-# Copilot Instructions — Eero AIHub
+# Copilot Instructions — Lucas AI Hub
 
 Refer to `CLAUDE.md` at the project root for full documentation. Key points:
 

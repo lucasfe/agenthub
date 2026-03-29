@@ -20,7 +20,7 @@ export default function Sidebar() {
             <Bot size={18} className="text-white" />
           </div>
           {!collapsed && (
-            <span className="text-text-primary font-semibold text-base tracking-tight">Eero AIHub</span>
+            <span className="text-text-primary font-semibold text-base tracking-tight">Lucas AI Hub</span>
           )}
         </Link>
         {!collapsed && (

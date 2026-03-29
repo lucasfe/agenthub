@@ -23,7 +23,7 @@ export default function StackButton() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'eero-aihub-stack.zip'
+    a.download = 'lucas-aihub-stack.zip'
     a.click()
     URL.revokeObjectURL(url)
   }

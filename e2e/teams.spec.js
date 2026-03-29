@@ -4,11 +4,16 @@ import { cleanupTestData } from './helpers.js'
 const BASE = '/ai/agenthub'
 const T = 15000
 
-const uniqueId = () => `e2e-${Date.now()}`
+const RUN_ID = `e2e-${Date.now()}`
+let testCounter = 0
+const uniqueId = () => `${RUN_ID}-${++testCounter}`
 
-// Clean up E2E test teams after all tests
+const createdTeamIds = []
+
 test.afterAll(async () => {
-  await cleanupTestData('teams', 'ci-team-e2e-')
+  for (const id of createdTeamIds) {
+    await cleanupTestData('teams', id)
+  }
 })
 
 test.describe('Teams', () => {

@@ -185,6 +185,31 @@ export default function AgentDetailPage() {
     return () => { cancelled = true }
   }, [agentId])
 
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape' && showDeleteConfirm && !isDeleting) {
+        setShowDeleteConfirm(false)
+        setDeleteConfirmInput('')
+        setDeleteError(null)
+      }
+    }
+    document.addEventListener('keydown', handleEscape)
+    return () => document.removeEventListener('keydown', handleEscape)
+  }, [showDeleteConfirm, isDeleting])
+
+  const handleDeleteAgent = async () => {
+    setIsDeleting(true)
+    setDeleteError(null)
+    try {
+      await deleteAgent(agentId)
+      await refreshAgents()
+      navigate('/')
+    } catch (err) {
+      setDeleteError(err.message)
+      setIsDeleting(false)
+    }
+  }
+
   if (agentLoading) {
     return <div className="p-8 text-text-muted">Loading...</div>
   }

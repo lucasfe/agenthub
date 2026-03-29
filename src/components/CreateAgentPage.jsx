@@ -65,6 +65,8 @@ export default function CreateAgentPage() {
         featured: false,
         popularity: 0,
         content,
+        tools,
+        model,
       })
       await refreshAgents()
       navigate(`/agent/${categorySlug}/${agentId}`)

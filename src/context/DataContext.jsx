@@ -38,13 +38,21 @@ export function DataProvider({ children }) {
   }, [loadData])
 
   const refreshAgents = async () => {
-    const data = await fetchAgents()
-    setAgents(data)
+    try {
+      const data = await fetchAgents()
+      setAgents(data)
+    } catch (err) {
+      console.error('Failed to refresh agents:', err)
+    }
   }
 
   const refreshTeams = async () => {
-    const data = await fetchTeams()
-    setTeams(data)
+    try {
+      const data = await fetchTeams()
+      setTeams(data)
+    } catch (err) {
+      console.error('Failed to refresh teams:', err)
+    }
   }
 
   return (

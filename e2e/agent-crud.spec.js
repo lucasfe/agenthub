@@ -93,6 +93,66 @@ test.describe('Agent Creation', () => {
     await expect(creatingOrNavigated.first()).toBeVisible({ timeout: DATA_TIMEOUT })
   })
 
+  test('delete agent via confirmation modal', async ({ page }) => {
+    const agentName = `Delete Agent ${uniqueId()}`
+    const agentId = agentName.toLowerCase().replace(/\s+/g, '-')
+    createdAgentIds.push(agentId)
+
+    // Create the agent first
+    await page.goto(`${BASE}/create`)
+    await page.getByPlaceholder('e.g. Frontend Developer').fill(agentName)
+    await page.getByPlaceholder('A short summary of what this agent does...').fill('Agent to be deleted')
+    await page.getByRole('button', { name: /create agent/i }).click()
+    await expect(page.getByRole('heading', { name: agentName })).toBeVisible({ timeout: DATA_TIMEOUT })
+
+    // Click the delete button
+    await page.getByRole('button', { name: /delete/i }).click()
+
+    // Modal should appear with confirmation input
+    await expect(page.getByText('This action cannot be undone.')).toBeVisible()
+
+    // Delete button should be disabled before typing the name
+    const deleteBtn = page.getByRole('button', { name: /delete agent/i })
+    await expect(deleteBtn).toBeDisabled()
+
+    // Type the agent name to confirm
+    await page.getByPlaceholder(agentName).fill(agentName)
+    await expect(deleteBtn).toBeEnabled()
+
+    // Confirm deletion
+    await deleteBtn.click()
+
+    // Should redirect to home
+    await expect(page).toHaveURL(new RegExp(`${BASE}/?$`), { timeout: DATA_TIMEOUT })
+  })
+
+  test('delete modal closes on cancel', async ({ page }) => {
+    // Navigate to an existing agent
+    await page.goto(`${BASE}`)
+    await page.locator('a[href*="/agent/"]').first().click()
+    await expect(page.getByText('Back to agents')).toBeVisible({ timeout: DATA_TIMEOUT })
+
+    // Open delete modal
+    await page.getByRole('button', { name: /delete/i }).click()
+    await expect(page.getByText('This action cannot be undone.')).toBeVisible()
+
+    // Cancel should close the modal
+    await page.getByRole('button', { name: /cancel/i }).click()
+    await expect(page.getByText('This action cannot be undone.')).not.toBeVisible()
+  })
+
+  test('delete modal closes on escape key', async ({ page }) => {
+    await page.goto(`${BASE}`)
+    await page.locator('a[href*="/agent/"]').first().click()
+    await expect(page.getByText('Back to agents')).toBeVisible({ timeout: DATA_TIMEOUT })
+
+    await page.getByRole('button', { name: /delete/i }).click()
+    await expect(page.getByText('This action cannot be undone.')).toBeVisible()
+
+    await page.keyboard.press('Escape')
+    await expect(page.getByText('This action cannot be undone.')).not.toBeVisible()
+  })
+
   test('created agent is accessible via detail page', async ({ page }) => {
     const agentName = `Detail Agent ${uniqueId()}`
     const agentId = agentName.toLowerCase().replace(/\s+/g, '-')

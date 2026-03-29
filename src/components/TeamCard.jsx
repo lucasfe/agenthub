@@ -1,7 +1,7 @@
 import { Link } from 'react-router'
 import * as Icons from 'lucide-react'
 import { useStack } from '../context/StackContext'
-import agentsData from '../data/agents.json'
+import { useData } from '../context/DataContext'
 
 const colorMap = {
   blue: { bg: 'from-blue-500/15 to-blue-600/5', border: 'border-blue-500/20', icon: 'text-blue-400', badge: 'bg-blue-500/10 text-blue-300' },

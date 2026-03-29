@@ -88,6 +88,16 @@ export async function createTeam(team) {
   return data
 }
 
+export async function deleteTeam(id) {
+  requireSupabase()
+  const { error } = await supabase
+    .from('teams')
+    .delete()
+    .eq('id', id)
+
+  if (error) throw error
+}
+
 export async function updateTeam(id, updates) {
   requireSupabase()
   const { data, error } = await supabase

@@ -25,12 +25,16 @@ export function StackProvider({ children }) {
     setStack((prev) => [...new Set([...prev, ...agentIds])])
   }
 
+  const removeAgents = (agentIds) => {
+    setStack((prev) => prev.filter((id) => !agentIds.includes(id)))
+  }
+
   const hasAllAgents = (agentIds) => agentIds.every((id) => stack.includes(id))
 
   const isInStack = (agentId) => stack.includes(agentId)
 
   return (
-    <StackContext.Provider value={{ stack, toggleAgent, removeAgent, addAgents, hasAllAgents, clearStack, isInStack, panelOpen, setPanelOpen }}>
+    <StackContext.Provider value={{ stack, toggleAgent, removeAgent, addAgents, removeAgents, hasAllAgents, clearStack, isInStack, panelOpen, setPanelOpen }}>
       {children}
     </StackContext.Provider>
   )

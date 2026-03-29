@@ -47,6 +47,23 @@ test.describe('Navigation & Layout', () => {
     await page.getByRole('button', { name: 'Description' }).click()
   })
 
+  test('sidebar shows dynamic agent and team counts', async ({ page }) => {
+    await page.goto(`${BASE}/`)
+    await expect(page.locator(`a[href*="${BASE}/agent/"]`).first()).toBeVisible({ timeout: T })
+
+    // Get actual agent count from the page
+    const agentCards = await page.locator(`a[href*="${BASE}/agent/"]`).count()
+
+    // Sidebar agent count should match
+    const agentLink = page.getByRole('link', { name: /agents/i }).first()
+    const agentCountText = await agentLink.textContent()
+    expect(agentCountText).toContain(String(agentCards))
+
+    // Sidebar should NOT show hardcoded 416
+    expect(agentCountText).not.toContain('416')
+  })
+
+
   test('sidebar navigates between pages', async ({ page }) => {
     await page.goto(`${BASE}/`)
     await expect(page.locator('h1').first()).toBeVisible({ timeout: T })

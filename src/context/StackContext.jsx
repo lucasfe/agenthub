@@ -34,7 +34,7 @@ export function StackProvider({ children }) {
   const isInStack = (agentId) => stack.includes(agentId)
 
   return (
-    <StackContext.Provider value={{ stack, toggleAgent, removeAgent, addAgents, hasAllAgents, clearStack, isInStack, panelOpen, setPanelOpen }}>
+    <StackContext.Provider value={{ stack, toggleAgent, removeAgent, addAgents, removeAgents, hasAllAgents, clearStack, isInStack, panelOpen, setPanelOpen }}>
       {children}
     </StackContext.Provider>
   )

@@ -402,7 +402,7 @@ export default function AgentDetailPage() {
               <h2 className="text-base font-semibold text-text-primary mb-3">Model</h2>
               <div className="inline-flex items-center gap-2.5 px-4 py-3 bg-bg-card border border-border-subtle rounded-xl">
                 <Icons.Cpu size={14} className="text-text-muted" />
-                <span className="text-sm text-text-secondary font-medium">Claude Sonnet</span>
+                <span className="text-sm text-text-secondary font-medium">{agent.model || 'Claude Sonnet'}</span>
               </div>
             </div>
           )}

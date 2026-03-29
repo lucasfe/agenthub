@@ -153,6 +153,8 @@ function renderInline(text) {
 
 export default function AgentDetailPage() {
   const { category, agentId } = useParams()
+  const navigate = useNavigate()
+  const { refreshAgents } = useData()
   const [agent, setAgent] = useState(null)
   const [agentLoading, setAgentLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('description')
@@ -162,6 +164,10 @@ export default function AgentDetailPage() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [expanded, setExpanded] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState('')
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState(null)
 
   useEffect(() => {
     let cancelled = false

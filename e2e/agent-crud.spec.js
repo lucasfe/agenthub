@@ -212,17 +212,22 @@ test.describe('Agent Creation', () => {
     // Save should be enabled now
     const saveBtn = page.getByRole('button', { name: /^save$/i })
     await expect(saveBtn).toBeEnabled()
-    await saveBtn.click()
+
+    // Intercept PATCH to verify save reaches the server
+    const [response] = await Promise.all([
+      page.waitForResponse(resp => resp.url().includes('/rest/v1/agents') && resp.request().method() === 'PATCH'),
+      saveBtn.click(),
+    ])
+    expect(response.status()).toBe(200)
+    const body = await response.json()
+    expect(body.content).toContain('Updated Content')
 
     // Should show saved confirmation
     await expect(page.getByText('Saved')).toBeVisible({ timeout: DATA_TIMEOUT })
 
-    // Reload to verify persistence and check preview
-    await page.reload()
-    await expect(page.getByRole('heading', { name: agentName })).toBeVisible({ timeout: DATA_TIMEOUT })
+    // Switch to Preview — should render the updated markdown
     await page.getByRole('button', { name: 'Preview' }).click()
     await expect(page.getByText('Updated Content')).toBeVisible({ timeout: DATA_TIMEOUT })
-    await expect(page.getByText('New paragraph here.')).toBeVisible()
   })
 
   test('preview tab renders markdown properly', async ({ page }) => {

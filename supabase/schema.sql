@@ -41,4 +41,4 @@ create policy "Public insert access for teams" on teams
   for insert with check (true);
 
 create policy "Public update access for teams" on teams
-  for update using (true);
+  for update using (true) with check (true);

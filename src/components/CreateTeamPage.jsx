@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router'
 import * as Icons from 'lucide-react'
-import teamsData from '../data/teams.json'
-import agentsData from '../data/agents.json'
+import { useData } from '../context/DataContext'
+import { fetchTeam, createTeam, updateTeam } from '../lib/api'
 
 const colorOptions = [
   { value: 'blue', label: 'Blue', class: 'bg-blue-500' },
@@ -25,14 +25,43 @@ const agentColorMap = {
 export default function CreateTeamPage() {
   const { teamId } = useParams()
   const navigate = useNavigate()
-  const existingTeam = teamId ? teamsData.find((t) => t.id === teamId) : null
-  const isEditing = !!existingTeam
+  const { agents, refreshTeams } = useData()
+  const [isEditing, setIsEditing] = useState(false)
+  const [pageLoading, setPageLoading] = useState(!!teamId)
 
-  const [name, setName] = useState(existingTeam?.name || '')
-  const [description, setDescription] = useState(existingTeam?.description || '')
-  const [color, setColor] = useState(existingTeam?.color || 'blue')
-  const [selectedAgents, setSelectedAgents] = useState(existingTeam?.agents || [])
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const [color, setColor] = useState('blue')
+  const [selectedAgents, setSelectedAgents] = useState([])
   const [search, setSearch] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    if (!teamId) return
+    let cancelled = false
+    setPageLoading(true)
+    fetchTeam(teamId)
+      .then((data) => {
+        if (cancelled) return
+        if (data) {
+          setIsEditing(true)
+          setName(data.name || '')
+          setDescription(data.description || '')
+          setColor(data.color || 'blue')
+          setSelectedAgents(data.agents || [])
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setPageLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [teamId])
+
+  if (pageLoading) {
+    return <div className="p-8 text-text-muted">Loading...</div>
+  }
 
   const toggleAgent = (agentId) => {
     setSelectedAgents((prev) =>
@@ -40,22 +69,42 @@ export default function CreateTeamPage() {
     )
   }
 
-  const filteredAgents = agentsData.filter((a) => {
+  const filteredAgents = agents.filter((a) => {
     if (!search.trim()) return true
     const q = search.toLowerCase()
     return (
       a.name.toLowerCase().includes(q) ||
       a.description.toLowerCase().includes(q) ||
-      a.tags.some((t) => t.toLowerCase().includes(q))
+      (a.tags || []).some((t) => t.toLowerCase().includes(q))
     )
   })
 
-  const categories = [...new Set(agentsData.map((a) => a.category))]
+  const categories = [...new Set(agents.map((a) => a.category))]
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    // Backend integration later
-    navigate('/teams')
+    setSubmitting(true)
+    setError(null)
+
+    try {
+      const teamData = {
+        name,
+        description,
+        color,
+        agents: selectedAgents,
+      }
+      if (isEditing) {
+        await updateTeam(teamId, teamData)
+      } else {
+        teamData.id = name.toLowerCase().replace(/\s+/g, '-')
+        await createTeam(teamData)
+      }
+      await refreshTeams()
+      navigate(isEditing ? `/teams/${teamId}` : '/teams')
+    } catch (err) {
+      setError(err.message)
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -158,7 +207,7 @@ export default function CreateTeamPage() {
             {selectedAgents.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {selectedAgents.map((agentId) => {
-                  const agent = agentsData.find((a) => a.id === agentId)
+                  const agent = agents.find((a) => a.id === agentId)
                   if (!agent) return null
                   const Ic = Icons[agent.icon] || Icons.Bot
                   const ac = agentColorMap[agent.color] || agentColorMap.blue
@@ -227,12 +276,24 @@ export default function CreateTeamPage() {
           </section>
 
           {/* Actions */}
+          {error && (
+            <div className="flex items-center gap-2 px-4 py-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-sm text-rose-400">
+              <Icons.AlertCircle size={16} />
+              {error}
+            </div>
+          )}
           <div className="flex items-center gap-3 pt-4 border-t border-border-subtle">
             <button
               type="submit"
-              className="flex items-center gap-2 px-6 py-2.5 bg-accent-blue text-white text-sm font-medium rounded-xl hover:bg-accent-blue/90 transition-colors"
+              disabled={submitting}
+              className="flex items-center gap-2 px-6 py-2.5 bg-accent-blue text-white text-sm font-medium rounded-xl hover:bg-accent-blue/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isEditing ? (
+              {submitting ? (
+                <>
+                  <Icons.Loader2 size={16} className="animate-spin" />
+                  Saving...
+                </>
+              ) : isEditing ? (
                 <>
                   <Icons.Save size={16} />
                   Save Changes

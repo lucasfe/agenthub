@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router'
 import * as Icons from 'lucide-react'
-import agentsData from '../data/agents.json'
-import teamsData from '../data/teams.json'
+import { useData } from '../context/DataContext'
 
 export default function CommandPalette({ open, onClose }) {
+  const { agents: agentsData, teams: teamsData } = useData()
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
   const inputRef = useRef(null)
@@ -19,8 +19,8 @@ export default function CommandPalette({ open, onClose }) {
       name: a.name,
       type: 'Agent',
       icon: a.icon,
-      category: a.category.toLowerCase().replace(/\s+/g, '-'),
-      path: `/agent/${a.category.toLowerCase().replace(/\s+/g, '-')}/${a.id}`,
+      category: (a.category || '').toLowerCase().replace(/\s+/g, '-'),
+      path: `/agent/${(a.category || '').toLowerCase().replace(/\s+/g, '-')}/${a.id}`,
     }))
 
     const teams = teamsData.map((t) => ({
@@ -40,7 +40,7 @@ export default function CommandPalette({ open, onClose }) {
     return all
       .filter((item) => item.name.toLowerCase().includes(q))
       .slice(0, 10)
-  }, [query])
+  }, [agentsData, teamsData, query])
 
   useEffect(() => {
     setSelectedIndex(0)

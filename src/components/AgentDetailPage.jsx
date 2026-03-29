@@ -1,8 +1,7 @@
-import { useState, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router'
 import * as Icons from 'lucide-react'
-import agentsData from '../data/agents.json'
-import agentContent from '../data/agentContent'
+import { fetchAgent } from '../lib/api'
 
 const colorMap = {
   blue: { bg: 'from-blue-500/15 to-blue-600/5', border: 'border-blue-500/20', icon: 'text-blue-400', tag: 'bg-blue-500/10 text-blue-300' },
@@ -153,6 +152,8 @@ function renderInline(text) {
 
 export default function AgentDetailPage() {
   const { category, agentId } = useParams()
+  const [agent, setAgent] = useState(null)
+  const [agentLoading, setAgentLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('description')
   const [contentView, setContentView] = useState('preview')
 
@@ -161,7 +162,25 @@ export default function AgentDetailPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [expanded, setExpanded] = useState(false)
 
-  const agent = agentsData.find((a) => a.id === agentId)
+  useEffect(() => {
+    let cancelled = false
+    setAgentLoading(true)
+    fetchAgent(agentId)
+      .then((data) => {
+        if (!cancelled) setAgent(data)
+      })
+      .catch(() => {
+        if (!cancelled) setAgent(null)
+      })
+      .finally(() => {
+        if (!cancelled) setAgentLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [agentId])
+
+  if (agentLoading) {
+    return <div className="p-8 text-text-muted">Loading...</div>
+  }
 
   if (!agent) {
     return (
@@ -178,8 +197,8 @@ export default function AgentDetailPage() {
 
   const colors = colorMap[agent.color] || colorMap.blue
   const IconComponent = Icons[agent.icon] || Icons.Bot
-  const categorySlug = agent.category.toLowerCase().replace(/\s+/g, '-')
-  const content = agentContent[agent.id] || ''
+  const categorySlug = (agent.category || '').toLowerCase().replace(/\s+/g, '-')
+  const content = agent.content || ''
 
   const handleContentCopy = () => {
     navigator.clipboard.writeText(content)

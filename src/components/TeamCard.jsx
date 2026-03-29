@@ -1,7 +1,7 @@
 import { Link } from 'react-router'
 import * as Icons from 'lucide-react'
 import { useStack } from '../context/StackContext'
-import agentsData from '../data/agents.json'
+import { useData } from '../context/DataContext'
 
 const colorMap = {
   blue: { bg: 'from-blue-500/15 to-blue-600/5', border: 'border-blue-500/20', icon: 'text-blue-400', badge: 'bg-blue-500/10 text-blue-300' },
@@ -24,15 +24,17 @@ const agentColorMap = {
 export default function TeamCard({ team }) {
   const colors = colorMap[team.color] || colorMap.blue
   const { addAgents, hasAllAgents } = useStack()
-  const teamAgents = team.agents
-    .map((id) => agentsData.find((a) => a.id === id))
+  const { agents } = useData()
+  const teamAgents = (team.agents || [])
+    .map((id) => agents.find((a) => a.id === id))
     .filter(Boolean)
-  const allInStack = hasAllAgents(team.agents)
+  const agentIds = team.agents || []
+  const allInStack = hasAllAgents(agentIds)
 
   const handleToggleStack = (e) => {
     e.preventDefault()
     e.stopPropagation()
-    addAgents(team.agents)
+    addAgents(agentIds)
   }
 
   return (

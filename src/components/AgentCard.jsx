@@ -14,7 +14,7 @@ const colorMap = {
 export default function AgentCard({ agent, viewMode }) {
   const colors = colorMap[agent.color] || colorMap.blue
   const IconComponent = Icons[agent.icon] || Icons.Bot
-  const categorySlug = agent.category.toLowerCase().replace(/\s+/g, '-')
+  const categorySlug = (agent.category || '').toLowerCase().replace(/\s+/g, '-')
   const detailPath = `/agent/${categorySlug}/${agent.id}`
   const { toggleAgent, isInStack } = useStack()
   const inStack = isInStack(agent.id)
@@ -38,7 +38,7 @@ export default function AgentCard({ agent, viewMode }) {
           <p className="text-xs text-text-secondary mt-0.5 truncate">{agent.description}</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {agent.tags.slice(0, 2).map((tag) => (
+          {(agent.tags || []).slice(0, 2).map((tag) => (
             <span key={tag} className={`text-[11px] font-medium ${colors.tag} px-2 py-0.5 rounded-full`}>
               {tag}
             </span>
@@ -95,7 +95,7 @@ export default function AgentCard({ agent, viewMode }) {
 
       {/* Tags */}
       <div className="flex flex-wrap gap-1.5">
-        {agent.tags.map((tag) => (
+        {(agent.tags || []).map((tag) => (
           <span key={tag} className={`text-[11px] font-medium ${colors.tag} px-2.5 py-1 rounded-full`}>
             {tag}
           </span>

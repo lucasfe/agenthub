@@ -1,7 +1,8 @@
+import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router'
 import * as Icons from 'lucide-react'
-import teamsData from '../data/teams.json'
-import agentsData from '../data/agents.json'
+import { useData } from '../context/DataContext'
+import { fetchTeam } from '../lib/api'
 
 const colorMap = {
   blue: { bg: 'from-blue-500/15 to-blue-600/5', border: 'border-blue-500/20', icon: 'text-blue-400', tag: 'bg-blue-500/10 text-blue-300' },
@@ -23,7 +24,29 @@ const agentColorMap = {
 
 export default function TeamDetailPage() {
   const { teamId } = useParams()
-  const team = teamsData.find((t) => t.id === teamId)
+  const { agents } = useData()
+  const [team, setTeam] = useState(null)
+  const [teamLoading, setTeamLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    setTeamLoading(true)
+    fetchTeam(teamId)
+      .then((data) => {
+        if (!cancelled) setTeam(data)
+      })
+      .catch(() => {
+        if (!cancelled) setTeam(null)
+      })
+      .finally(() => {
+        if (!cancelled) setTeamLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [teamId])
+
+  if (teamLoading) {
+    return <div className="p-8 text-text-muted">Loading...</div>
+  }
 
   if (!team) {
     return (
@@ -39,8 +62,8 @@ export default function TeamDetailPage() {
   }
 
   const colors = colorMap[team.color] || colorMap.blue
-  const teamAgents = team.agents
-    .map((id) => agentsData.find((a) => a.id === id))
+  const teamAgents = (team.agents || [])
+    .map((id) => agents.find((a) => a.id === id))
     .filter(Boolean)
 
   return (
@@ -85,7 +108,7 @@ export default function TeamDetailPage() {
             {teamAgents.map((agent) => {
               const ac = agentColorMap[agent.color] || agentColorMap.blue
               const Ic = Icons[agent.icon] || Icons.Bot
-              const categorySlug = agent.category.toLowerCase().replace(/\s+/g, '-')
+              const categorySlug = (agent.category || '').toLowerCase().replace(/\s+/g, '-')
               return (
                 <Link
                   key={agent.id}
@@ -102,7 +125,7 @@ export default function TeamDetailPage() {
                     <p className="text-xs text-text-secondary mt-0.5 truncate">{agent.description}</p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    {agent.tags.slice(0, 2).map((tag) => (
+                    {(agent.tags || []).slice(0, 2).map((tag) => (
                       <span
                         key={tag}
                         className="text-[11px] font-medium bg-white/5 text-text-muted px-2 py-0.5 rounded-full"

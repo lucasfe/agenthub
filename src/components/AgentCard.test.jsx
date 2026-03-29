@@ -1,8 +1,13 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import AgentCard from './AgentCard'
 import { renderWithProviders } from '../test/test-utils'
+
+vi.mock('../lib/api', () => ({
+  fetchAgents: vi.fn().mockResolvedValue([]),
+  fetchTeams: vi.fn().mockResolvedValue([]),
+}))
 
 const mockAgent = {
   id: 'frontend-developer',

@@ -276,12 +276,24 @@ export default function CreateTeamPage() {
           </section>
 
           {/* Actions */}
+          {error && (
+            <div className="flex items-center gap-2 px-4 py-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-sm text-rose-400">
+              <Icons.AlertCircle size={16} />
+              {error}
+            </div>
+          )}
           <div className="flex items-center gap-3 pt-4 border-t border-border-subtle">
             <button
               type="submit"
-              className="flex items-center gap-2 px-6 py-2.5 bg-accent-blue text-white text-sm font-medium rounded-xl hover:bg-accent-blue/90 transition-colors"
+              disabled={submitting}
+              className="flex items-center gap-2 px-6 py-2.5 bg-accent-blue text-white text-sm font-medium rounded-xl hover:bg-accent-blue/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isEditing ? (
+              {submitting ? (
+                <>
+                  <Icons.Loader2 size={16} className="animate-spin" />
+                  Saving...
+                </>
+              ) : isEditing ? (
                 <>
                   <Icons.Save size={16} />
                   Save Changes

@@ -168,6 +168,9 @@ export default function AgentDetailPage() {
   const [deleteConfirmInput, setDeleteConfirmInput] = useState('')
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState(null)
+  const [editContent, setEditContent] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveStatus, setSaveStatus] = useState(null)
 
   useEffect(() => {
     let cancelled = false

@@ -279,6 +279,14 @@ export default function AgentDetailPage() {
               </span>
             </div>
           </div>
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-rose-400 border border-rose-500/30 rounded-xl hover:border-rose-500/60 hover:bg-rose-500/10 transition-all duration-200 shrink-0 active:scale-95"
+            aria-label="Delete this agent"
+          >
+            <Icons.Trash2 size={14} />
+            Delete
+          </button>
         </div>
 
         {/* Tabs */}

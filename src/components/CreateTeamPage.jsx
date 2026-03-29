@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router'
 import * as Icons from 'lucide-react'
-import teamsData from '../data/teams.json'
-import agentsData from '../data/agents.json'
+import { useData } from '../context/DataContext'
+import { fetchTeam, createTeam, updateTeam } from '../lib/api'
 
 const colorOptions = [
   { value: 'blue', label: 'Blue', class: 'bg-blue-500' },

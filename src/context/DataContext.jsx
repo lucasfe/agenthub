@@ -10,21 +10,27 @@ export function DataProvider({ children }) {
   const [error, setError] = useState(null)
 
   const loadData = useCallback(async () => {
-    try {
-      setLoading(true)
-      const [agentsData, teamsData] = await Promise.all([
-        fetchAgents(),
-        fetchTeams(),
-      ])
-      setAgents(agentsData)
-      setTeams(teamsData)
-      setError(null)
-    } catch (err) {
-      console.error('Failed to load data:', err)
-      setError(err.message)
-    } finally {
-      setLoading(false)
+    setLoading(true)
+    const results = await Promise.allSettled([
+      fetchAgents(),
+      fetchTeams(),
+    ])
+
+    if (results[0].status === 'fulfilled') {
+      setAgents(results[0].value)
+    } else {
+      console.error('Failed to load agents:', results[0].reason)
     }
+
+    if (results[1].status === 'fulfilled') {
+      setTeams(results[1].value)
+    } else {
+      console.error('Failed to load teams:', results[1].reason)
+    }
+
+    const errors = results.filter(r => r.status === 'rejected').map(r => r.reason.message)
+    setError(errors.length ? errors.join('; ') : null)
+    setLoading(false)
   }, [])
 
   useEffect(() => {

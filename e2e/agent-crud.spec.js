@@ -90,7 +90,7 @@ test.describe('Agent Creation', () => {
     await expect(creatingOrNavigated.first()).toBeVisible({ timeout: DATA_TIMEOUT })
   })
 
-  test('created agent appears on homepage', async ({ page }) => {
+  test('created agent appears on homepage when searched', async ({ page }) => {
     const agentName = `Listed Agent ${uniqueId()}`
 
     // Create an agent
@@ -100,8 +100,15 @@ test.describe('Agent Creation', () => {
     await page.getByRole('button', { name: /create agent/i }).click()
     await expect(page.getByText('Back to agents')).toBeVisible({ timeout: DATA_TIMEOUT })
 
-    // Go to homepage and verify the agent appears
+    // Go to homepage and search for the agent (new agents have popularity 0, sorted to bottom)
     await page.goto(`${BASE}/`)
+    await expect(page.locator('h1').first()).toBeVisible({ timeout: DATA_TIMEOUT })
+
+    // Use the search to find the agent
+    const searchInput = page.getByPlaceholder('Search agents...')
+    await searchInput.fill(agentName)
+
+    // Agent should appear in filtered results
     await expect(page.getByText(agentName)).toBeVisible({ timeout: DATA_TIMEOUT })
   })
 })

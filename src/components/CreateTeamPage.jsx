@@ -75,7 +75,7 @@ export default function CreateTeamPage() {
     return (
       a.name.toLowerCase().includes(q) ||
       a.description.toLowerCase().includes(q) ||
-      a.tags.some((t) => t.toLowerCase().includes(q))
+      (a.tags || []).some((t) => t.toLowerCase().includes(q))
     )
   })
 

@@ -12,17 +12,17 @@ import TeamDetailPage from './components/TeamDetailPage'
 import CreateTeamPage from './components/CreateTeamPage'
 import StackButton from './components/StackButton'
 import { StackProvider } from './context/StackContext'
-import agentsData from './data/agents.json'
-import teamsData from './data/teams.json'
+import { useData } from './context/DataContext'
 
 function AgentListPage() {
+  const { agents, loading } = useData()
   const [searchQuery, setSearchQuery] = useState('')
   const [category, setCategory] = useState('All categories')
   const [sortBy, setSortBy] = useState('Most Popular')
   const [viewMode, setViewMode] = useState('grid')
 
   const filteredAgents = useMemo(() => {
-    let results = [...agentsData]
+    let results = [...agents]
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase()
@@ -54,7 +54,9 @@ function AgentListPage() {
     }
 
     return results
-  }, [searchQuery, category, sortBy])
+  }, [agents, searchQuery, category, sortBy])
+
+  if (loading) return <div className="p-8 text-text-muted">Loading...</div>
 
   return (
     <>
@@ -96,17 +98,20 @@ function AgentListPage() {
 }
 
 function TeamsListPage() {
+  const { teams, loading } = useData()
   const [searchQuery, setSearchQuery] = useState('')
 
   const filteredTeams = useMemo(() => {
-    if (!searchQuery.trim()) return teamsData
+    if (!searchQuery.trim()) return teams
     const q = searchQuery.toLowerCase()
-    return teamsData.filter(
+    return teams.filter(
       (t) =>
         t.name.toLowerCase().includes(q) ||
         t.description.toLowerCase().includes(q)
     )
-  }, [searchQuery])
+  }, [teams, searchQuery])
+
+  if (loading) return <div className="p-8 text-text-muted">Loading...</div>
 
   return (
     <>

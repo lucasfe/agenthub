@@ -1,0 +1,5 @@
+{
+  "rewrites": [
+    { "source": "/ai/agenthub/(.*)", "destination": "/ai/agenthub/index.html" }
+  ]
+}

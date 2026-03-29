@@ -67,4 +67,27 @@ test.describe('Teams', () => {
     // Should show error (not crash)
     await expect(page.locator('[class*="rose"]')).toBeVisible({ timeout: T })
   })
+
+  test('team stack toggle adds and removes agents', async ({ page }) => {
+    await page.goto(`${BASE}/teams`)
+    const teamCard = page.locator(`a[href*="${BASE}/teams/"]`).first()
+    await expect(teamCard).toBeVisible({ timeout: T })
+
+    // Hover to reveal the + button
+    await teamCard.hover()
+    await page.waitForTimeout(200)
+
+    const stackBtn = teamCard.locator('button').first()
+    await expect(stackBtn).toBeVisible()
+
+    // Click to add team agents to stack
+    await stackBtn.click()
+    await page.waitForTimeout(300)
+    await expect(stackBtn).toHaveClass(/bg-accent-green/)
+
+    // Click again to remove team agents from stack
+    await stackBtn.click()
+    await page.waitForTimeout(300)
+    await expect(stackBtn).not.toHaveClass(/bg-accent-green/)
+  })
 })

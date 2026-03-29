@@ -384,7 +384,7 @@ export default function AgentDetailPage() {
             <div>
               <h2 className="text-base font-semibold text-text-primary mb-3">Available Tools</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {tools.map((tool) => (
+                {(agent.tools || defaultTools).map((tool) => (
                   <div
                     key={tool}
                     className="flex items-center gap-2.5 px-4 py-3 bg-bg-card border border-border-subtle rounded-xl"

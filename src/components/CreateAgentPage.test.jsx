@@ -82,6 +82,8 @@ describe('CreateAgentPage', () => {
         featured: false,
         popularity: 0,
         content: '',
+        tools: ['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep'],
+        model: 'Claude Sonnet',
       })
     })
   })

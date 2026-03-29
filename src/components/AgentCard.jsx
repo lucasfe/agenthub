@@ -95,7 +95,7 @@ export default function AgentCard({ agent, viewMode }) {
 
       {/* Tags */}
       <div className="flex flex-wrap gap-1.5">
-        {agent.tags.map((tag) => (
+        {(agent.tags || []).map((tag) => (
           <span key={tag} className={`text-[11px] font-medium ${colors.tag} px-2.5 py-1 rounded-full`}>
             {tag}
           </span>

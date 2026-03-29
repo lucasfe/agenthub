@@ -127,23 +127,18 @@ test.describe('Agent Creation', () => {
   })
 
   test('delete modal closes on cancel', async ({ page }) => {
-    // Navigate to an existing agent
-    await page.goto(`${BASE}`)
-    await page.locator('a[href*="/agent/"]').first().click({ timeout: DATA_TIMEOUT })
+    await page.goto(`${BASE}/agent/development-team/frontend-developer`)
     await expect(page.getByText('Back to agents')).toBeVisible({ timeout: DATA_TIMEOUT })
 
-    // Open delete modal
     await page.getByRole('button', { name: /delete/i }).click()
     await expect(page.getByText('This action cannot be undone.')).toBeVisible()
 
-    // Cancel should close the modal
     await page.getByRole('button', { name: /cancel/i }).click()
     await expect(page.getByText('This action cannot be undone.')).not.toBeVisible()
   })
 
   test('delete modal closes on escape key', async ({ page }) => {
-    await page.goto(`${BASE}`)
-    await page.locator('a[href*="/agent/"]').first().click({ timeout: DATA_TIMEOUT })
+    await page.goto(`${BASE}/agent/development-team/frontend-developer`)
     await expect(page.getByText('Back to agents')).toBeVisible({ timeout: DATA_TIMEOUT })
 
     await page.getByRole('button', { name: /delete/i }).click()

@@ -34,7 +34,11 @@ export default function TeamCard({ team }) {
   const handleToggleStack = (e) => {
     e.preventDefault()
     e.stopPropagation()
-    addAgents(agentIds)
+    if (allInStack) {
+      removeAgents(agentIds)
+    } else {
+      addAgents(agentIds)
+    }
   }
 
   return (

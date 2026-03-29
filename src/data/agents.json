@@ -218,5 +218,16 @@
     "color": "amber",
     "featured": false,
     "popularity": 71
+  },
+  {
+    "id": "lucas-ferreira",
+    "name": "Lucas Ferreira",
+    "category": "Development Team",
+    "description": "test",
+    "tags": ["react"],
+    "icon": "Bot",
+    "color": "blue",
+    "featured": false,
+    "popularity": 0
   }
 ]

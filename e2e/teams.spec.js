@@ -1,9 +1,20 @@
 import { test, expect } from '@playwright/test'
+import { cleanupTestData } from './helpers.js'
 
 const BASE = '/ai/agenthub'
 const T = 15000
 
-const uniqueId = () => `e2e-${Date.now()}`
+const RUN_ID = `e2e-${Date.now()}`
+let testCounter = 0
+const uniqueId = () => `${RUN_ID}-${++testCounter}`
+
+const createdTeamIds = []
+
+test.afterAll(async () => {
+  for (const id of createdTeamIds) {
+    await cleanupTestData('teams', id)
+  }
+})
 
 test.describe('Teams', () => {
   test('teams page loads with team cards', async ({ page }) => {
@@ -40,6 +51,8 @@ test.describe('Teams', () => {
 
   test('create team with name and description', async ({ page }) => {
     const teamName = `CI Team ${uniqueId()}`
+    const teamId = teamName.toLowerCase().replace(/\s+/g, '-')
+    createdTeamIds.push(teamId)
 
     await page.goto(`${BASE}/teams/create`)
     await expect(page.getByRole('heading', { name: 'Create Team' })).toBeVisible({ timeout: T })

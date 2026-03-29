@@ -37,7 +37,8 @@ describe('AgentCard', () => {
   it('displays formatted download count from popularity', () => {
     renderWithProviders(<AgentCard agent={mockAgent} viewMode="grid" />)
     // 98 * 243 = 23,814
-    expect(screen.getByText('23,814')).toBeInTheDocument()
+    const expected = (98 * 243).toLocaleString()
+    expect(screen.getByText(expected)).toBeInTheDocument()
   })
 
   it('shows category slug', () => {

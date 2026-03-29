@@ -29,7 +29,7 @@ export function StackProvider({ children }) {
     setStack((prev) => prev.filter((id) => !agentIds.includes(id)))
   }
 
-  const hasAllAgents = (agentIds) => agentIds.every((id) => stack.includes(id))
+  const hasAllAgents = (agentIds) => agentIds.length > 0 && agentIds.every((id) => stack.includes(id))
 
   const isInStack = (agentId) => stack.includes(agentId)
 

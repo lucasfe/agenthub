@@ -1,62 +1,68 @@
 import { test, expect } from '@playwright/test'
+import { cleanupTestData } from './helpers.js'
 
 const BASE = '/ai/agenthub'
 const DATA_TIMEOUT = 15000
 
-// Generate unique ID to avoid conflicts between test runs
-const uniqueId = () => `e2e-test-${Date.now()}`
+// Single run ID shared across all tests in this file
+const RUN_ID = `e2e-${Date.now()}`
+let testCounter = 0
+const uniqueId = () => `${RUN_ID}-${++testCounter}`
+
+// Run tests serially — they share cleanup state
+test.describe.configure({ mode: 'serial' })
+
+// Track created agent IDs for cleanup
+const createdAgentIds = []
+
+// Clean up after all tests complete
+test.afterAll(async () => {
+  for (const id of createdAgentIds) {
+    await cleanupTestData('agents', id)
+  }
+})
 
 test.describe('Agent Creation', () => {
   test('create agent with minimal fields', async ({ page }) => {
     const agentName = `Test Agent ${uniqueId()}`
+    const agentId = agentName.toLowerCase().replace(/\s+/g, '-')
+    createdAgentIds.push(agentId)
 
     await page.goto(`${BASE}/create`)
-
-    // Verify the create page loaded
     await expect(page.getByRole('heading', { name: 'Create Agent' })).toBeVisible()
 
-    // Fill required fields
     await page.getByPlaceholder('e.g. Frontend Developer').fill(agentName)
     await page.getByPlaceholder('A short summary of what this agent does...').fill('An E2E test agent')
-
-    // Submit
     await page.getByRole('button', { name: /create agent/i }).click()
 
-    // Should navigate to the agent detail page (no error shown)
     await expect(page.getByText('Back to agents')).toBeVisible({ timeout: DATA_TIMEOUT })
     await expect(page.getByRole('heading', { name: agentName })).toBeVisible()
   })
 
   test('create agent with all fields filled', async ({ page }) => {
     const agentName = `Full Agent ${uniqueId()}`
+    const agentId = agentName.toLowerCase().replace(/\s+/g, '-')
+    createdAgentIds.push(agentId)
 
     await page.goto(`${BASE}/create`)
 
-    // Fill all fields
     await page.getByPlaceholder('e.g. Frontend Developer').fill(agentName)
     await page.getByPlaceholder('A short summary of what this agent does...').fill('A fully configured test agent')
     await page.getByPlaceholder('React, TypeScript, CSS (comma-separated)').fill('E2E, Testing, Playwright')
-
-    // Select AI Specialists category
     await page.getByRole('button', { name: 'AI Specialists' }).click()
-
-    // Select a different color (green)
     await page.getByTitle('Green').click()
-
-    // Add system prompt content
     await page.getByPlaceholder(/You are a senior developer/).fill('You are an E2E test agent.')
 
-    // Submit
     await page.getByRole('button', { name: /create agent/i }).click()
 
-    // Should navigate to agent detail page
     await expect(page.getByText('Back to agents')).toBeVisible({ timeout: DATA_TIMEOUT })
     await expect(page.getByRole('heading', { name: agentName })).toBeVisible()
   })
 
   test('create agent shows error on duplicate ID', async ({ page }) => {
-    // First, create an agent
     const agentName = `Dup Agent ${uniqueId()}`
+    const agentId = agentName.toLowerCase().replace(/\s+/g, '-')
+    createdAgentIds.push(agentId)
 
     await page.goto(`${BASE}/create`)
     await page.getByPlaceholder('e.g. Frontend Developer').fill(agentName)
@@ -64,46 +70,42 @@ test.describe('Agent Creation', () => {
     await page.getByRole('button', { name: /create agent/i }).click()
     await expect(page.getByText('Back to agents')).toBeVisible({ timeout: DATA_TIMEOUT })
 
-    // Try to create another agent with the same name (same ID)
+    // Try duplicate
     await page.goto(`${BASE}/create`)
     await page.getByPlaceholder('e.g. Frontend Developer').fill(agentName)
     await page.getByPlaceholder('A short summary of what this agent does...').fill('Duplicate agent')
     await page.getByRole('button', { name: /create agent/i }).click()
 
-    // Should show error message (not crash or navigate)
     await expect(page.locator('[class*="rose"]')).toBeVisible({ timeout: DATA_TIMEOUT })
   })
 
   test('create agent shows loading state during submission', async ({ page }) => {
     const agentName = `Loading Agent ${uniqueId()}`
+    const agentId = agentName.toLowerCase().replace(/\s+/g, '-')
+    createdAgentIds.push(agentId)
 
     await page.goto(`${BASE}/create`)
     await page.getByPlaceholder('e.g. Frontend Developer').fill(agentName)
     await page.getByPlaceholder('A short summary of what this agent does...').fill('Test loading')
-
-    // Click create and immediately check for loading state
     await page.getByRole('button', { name: /create agent/i }).click()
 
-    // Either shows "Creating..." briefly or navigates quickly — both are OK
-    // The key assertion is that it doesn't crash
     const creatingOrNavigated = page.getByText('Creating...').or(page.getByText('Back to agents'))
     await expect(creatingOrNavigated.first()).toBeVisible({ timeout: DATA_TIMEOUT })
   })
 
   test('created agent is accessible via detail page', async ({ page }) => {
     const agentName = `Detail Agent ${uniqueId()}`
+    const agentId = agentName.toLowerCase().replace(/\s+/g, '-')
+    createdAgentIds.push(agentId)
 
-    // Create an agent
     await page.goto(`${BASE}/create`)
     await page.getByPlaceholder('e.g. Frontend Developer').fill(agentName)
     await page.getByPlaceholder('A short summary of what this agent does...').fill('Should be accessible')
     await page.getByRole('button', { name: /create agent/i }).click()
 
-    // Should navigate to the detail page after creation
     await expect(page.getByText('Back to agents')).toBeVisible({ timeout: DATA_TIMEOUT })
     await expect(page.getByRole('heading', { name: agentName })).toBeVisible()
 
-    // Reload the detail page to verify it persists
     await page.reload()
     await expect(page.getByRole('heading', { name: agentName })).toBeVisible({ timeout: DATA_TIMEOUT })
   })

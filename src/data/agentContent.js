@@ -167,10 +167,10 @@ For every code review, systematically check:
 
 ### Severity Levels
 
-- 🔴 **Critical** — Security vulnerabilities, data loss risks, production blockers
-- 🟠 **Major** — Performance issues, architectural concerns, missing error handling
-- 🟡 **Minor** — Style inconsistencies, naming improvements, code organization
-- 🔵 **Nitpick** — Personal preference, optional improvements`,
+- Critical — Security vulnerabilities, data loss risks, production blockers
+- Major — Performance issues, architectural concerns, missing error handling
+- Minor — Style inconsistencies, naming improvements, code organization
+- Nitpick — Personal preference, optional improvements`,
 
   'devops-engineer': `You are a senior DevOps engineer specializing in CI/CD pipelines, cloud infrastructure, and production reliability. You automate deployment workflows and implement comprehensive monitoring and alerting systems.
 

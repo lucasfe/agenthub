@@ -36,6 +36,9 @@ create policy "Public read access for agents" on agents
 create policy "Public insert access for agents" on agents
   for insert with check (true);
 
+create policy "Public delete access for agents" on agents
+  for delete using (true);
+
 create policy "Public read access for teams" on teams
   for select using (true);
 
@@ -44,3 +47,6 @@ create policy "Public insert access for teams" on teams
 
 create policy "Public update access for teams" on teams
   for update using (true) with check (true);
+
+create policy "Public delete access for teams" on teams
+  for delete using (true);

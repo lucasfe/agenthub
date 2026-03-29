@@ -38,7 +38,7 @@ export default function AgentCard({ agent, viewMode }) {
           <p className="text-xs text-text-secondary mt-0.5 truncate">{agent.description}</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {agent.tags.slice(0, 2).map((tag) => (
+          {(agent.tags || []).slice(0, 2).map((tag) => (
             <span key={tag} className={`text-[11px] font-medium ${colors.tag} px-2 py-0.5 rounded-full`}>
               {tag}
             </span>

@@ -448,6 +448,94 @@ export default function AgentDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+            onClick={() => { if (!isDeleting) { setShowDeleteConfirm(false); setDeleteConfirmInput(''); setDeleteError(null) } }}
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+              className="bg-bg-card border border-rose-500/30 rounded-2xl max-w-sm w-full shadow-lg"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="px-6 py-4 border-b border-border-subtle flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                  <Icons.AlertTriangle size={18} className="text-rose-400" />
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-base font-semibold text-text-primary">
+                    Delete &ldquo;{agent.name}&rdquo;?
+                  </h2>
+                  <p className="text-xs text-text-muted mt-1">
+                    This action cannot be undone.
+                  </p>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="px-6 py-4 space-y-4">
+                <p className="text-sm text-text-secondary leading-relaxed">
+                  All associated data, tools configuration, and model settings will be permanently deleted.
+                </p>
+
+                <div>
+                  <label className="block text-xs font-medium text-text-muted mb-2">
+                    Type <code className="bg-white/5 px-2 py-1 rounded text-text-primary">{agent.name}</code> to confirm
+                  </label>
+                  <input
+                    type="text"
+                    value={deleteConfirmInput}
+                    onChange={(e) => setDeleteConfirmInput(e.target.value)}
+                    placeholder={agent.name}
+                    className="w-full bg-bg-primary border border-border-subtle rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-rose-500/50 focus:ring-1 focus:ring-rose-500/20 transition-colors"
+                    disabled={isDeleting}
+                    autoFocus
+                  />
+                </div>
+
+                {deleteError && (
+                  <div className="flex items-center gap-2 px-3 py-2.5 bg-rose-500/10 border border-rose-500/20 rounded-lg">
+                    <Icons.AlertCircle size={14} className="text-rose-400 shrink-0" />
+                    <p className="text-xs text-rose-300">{deleteError}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="px-6 py-3 border-t border-border-subtle flex gap-2">
+                <button
+                  onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmInput(''); setDeleteError(null) }}
+                  disabled={isDeleting}
+                  className="flex-1 px-4 py-2 text-sm font-medium text-text-secondary hover:text-text-primary border border-border-subtle rounded-lg hover:bg-white/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteAgent}
+                  disabled={deleteConfirmInput !== agent.name || isDeleting}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isDeleting ? (
+                    <>
+                      <Icons.Loader2 size={14} className="animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Icons.Trash2 size={14} />
+                      Delete agent
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

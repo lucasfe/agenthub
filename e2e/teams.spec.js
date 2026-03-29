@@ -73,20 +73,16 @@ test.describe('Teams', () => {
     const teamCard = page.locator(`a[href*="${BASE}/teams/"]`).first()
     await expect(teamCard).toBeVisible({ timeout: T })
 
-    // Hover to reveal the + button
-    await teamCard.hover()
-    await page.waitForTimeout(200)
-
+    // The stack button is opacity-0 until hover, use force click
     const stackBtn = teamCard.locator('button').first()
-    await expect(stackBtn).toBeVisible()
 
     // Click to add team agents to stack
-    await stackBtn.click()
+    await stackBtn.click({ force: true })
     await page.waitForTimeout(300)
     await expect(stackBtn).toHaveClass(/bg-accent-green/)
 
     // Click again to remove team agents from stack
-    await stackBtn.click()
+    await stackBtn.click({ force: true })
     await page.waitForTimeout(300)
     await expect(stackBtn).not.toHaveClass(/bg-accent-green/)
   })

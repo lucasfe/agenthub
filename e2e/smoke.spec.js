@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test'
 const BASE = '/ai/agenthub'
 
 // Data loads asynchronously from Supabase
-const DATA_TIMEOUT = 30000
+const DATA_TIMEOUT = 10000
 
 test.describe('Smoke Tests', () => {
   test('homepage loads and finishes loading', async ({ page }) => {

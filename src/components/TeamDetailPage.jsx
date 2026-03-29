@@ -62,7 +62,7 @@ export default function TeamDetailPage() {
   }
 
   const colors = colorMap[team.color] || colorMap.blue
-  const teamAgents = team.agents
+  const teamAgents = (team.agents || [])
     .map((id) => agents.find((a) => a.id === id))
     .filter(Boolean)
 

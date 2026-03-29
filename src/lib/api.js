@@ -55,6 +55,7 @@ export async function fetchTeams() {
 }
 
 export async function fetchTeam(id) {
+  requireSupabase()
   const { data, error } = await supabase
     .from('teams')
     .select('*')

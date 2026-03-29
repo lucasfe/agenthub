@@ -15,7 +15,7 @@ import { StackProvider } from './context/StackContext'
 import { useData } from './context/DataContext'
 
 function AgentListPage() {
-  const { agents, loading } = useData()
+  const { agents, loading, error } = useData()
   const [searchQuery, setSearchQuery] = useState('')
   const [category, setCategory] = useState('All categories')
   const [sortBy, setSortBy] = useState('Most Popular')

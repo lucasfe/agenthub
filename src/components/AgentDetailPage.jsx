@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router'
 import * as Icons from 'lucide-react'
-import { fetchAgent, deleteAgent } from '../lib/api'
+import { fetchAgent, deleteAgent, updateAgent } from '../lib/api'
 import { useData } from '../context/DataContext'
 
 const colorMap = {

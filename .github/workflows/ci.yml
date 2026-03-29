@@ -48,6 +48,8 @@ jobs:
     name: E2E Tests
     runs-on: ubuntu-latest
     needs: [build]
+    permissions:
+      deployments: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -56,4 +58,52 @@ jobs:
           cache: 'npm'
       - run: npm install
       - run: npx playwright install chromium --with-deps
-      - run: npm run test:e2e
+
+      # On PRs: wait for Vercel preview and test against it
+      - name: Wait for Vercel preview deploy
+        if: github.event_name == 'pull_request'
+        id: vercel
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          SHA="${{ github.event.pull_request.head.sha }}"
+          REPO="${{ github.repository }}"
+          echo "Waiting for Vercel preview deploy for $SHA..."
+
+          for i in $(seq 1 30); do
+            DEPLOY_URL=$(gh api "repos/$REPO/deployments?sha=$SHA&environment=Preview" \
+              --jq '.[0].id // empty' 2>/dev/null)
+
+            if [ -n "$DEPLOY_URL" ]; then
+              URL=$(gh api "repos/$REPO/deployments/$DEPLOY_URL/statuses" \
+                --jq '[.[] | select(.state == "success")][0].environment_url // empty' 2>/dev/null)
+
+              if [ -n "$URL" ]; then
+                echo "Preview URL: $URL"
+                echo "url=$URL" >> $GITHUB_OUTPUT
+                break
+              fi
+            fi
+
+            echo "Attempt $i/30 — waiting 10s..."
+            sleep 10
+          done
+
+          if [ -z "$URL" ]; then
+            echo "Timeout waiting for Vercel preview deploy"
+            exit 1
+          fi
+
+      - name: Run E2E against Vercel preview
+        if: github.event_name == 'pull_request'
+        env:
+          BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: |
+          PREVIEW_URL="${{ steps.vercel.outputs.url }}"
+          echo "Running Playwright against: $PREVIEW_URL"
+          PLAYWRIGHT_BASE_URL="$PREVIEW_URL" npx playwright test --project=chromium
+
+      # On push: run E2E against local dev server
+      - name: Run E2E locally
+        if: github.event_name == 'push'
+        run: npm run test:e2e

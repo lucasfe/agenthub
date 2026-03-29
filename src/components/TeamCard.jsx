@@ -23,7 +23,7 @@ const agentColorMap = {
 
 export default function TeamCard({ team }) {
   const colors = colorMap[team.color] || colorMap.blue
-  const { addAgents, hasAllAgents } = useStack()
+  const { addAgents, removeAgents, hasAllAgents } = useStack()
   const { agents } = useData()
   const teamAgents = (team.agents || [])
     .map((id) => agents.find((a) => a.id === id))

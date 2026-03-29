@@ -65,6 +65,12 @@ describe('StackContext', () => {
     expect(result.current.hasAllAgents(['a', 'd'])).toBe(false)
   })
 
+  it('hasAllAgents returns false for empty array', () => {
+    const { result } = renderHook(() => useStack(), { wrapper })
+    act(() => result.current.addAgents(['a', 'b']))
+    expect(result.current.hasAllAgents([])).toBe(false)
+  })
+
   it('removeAgents batch removes multiple agents', () => {
     const { result } = renderHook(() => useStack(), { wrapper })
     act(() => result.current.addAgents(['a', 'b', 'c', 'd']))

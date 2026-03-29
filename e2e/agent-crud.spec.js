@@ -231,12 +231,21 @@ test.describe('Agent Creation', () => {
   })
 
   test('preview tab renders markdown properly', async ({ page }) => {
-    await page.goto(`${BASE}/agent/development-team/frontend-developer`)
-    await expect(page.getByText('Back to agents')).toBeVisible({ timeout: DATA_TIMEOUT })
+    const agentName = `Preview Agent ${uniqueId()}`
+    const agentId = agentName.toLowerCase().replace(/\s+/g, '-')
+    createdAgentIds.push(agentId)
 
-    // Should default to Preview view and render markdown headings
+    // Create agent with markdown content
+    await page.goto(`${BASE}/create`)
+    await page.getByPlaceholder('e.g. Frontend Developer').fill(agentName)
+    await page.getByPlaceholder('A short summary of what this agent does...').fill('Agent for preview test')
+    await page.getByPlaceholder(/You are a senior developer/).fill('## My Heading\n\nSome paragraph text.\n\n- List item one\n- List item two')
+    await page.getByRole('button', { name: /create agent/i }).click()
+    await expect(page.getByRole('heading', { name: agentName })).toBeVisible({ timeout: DATA_TIMEOUT })
+
+    // Preview should render markdown
     await page.getByRole('button', { name: 'Preview' }).click()
-    // The frontend-developer content has H2 headings like "Communication Protocol"
-    await expect(page.getByRole('heading', { name: 'Communication Protocol' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'My Heading' })).toBeVisible()
+    await expect(page.getByText('Some paragraph text.')).toBeVisible()
   })
 })

@@ -63,6 +63,7 @@ test.describe('Navigation & Layout', () => {
     expect(agentCountText).not.toContain('416')
   })
 
+
   test('sidebar navigates between pages', async ({ page }) => {
     await page.goto(`${BASE}/`)
     await expect(page.locator('h1').first()).toBeVisible({ timeout: T })

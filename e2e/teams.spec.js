@@ -51,6 +51,8 @@ test.describe('Teams', () => {
 
   test('create team with name and description', async ({ page }) => {
     const teamName = `CI Team ${uniqueId()}`
+    const teamId = teamName.toLowerCase().replace(/\s+/g, '-')
+    createdTeamIds.push(teamId)
 
     await page.goto(`${BASE}/teams/create`)
     await expect(page.getByRole('heading', { name: 'Create Team' })).toBeVisible({ timeout: T })

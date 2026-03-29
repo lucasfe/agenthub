@@ -201,7 +201,7 @@ export default function CreateTeamPage() {
             {selectedAgents.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {selectedAgents.map((agentId) => {
-                  const agent = agentsData.find((a) => a.id === agentId)
+                  const agent = agents.find((a) => a.id === agentId)
                   if (!agent) return null
                   const Ic = Icons[agent.icon] || Icons.Bot
                   const ac = agentColorMap[agent.color] || agentColorMap.blue

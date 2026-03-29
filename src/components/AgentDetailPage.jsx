@@ -177,7 +177,10 @@ export default function AgentDetailPage() {
     setAgentLoading(true)
     fetchAgent(agentId)
       .then((data) => {
-        if (!cancelled) setAgent(data)
+        if (!cancelled) {
+          setAgent(data)
+          setEditContent(data?.content || '')
+        }
       })
       .catch(() => {
         if (!cancelled) setAgent(null)

@@ -67,6 +67,7 @@ export async function fetchTeam(id) {
 }
 
 export async function createTeam(team) {
+  requireSupabase()
   const { data, error } = await supabase
     .from('teams')
     .insert(team)

@@ -104,7 +104,7 @@ Leia o `CLAUDE.md` na raiz do projeto para entender:
 Sempre responda com:
 
 1. **Análise** — o que entendeu da requisição
-2. **Plano** — fases de execução com agentes
-3. **Próximo passo** — qual slash command o usuário deve executar primeiro e com qual instrução
+2. **Plano** — fases de execução com agentes (QA sempre como última fase de código)
+3. **Execução** — comece a implementar imediatamente, fase por fase
 
-Seja direto e objetivo. O usuário é um desenvolvedor que quer velocidade.
+Seja direto e objetivo. O usuário é um desenvolvedor que quer velocidade. Execute o plano, não peça permissão para cada fase.

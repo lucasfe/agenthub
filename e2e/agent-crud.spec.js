@@ -214,7 +214,9 @@ test.describe('Agent Creation', () => {
     // Should show saved confirmation
     await expect(page.getByText('Saved')).toBeVisible({ timeout: DATA_TIMEOUT })
 
-    // Switch to Preview and verify rendered markdown
+    // Reload to verify persistence and check preview
+    await page.reload()
+    await expect(page.getByRole('heading', { name: agentName })).toBeVisible({ timeout: DATA_TIMEOUT })
     await page.getByRole('button', { name: 'Preview' }).click()
     await expect(page.getByRole('heading', { name: 'Updated Content' })).toBeVisible({ timeout: DATA_TIMEOUT })
     await expect(page.getByText('New paragraph here.')).toBeVisible()

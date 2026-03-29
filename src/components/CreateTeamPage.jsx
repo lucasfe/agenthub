@@ -79,10 +79,26 @@ export default function CreateTeamPage() {
 
   const categories = [...new Set(agents.map((a) => a.category))]
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    // Backend integration later
-    navigate('/teams')
+    try {
+      const teamData = {
+        name,
+        description,
+        color,
+        agents: selectedAgents,
+      }
+      if (isEditing) {
+        await updateTeam(teamId, teamData)
+      } else {
+        teamData.id = name.toLowerCase().replace(/\s+/g, '-')
+        await createTeam(teamData)
+      }
+      await refreshTeams()
+      navigate('/teams')
+    } catch (err) {
+      console.error('Failed to save team:', err)
+    }
   }
 
   return (

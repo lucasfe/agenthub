@@ -449,34 +449,6 @@ export default function AgentDetailPage() {
                     className="w-full min-h-[400px] bg-bg-card border border-border-subtle rounded-2xl p-6 text-sm font-mono text-text-secondary leading-relaxed resize-y focus:outline-none focus:border-accent-blue/50 focus:ring-1 focus:ring-accent-blue/20 transition-colors"
                     placeholder="Write your agent instructions in Markdown..."
                   />
-                  <div className="flex items-center gap-3 mt-3">
-                    <button
-                      onClick={handleSaveContent}
-                      disabled={!hasContentChanges || isSaving}
-                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-accent-blue hover:bg-accent-blue/90 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isSaving ? (
-                        <><Icons.Loader2 size={14} className="animate-spin" />Saving...</>
-                      ) : (
-                        <><Icons.Save size={14} />Save</>
-                      )}
-                    </button>
-                    {saveStatus === 'saved' && (
-                      <span className="flex items-center gap-1.5 text-xs text-emerald-400">
-                        <Icons.Check size={12} />
-                        Saved
-                      </span>
-                    )}
-                    {saveStatus === 'error' && (
-                      <span className="flex items-center gap-1.5 text-xs text-rose-400">
-                        <Icons.AlertCircle size={12} />
-                        Failed to save
-                      </span>
-                    )}
-                    {hasContentChanges && !saveStatus && (
-                      <span className="text-xs text-text-muted">Unsaved changes</span>
-                    )}
-                  </div>
                 </div>
               ) : (
                 <div>

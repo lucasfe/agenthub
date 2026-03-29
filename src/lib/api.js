@@ -18,6 +18,7 @@ export async function fetchAgents() {
 }
 
 export async function fetchAgent(id) {
+  requireSupabase()
   const { data, error } = await supabase
     .from('agents')
     .select('*')

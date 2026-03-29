@@ -1,15 +1,17 @@
 import { useState } from 'react'
 import { Bot, Users, LogIn, ChevronsLeft, ChevronsRight } from 'lucide-react'
 import { Link, useLocation } from 'react-router'
-
-const browseItems = [
-  { icon: Bot, label: 'Agents', count: 416, path: '/' },
-  { icon: Users, label: 'Teams', count: 24, path: '/teams' },
-]
+import { useData } from '../context/DataContext'
 
 export default function Sidebar() {
   const location = useLocation()
   const [collapsed, setCollapsed] = useState(false)
+  const { agents, teams } = useData()
+
+  const browseItems = [
+    { icon: Bot, label: 'Agents', count: agents.length, path: '/' },
+    { icon: Users, label: 'Teams', count: teams.length, path: '/teams' },
+  ]
 
   return (
     <aside className={`${collapsed ? 'w-[68px]' : 'w-56'} min-h-screen bg-bg-sidebar border-r border-border-subtle flex flex-col shrink-0 transition-all duration-200`}>

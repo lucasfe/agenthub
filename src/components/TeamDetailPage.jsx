@@ -24,7 +24,29 @@ const agentColorMap = {
 
 export default function TeamDetailPage() {
   const { teamId } = useParams()
-  const team = teamsData.find((t) => t.id === teamId)
+  const { agents } = useData()
+  const [team, setTeam] = useState(null)
+  const [teamLoading, setTeamLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    setTeamLoading(true)
+    fetchTeam(teamId)
+      .then((data) => {
+        if (!cancelled) setTeam(data)
+      })
+      .catch(() => {
+        if (!cancelled) setTeam(null)
+      })
+      .finally(() => {
+        if (!cancelled) setTeamLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [teamId])
+
+  if (teamLoading) {
+    return <div className="p-8 text-text-muted">Loading...</div>
+  }
 
   if (!team) {
     return (
@@ -41,7 +63,7 @@ export default function TeamDetailPage() {
 
   const colors = colorMap[team.color] || colorMap.blue
   const teamAgents = team.agents
-    .map((id) => agentsData.find((a) => a.id === id))
+    .map((id) => agents.find((a) => a.id === id))
     .filter(Boolean)
 
   return (

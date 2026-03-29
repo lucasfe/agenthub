@@ -1,8 +1,13 @@
 import { supabase } from './supabase'
 
+function requireSupabase() {
+  if (!supabase) throw new Error('Database not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.')
+}
+
 // ── Agents ──────────────────────────────────────────
 
 export async function fetchAgents() {
+  requireSupabase()
   const { data, error } = await supabase
     .from('agents')
     .select('id, name, category, description, tags, icon, color, featured, popularity')

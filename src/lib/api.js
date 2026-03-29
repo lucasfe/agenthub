@@ -41,6 +41,19 @@ export async function createAgent(agent) {
   return data
 }
 
+export async function updateAgent(id, updates) {
+  requireSupabase()
+  const { data, error } = await supabase
+    .from('agents')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
 export async function deleteAgent(id) {
   requireSupabase()
   const { error } = await supabase

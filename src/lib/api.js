@@ -44,6 +44,7 @@ export async function createAgent(agent) {
 // ── Teams ───────────────────────────────────────────
 
 export async function fetchTeams() {
+  requireSupabase()
   const { data, error } = await supabase
     .from('teams')
     .select('*')

@@ -109,7 +109,7 @@ function AgentListPage() {
 }
 
 function TeamsListPage() {
-  const { teams, loading } = useData()
+  const { teams, loading, error } = useData()
   const [searchQuery, setSearchQuery] = useState('')
 
   const filteredTeams = useMemo(() => {

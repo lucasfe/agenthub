@@ -108,6 +108,107 @@ Quando finalizar a revisão, reporte assim:
 - Cobertura estimada: XX%
 ```
 
+## Playwright Acceptance / E2E Tests
+
+**OBRIGATÓRIO:** Para toda nova feature, componente ou alteração de página, o QA Engineer DEVE criar ou atualizar testes Playwright E2E no diretório `e2e/`.
+
+### Regras de Testes E2E
+
+1. **Sempre escreva testes** — Nenhuma mudança visível ao usuário pode ser mergeada sem testes E2E correspondentes
+2. **Naming convention** — Arquivos de teste seguem o padrão: `feature-name.spec.js` dentro de `e2e/`
+3. **Teste comportamento visível** — Teste o que o usuário vê e faz, não detalhes de implementação
+4. **Testes independentes** — Cada teste deve ser independente, sem estado compartilhado entre testes
+5. **Base URL** — `http://localhost:5173` (configurado em `playwright.config.js`)
+6. **Browser** — Apenas Chromium está configurado (para velocidade)
+
+### Boas Práticas de Seletores
+
+Sempre prefira seletores semânticos nesta ordem de prioridade:
+
+1. `page.getByRole('button', { name: 'Submit' })` — melhor opção
+2. `page.getByText('Welcome')` — para texto visível
+3. `page.getByTestId('agent-card')` — quando não há alternativa semântica
+4. **Evite seletores CSS** (`.class`, `#id`, `div > span`) sempre que possível
+
+### Assertions Recomendadas
+
+- Visibilidade: `await expect(locator).toBeVisible()`
+- Navegação: `await expect(page).toHaveURL('/teams')`
+- Texto: `await expect(locator).toHaveText('expected text')`
+- Contagem: `await expect(locator).toHaveCount(3)`
+
+### Rotas da Aplicação
+
+| Rota | Descrição |
+|------|-----------|
+| `/` | Listagem de agentes |
+| `/agent/:category/:agentId` | Detalhe do agente |
+| `/create` | Formulário de criação de agente |
+| `/teams` | Listagem de times |
+| `/teams/:teamId` | Detalhe do time |
+| `/teams/create` | Formulário de criação de time |
+
+### Template de Teste
+
+Use este template como base para novos testes:
+
+```javascript
+// e2e/feature-name.spec.js
+import { test, expect } from '@playwright/test'
+
+test.describe('Feature Name', () => {
+  test('should display the main content', async ({ page }) => {
+    await page.goto('/')
+    await expect(page.getByRole('heading', { name: 'Expected Heading' })).toBeVisible()
+  })
+
+  test('should navigate to detail page', async ({ page }) => {
+    await page.goto('/')
+    await page.getByRole('link', { name: 'Item Name' }).click()
+    await expect(page).toHaveURL(/\/agent\//)
+    await expect(page.getByRole('heading', { name: 'Item Name' })).toBeVisible()
+  })
+
+  test('should filter results', async ({ page }) => {
+    await page.goto('/')
+    await page.getByRole('searchbox').fill('search term')
+    await expect(page.getByTestId('agent-card')).toHaveCount(2)
+  })
+
+  test('should handle empty state', async ({ page }) => {
+    await page.goto('/')
+    await page.getByRole('searchbox').fill('nonexistent term')
+    await expect(page.getByText('No results')).toBeVisible()
+  })
+})
+```
+
+### Executando Testes
+
+```bash
+# Rodar todos os testes E2E
+npx playwright test
+
+# Rodar um arquivo específico
+npx playwright test e2e/feature-name.spec.js
+
+# Rodar em modo headed (para debug)
+npx playwright test --headed
+
+# Gerar relatório
+npx playwright show-report
+```
+
+### Checklist para Testes E2E
+
+- [ ] Teste criado/atualizado em `e2e/feature-name.spec.js`
+- [ ] Testes cobrem o happy path da feature
+- [ ] Testes cobrem edge cases relevantes (lista vazia, texto longo, etc.)
+- [ ] Testes verificam navegação entre páginas
+- [ ] Seletores usam `getByRole`, `getByText` ou `getByTestId` (sem CSS selectors)
+- [ ] Cada teste é independente (sem dependência de ordem)
+- [ ] Todos os testes passam: `npx playwright test`
+
 ## Regras
 
 1. **Seja específico** — reporte arquivo, linha, e o que está errado
@@ -115,3 +216,4 @@ Quando finalizar a revisão, reporte assim:
 3. **Priorize** — bloqueadores primeiro, depois warnings, depois sugestões
 4. **Não bloqueie por estilo** — se funciona e segue os padrões, aprove
 5. **Teste o fluxo completo** — não apenas o componente isolado
+6. **Sempre escreva testes E2E** — nenhuma feature pode ser considerada pronta sem testes Playwright correspondentes em `e2e/`

@@ -70,10 +70,12 @@ test.describe('Teams', () => {
 
   test('team stack toggle adds and removes agents', async ({ page }) => {
     await page.goto(`${BASE}/teams`)
-    const teamCard = page.locator(`a[href*="${BASE}/teams/"]`).first()
+
+    // Wait for team cards to load — use a known seeded team
+    const teamCard = page.locator(`a[href="${BASE}/teams/web-app-squad"]`)
     await expect(teamCard).toBeVisible({ timeout: T })
 
-    // The stack button is opacity-0 until hover, use force click
+    // The stack button has opacity-0 until hover, use force click
     const stackBtn = teamCard.locator('button').first()
 
     // Click to add team agents to stack

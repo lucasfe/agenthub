@@ -79,6 +79,7 @@ export async function createTeam(team) {
 }
 
 export async function updateTeam(id, updates) {
+  requireSupabase()
   const { data, error } = await supabase
     .from('teams')
     .update(updates)

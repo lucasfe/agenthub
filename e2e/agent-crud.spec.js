@@ -201,13 +201,16 @@ test.describe('Agent Creation', () => {
     // Switch to Code view
     await page.getByRole('button', { name: 'Code' }).click()
 
-    // Edit content
+    // Edit content in the textarea
     const textarea = page.locator('textarea')
-    await textarea.clear()
+    await expect(textarea).toBeVisible()
     await textarea.fill('## Updated Content\n\nNew paragraph here.')
 
+    // Unsaved changes indicator should appear
+    await expect(page.getByText('Unsaved changes')).toBeVisible()
+
     // Save should be enabled now
-    const saveBtn = page.getByRole('button', { name: /save/i })
+    const saveBtn = page.getByRole('button', { name: /^save$/i })
     await expect(saveBtn).toBeEnabled()
     await saveBtn.click()
 
@@ -218,7 +221,7 @@ test.describe('Agent Creation', () => {
     await page.reload()
     await expect(page.getByRole('heading', { name: agentName })).toBeVisible({ timeout: DATA_TIMEOUT })
     await page.getByRole('button', { name: 'Preview' }).click()
-    await expect(page.getByRole('heading', { name: 'Updated Content' })).toBeVisible({ timeout: DATA_TIMEOUT })
+    await expect(page.getByText('Updated Content')).toBeVisible({ timeout: DATA_TIMEOUT })
     await expect(page.getByText('New paragraph here.')).toBeVisible()
   })
 

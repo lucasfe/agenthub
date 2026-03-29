@@ -201,10 +201,19 @@ test.describe('Agent Creation', () => {
     // Switch to Code view
     await page.getByRole('button', { name: 'Code' }).click()
 
+    // Capture console logs for debugging
+    const logs = []
+    page.on('console', msg => logs.push(msg.text()))
+
     // Edit content in the textarea
     const textarea = page.locator('textarea')
     await expect(textarea).toBeVisible()
+    // Verify initial content is loaded
+    const initialValue = await textarea.inputValue()
+    console.log('Initial textarea value:', JSON.stringify(initialValue))
     await textarea.fill('## Updated Content\n\nNew paragraph here.')
+    const newValue = await textarea.inputValue()
+    console.log('New textarea value:', JSON.stringify(newValue))
 
     // Unsaved changes indicator should appear
     await expect(page.getByText('Unsaved changes')).toBeVisible()

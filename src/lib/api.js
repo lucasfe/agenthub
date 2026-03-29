@@ -41,6 +41,16 @@ export async function createAgent(agent) {
   return data
 }
 
+export async function deleteAgent(id) {
+  requireSupabase()
+  const { error } = await supabase
+    .from('agents')
+    .delete()
+    .eq('id', id)
+
+  if (error) throw error
+}
+
 // ── Teams ───────────────────────────────────────────
 
 export async function fetchTeams() {

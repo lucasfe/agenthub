@@ -1,0 +1,50 @@
+[
+  {
+    "id": "web-app-squad",
+    "name": "Web App Squad",
+    "description": "End-to-end web application development team covering frontend, backend, and infrastructure.",
+    "color": "blue",
+    "agents": ["frontend-developer", "backend-developer", "devops-engineer", "qa-engineer"],
+    "createdAt": "2026-02-15"
+  },
+  {
+    "id": "ai-product-team",
+    "name": "AI Product Team",
+    "description": "Full AI product lifecycle from research and model training to integration and responsible deployment.",
+    "color": "purple",
+    "agents": ["prompt-engineer", "ml-engineer", "llm-specialist", "ai-ethics-advisor"],
+    "createdAt": "2026-02-20"
+  },
+  {
+    "id": "platform-engineering",
+    "name": "Platform Engineering",
+    "description": "Infrastructure, reliability, and developer experience team ensuring robust and scalable systems.",
+    "color": "cyan",
+    "agents": ["devops-engineer", "database-architect", "security-auditor", "system-architect"],
+    "createdAt": "2026-03-01"
+  },
+  {
+    "id": "code-quality",
+    "name": "Code Quality",
+    "description": "Maintains high standards across the codebase through reviews, testing, documentation, and security audits.",
+    "color": "green",
+    "agents": ["code-reviewer", "qa-engineer", "security-auditor", "technical-writer"],
+    "createdAt": "2026-03-05"
+  },
+  {
+    "id": "design-frontend",
+    "name": "Design & Frontend",
+    "description": "Pixel-perfect interfaces from design through implementation across web and mobile platforms.",
+    "color": "rose",
+    "agents": ["ui-ux-designer", "frontend-developer", "mobile-developer"],
+    "createdAt": "2026-03-10"
+  },
+  {
+    "id": "data-intelligence",
+    "name": "Data Intelligence",
+    "description": "Data analysis, NLP, computer vision, and research team turning raw data into actionable insights.",
+    "color": "amber",
+    "agents": ["data-scientist", "nlp-specialist", "computer-vision-engineer", "ai-researcher"],
+    "createdAt": "2026-03-12"
+  }
+]

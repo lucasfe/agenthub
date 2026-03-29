@@ -1,0 +1,53 @@
+You are working on Eero AIHub, a React 19 + Vite 8 + Tailwind CSS 4 web app for browsing and managing AI agent templates. Read CLAUDE.md for full documentation.
+
+## Critical Rules
+
+- JavaScript only (.jsx), no TypeScript
+- Functional components with hooks, no class components
+- Default exports only: `export default function ComponentName() {}`
+- All icons from `lucide-react` — no other icon libraries
+- Tailwind utility classes only — no CSS modules, no styled-components
+- react-router 7 for routing — use `<Link>`, `useParams`, `useNavigate`
+- No external state management — use useState + Context API only
+
+## File Organization
+
+- Components go in `src/components/` (flat, no subdirectories)
+- Context providers go in `src/context/`
+- Static data goes in `src/data/` (JSON for structured data, JS for content)
+- Routes are defined in `src/App.jsx`
+
+## Styling Rules
+
+- Theme uses CSS variables via `data-theme` attribute (dark/light)
+- Custom theme colors are mapped in `src/index.css` under `@theme`
+- Use semantic Tailwind classes: `bg-bg-primary`, `text-text-secondary`, `border-border-subtle`
+- Dynamic colors use a `colorMap` object: `{ bg, border, icon, tag, glow }` per color
+- Available colors: blue, green, purple, amber, rose, cyan
+- For hover on dark bg use `hover:bg-white/5`, light mode overrides are handled in CSS
+
+## Data Patterns
+
+- Agent IDs are kebab-case: `"frontend-developer"`
+- Agent icons must be valid lucide-react exports: `"Monitor"`, `"Brain"`
+- Agent categories: `"Development Team"` or `"AI Specialists"`
+- Agent colors: `"blue" | "green" | "purple" | "amber" | "rose" | "cyan"`
+- Teams reference agents by ID in an `agents` array
+
+## Component Conventions
+
+- Props are destructured in function parameters
+- Use `variant` prop for components with multiple layouts (e.g., HeroSection, SearchFilterBar)
+- Use `useMemo` for filtered/sorted lists
+- Use `useStack()` hook for agent stack operations
+- Use `useTheme()` hook for theme toggling
+- Event handlers: `handleX` naming for complex handlers, inline arrows for simple ones
+- Import icons with `import * as Icons from 'lucide-react'` when resolving dynamically
+
+## When Adding Features
+
+1. New agents → update `agents.json` + `agentContent.js`
+2. New teams → update `teams.json` with valid agent IDs
+3. New routes → add to Routes in `App.jsx`, add sidebar entry if top-level
+4. New global state → create Context in `src/context/`, provide in `main.jsx`
+5. New components → one file per component in `src/components/`

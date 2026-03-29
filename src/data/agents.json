@@ -1,0 +1,222 @@
+[
+  {
+    "id": "frontend-developer",
+    "name": "Frontend Developer",
+    "category": "Development Team",
+    "description": "Expert in React, TypeScript, and modern CSS. Builds responsive, accessible UI components with clean architecture and performance optimization.",
+    "tags": ["React", "TypeScript", "CSS"],
+    "icon": "Monitor",
+    "color": "blue",
+    "featured": true,
+    "popularity": 98
+  },
+  {
+    "id": "backend-developer",
+    "name": "Backend Developer",
+    "category": "Development Team",
+    "description": "Designs and implements scalable server-side systems, REST/GraphQL APIs, and database architectures with a focus on reliability and performance.",
+    "tags": ["Node.js", "Python", "APIs"],
+    "icon": "Server",
+    "color": "green",
+    "featured": true,
+    "popularity": 95
+  },
+  {
+    "id": "fullstack-developer",
+    "name": "Full Stack Developer",
+    "category": "Development Team",
+    "description": "Bridges frontend and backend, building end-to-end features from database schema to pixel-perfect UI with integrated testing.",
+    "tags": ["React", "Node.js", "PostgreSQL"],
+    "icon": "Layers",
+    "color": "purple",
+    "featured": false,
+    "popularity": 92
+  },
+  {
+    "id": "code-reviewer",
+    "name": "Code Reviewer",
+    "category": "Development Team",
+    "description": "Performs thorough code reviews focusing on security, performance, maintainability, and adherence to team coding standards.",
+    "tags": ["Quality", "Security", "Best Practices"],
+    "icon": "GitPullRequest",
+    "color": "amber",
+    "featured": true,
+    "popularity": 90
+  },
+  {
+    "id": "devops-engineer",
+    "name": "DevOps Engineer",
+    "category": "Development Team",
+    "description": "Automates CI/CD pipelines, manages cloud infrastructure, and implements monitoring, logging, and alerting systems.",
+    "tags": ["Docker", "AWS", "CI/CD"],
+    "icon": "Container",
+    "color": "cyan",
+    "featured": false,
+    "popularity": 88
+  },
+  {
+    "id": "ui-ux-designer",
+    "name": "UI/UX Designer",
+    "category": "Development Team",
+    "description": "Creates intuitive user interfaces and experiences through wireframing, prototyping, and design system management with accessibility in mind.",
+    "tags": ["Figma", "Design Systems", "A11y"],
+    "icon": "Palette",
+    "color": "rose",
+    "featured": true,
+    "popularity": 87
+  },
+  {
+    "id": "mobile-developer",
+    "name": "Mobile Developer",
+    "category": "Development Team",
+    "description": "Builds native and cross-platform mobile apps with React Native or Flutter, handling platform-specific APIs and app store deployment.",
+    "tags": ["React Native", "iOS", "Android"],
+    "icon": "Smartphone",
+    "color": "blue",
+    "featured": false,
+    "popularity": 85
+  },
+  {
+    "id": "qa-engineer",
+    "name": "QA Engineer",
+    "category": "Development Team",
+    "description": "Designs comprehensive test strategies including unit, integration, and E2E tests. Automates test suites and manages quality gates.",
+    "tags": ["Testing", "Cypress", "Jest"],
+    "icon": "ShieldCheck",
+    "color": "green",
+    "featured": false,
+    "popularity": 83
+  },
+  {
+    "id": "database-architect",
+    "name": "Database Architect",
+    "category": "Development Team",
+    "description": "Designs efficient database schemas, optimizes queries, manages migrations, and implements data access patterns for scalability.",
+    "tags": ["PostgreSQL", "Redis", "MongoDB"],
+    "icon": "Database",
+    "color": "amber",
+    "featured": false,
+    "popularity": 80
+  },
+  {
+    "id": "security-auditor",
+    "name": "Security Auditor",
+    "category": "Development Team",
+    "description": "Identifies vulnerabilities, reviews authentication flows, and ensures compliance with security best practices like OWASP Top 10.",
+    "tags": ["OWASP", "Auth", "Pen Testing"],
+    "icon": "Shield",
+    "color": "rose",
+    "featured": false,
+    "popularity": 78
+  },
+  {
+    "id": "system-architect",
+    "name": "System Architect",
+    "category": "Development Team",
+    "description": "Designs distributed systems, defines service boundaries, and makes technology decisions balancing scalability, cost, and team capability.",
+    "tags": ["Architecture", "Microservices", "AWS"],
+    "icon": "Network",
+    "color": "purple",
+    "featured": false,
+    "popularity": 76
+  },
+  {
+    "id": "technical-writer",
+    "name": "Technical Writer",
+    "category": "Development Team",
+    "description": "Creates clear API documentation, architecture decision records, onboarding guides, and runbooks for engineering teams.",
+    "tags": ["Docs", "API Specs", "Markdown"],
+    "icon": "FileText",
+    "color": "cyan",
+    "featured": false,
+    "popularity": 74
+  },
+  {
+    "id": "prompt-engineer",
+    "name": "Prompt Engineer",
+    "category": "AI Specialists",
+    "description": "Crafts and optimizes prompts for LLMs, designs prompt chains, and implements evaluation frameworks for AI-powered features.",
+    "tags": ["LLMs", "Prompting", "Evaluation"],
+    "icon": "MessageSquare",
+    "color": "purple",
+    "featured": true,
+    "popularity": 96
+  },
+  {
+    "id": "ml-engineer",
+    "name": "ML Engineer",
+    "category": "AI Specialists",
+    "description": "Builds and deploys machine learning pipelines, from data preprocessing and model training to serving and monitoring in production.",
+    "tags": ["PyTorch", "MLOps", "Python"],
+    "icon": "Brain",
+    "color": "blue",
+    "featured": true,
+    "popularity": 93
+  },
+  {
+    "id": "data-scientist",
+    "name": "Data Scientist",
+    "category": "AI Specialists",
+    "description": "Analyzes complex datasets, builds predictive models, and translates business questions into data-driven insights and visualizations.",
+    "tags": ["Python", "Statistics", "Pandas"],
+    "icon": "BarChart3",
+    "color": "green",
+    "featured": false,
+    "popularity": 89
+  },
+  {
+    "id": "ai-researcher",
+    "name": "AI Researcher",
+    "category": "AI Specialists",
+    "description": "Stays current with AI/ML research, evaluates new techniques for practical application, and prototypes novel approaches to team problems.",
+    "tags": ["Research", "Papers", "Transformers"],
+    "icon": "Microscope",
+    "color": "amber",
+    "featured": false,
+    "popularity": 82
+  },
+  {
+    "id": "nlp-specialist",
+    "name": "NLP Specialist",
+    "category": "AI Specialists",
+    "description": "Specializes in text processing, sentiment analysis, entity extraction, and building language understanding systems for production use.",
+    "tags": ["NLP", "Transformers", "spaCy"],
+    "icon": "Languages",
+    "color": "cyan",
+    "featured": false,
+    "popularity": 79
+  },
+  {
+    "id": "computer-vision-engineer",
+    "name": "Computer Vision Engineer",
+    "category": "AI Specialists",
+    "description": "Builds image and video processing pipelines, implements object detection and segmentation models, and optimizes for real-time inference.",
+    "tags": ["OpenCV", "YOLO", "CNNs"],
+    "icon": "Eye",
+    "color": "rose",
+    "featured": false,
+    "popularity": 77
+  },
+  {
+    "id": "llm-specialist",
+    "name": "LLM Integration Specialist",
+    "category": "AI Specialists",
+    "description": "Integrates large language models into applications, implements RAG pipelines, manages embeddings, and optimizes token usage and latency.",
+    "tags": ["RAG", "Embeddings", "APIs"],
+    "icon": "Sparkles",
+    "color": "purple",
+    "featured": true,
+    "popularity": 94
+  },
+  {
+    "id": "ai-ethics-advisor",
+    "name": "AI Ethics Advisor",
+    "category": "AI Specialists",
+    "description": "Evaluates AI systems for bias, fairness, and safety. Designs guardrails and review processes for responsible AI deployment.",
+    "tags": ["Ethics", "Bias", "Safety"],
+    "icon": "Scale",
+    "color": "amber",
+    "featured": false,
+    "popularity": 71
+  }
+]

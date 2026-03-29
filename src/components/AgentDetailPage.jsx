@@ -12,7 +12,7 @@ const colorMap = {
   cyan: { bg: 'from-cyan-500/15 to-cyan-600/5', border: 'border-cyan-500/20', icon: 'text-cyan-400', tag: 'bg-cyan-500/10 text-cyan-300' },
 }
 
-const tools = ['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep']
+const defaultTools = ['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep']
 
 function renderMarkdown(text) {
   const lines = text.split('\n')

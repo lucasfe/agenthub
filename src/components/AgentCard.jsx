@@ -14,7 +14,7 @@ const colorMap = {
 export default function AgentCard({ agent, viewMode }) {
   const colors = colorMap[agent.color] || colorMap.blue
   const IconComponent = Icons[agent.icon] || Icons.Bot
-  const categorySlug = agent.category.toLowerCase().replace(/\s+/g, '-')
+  const categorySlug = (agent.category || '').toLowerCase().replace(/\s+/g, '-')
   const detailPath = `/agent/${categorySlug}/${agent.id}`
   const { toggleAgent, isInStack } = useStack()
   const inStack = isInStack(agent.id)

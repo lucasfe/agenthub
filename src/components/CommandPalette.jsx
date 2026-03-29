@@ -19,8 +19,8 @@ export default function CommandPalette({ open, onClose }) {
       name: a.name,
       type: 'Agent',
       icon: a.icon,
-      category: a.category.toLowerCase().replace(/\s+/g, '-'),
-      path: `/agent/${a.category.toLowerCase().replace(/\s+/g, '-')}/${a.id}`,
+      category: (a.category || '').toLowerCase().replace(/\s+/g, '-'),
+      path: `/agent/${(a.category || '').toLowerCase().replace(/\s+/g, '-')}/${a.id}`,
     }))
 
     const teams = teamsData.map((t) => ({

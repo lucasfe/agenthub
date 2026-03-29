@@ -25,14 +25,41 @@ const agentColorMap = {
 export default function CreateTeamPage() {
   const { teamId } = useParams()
   const navigate = useNavigate()
-  const existingTeam = teamId ? teamsData.find((t) => t.id === teamId) : null
-  const isEditing = !!existingTeam
+  const { agents, refreshTeams } = useData()
+  const [isEditing, setIsEditing] = useState(false)
+  const [pageLoading, setPageLoading] = useState(!!teamId)
 
-  const [name, setName] = useState(existingTeam?.name || '')
-  const [description, setDescription] = useState(existingTeam?.description || '')
-  const [color, setColor] = useState(existingTeam?.color || 'blue')
-  const [selectedAgents, setSelectedAgents] = useState(existingTeam?.agents || [])
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const [color, setColor] = useState('blue')
+  const [selectedAgents, setSelectedAgents] = useState([])
   const [search, setSearch] = useState('')
+
+  useEffect(() => {
+    if (!teamId) return
+    let cancelled = false
+    setPageLoading(true)
+    fetchTeam(teamId)
+      .then((data) => {
+        if (cancelled) return
+        if (data) {
+          setIsEditing(true)
+          setName(data.name || '')
+          setDescription(data.description || '')
+          setColor(data.color || 'blue')
+          setSelectedAgents(data.agents || [])
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setPageLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [teamId])
+
+  if (pageLoading) {
+    return <div className="p-8 text-text-muted">Loading...</div>
+  }
 
   const toggleAgent = (agentId) => {
     setSelectedAgents((prev) =>
@@ -40,7 +67,7 @@ export default function CreateTeamPage() {
     )
   }
 
-  const filteredAgents = agentsData.filter((a) => {
+  const filteredAgents = agents.filter((a) => {
     if (!search.trim()) return true
     const q = search.toLowerCase()
     return (

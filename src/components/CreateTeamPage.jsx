@@ -77,7 +77,7 @@ export default function CreateTeamPage() {
     )
   })
 
-  const categories = [...new Set(agentsData.map((a) => a.category))]
+  const categories = [...new Set(agents.map((a) => a.category))]
 
   const handleSubmit = (e) => {
     e.preventDefault()

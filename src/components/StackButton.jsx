@@ -2,8 +2,8 @@ import { useState } from 'react'
 import JSZip from 'jszip'
 import * as Icons from 'lucide-react'
 import { useStack } from '../context/StackContext'
-import agentsData from '../data/agents.json'
-import agentContent from '../data/agentContent'
+import { useData } from '../context/DataContext'
+import { fetchAgent } from '../lib/api'
 
 export default function StackButton() {
   const { stack, removeAgent, clearStack, panelOpen, setPanelOpen } = useStack()

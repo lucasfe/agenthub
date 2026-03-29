@@ -221,13 +221,18 @@ test.describe('Agent Creation', () => {
     // Save should be enabled now
     const saveBtn = page.getByRole('button', { name: /^save$/i })
     await expect(saveBtn).toBeEnabled()
-    await saveBtn.click()
+
+    // Intercept the PATCH request to see what happens
+    const [response] = await Promise.all([
+      page.waitForResponse(resp => resp.url().includes('/rest/v1/agents') && resp.request().method() === 'PATCH'),
+      saveBtn.click(),
+    ])
+    const responseBody = await response.json()
+    console.log('PATCH status:', response.status())
+    console.log('PATCH response:', JSON.stringify(responseBody))
 
     // Should show saved confirmation
     await expect(page.getByText('Saved')).toBeVisible({ timeout: DATA_TIMEOUT })
-
-    // Check browser console for any errors
-    console.log('Browser logs:', logs.join(' | '))
 
     // Reload to verify persistence and check preview
     await page.reload()

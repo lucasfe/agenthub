@@ -1,9 +1,15 @@
 import { test, expect } from '@playwright/test'
+import { cleanupTestData } from './helpers.js'
 
 const BASE = '/ai/agenthub'
 const T = 15000
 
 const uniqueId = () => `e2e-${Date.now()}`
+
+// Clean up E2E test teams after all tests
+test.afterAll(async () => {
+  await cleanupTestData('teams', 'ci-team-e2e-')
+})
 
 test.describe('Teams', () => {
   test('teams page loads with team cards', async ({ page }) => {

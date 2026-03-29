@@ -1,5 +1,8 @@
 import { defineConfig } from '@playwright/test'
 
+const isPreview = !!process.env.PLAYWRIGHT_BASE_URL
+const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5173'
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -8,9 +11,15 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL,
     screenshot: 'only-on-failure',
     trace: 'on-first-retry',
+    // Bypass Vercel deployment protection on preview deploys
+    ...(isPreview && process.env.BYPASS_SECRET && {
+      extraHTTPHeaders: {
+        'x-vercel-protection-bypass': process.env.BYPASS_SECRET,
+      },
+    }),
   },
   projects: [
     {
@@ -18,10 +27,13 @@ export default defineConfig({
       use: { browserName: 'chromium' },
     },
   ],
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:5173/ai/agenthub/',
-    timeout: 10000,
-    reuseExistingServer: !process.env.CI,
-  },
+  // Only start local dev server when not testing against a preview URL
+  ...(!isPreview && {
+    webServer: {
+      command: 'npm run dev',
+      url: 'http://localhost:5173/ai/agenthub/',
+      timeout: 10000,
+      reuseExistingServer: !process.env.CI,
+    },
+  }),
 })

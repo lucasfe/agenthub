@@ -48,6 +48,8 @@ jobs:
     name: E2E Tests
     runs-on: ubuntu-latest
     needs: [build]
+    permissions:
+      deployments: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -56,17 +58,10 @@ jobs:
           cache: 'npm'
       - run: npm install
       - run: npx playwright install chromium --with-deps
-      - run: npm run test:e2e
 
-  smoke-deploy:
-    name: Smoke Test Deploy
-    runs-on: ubuntu-latest
-    needs: [build]
-    if: github.event_name == 'pull_request'
-    permissions:
-      deployments: read
-    steps:
+      # On PRs: wait for Vercel preview and test against it
       - name: Wait for Vercel preview deploy
+        if: github.event_name == 'pull_request'
         id: vercel
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -98,47 +93,17 @@ jobs:
             echo "Timeout waiting for Vercel preview deploy"
             exit 1
           fi
-      - name: Smoke test preview URL
+
+      - name: Run E2E against Vercel preview
+        if: github.event_name == 'pull_request'
         env:
           BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: |
           PREVIEW_URL="${{ steps.vercel.outputs.url }}"
-          BYPASS="-H x-vercel-protection-bypass:$BYPASS_SECRET"
-          echo "Testing preview: $PREVIEW_URL"
+          echo "Running Playwright against: $PREVIEW_URL"
+          PLAYWRIGHT_BASE_URL="$PREVIEW_URL" npx playwright test --project=chromium
 
-          # Test /ai/agenthub without trailing slash
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" $BYPASS "$PREVIEW_URL/ai/agenthub")
-          echo "/ai/agenthub -> $STATUS"
-          if [ "$STATUS" != "200" ]; then
-            echo "FAIL: /ai/agenthub returned $STATUS (expected 200)"
-            exit 1
-          fi
-
-          # Test /ai/agenthub/ with trailing slash
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" $BYPASS "$PREVIEW_URL/ai/agenthub/")
-          echo "/ai/agenthub/ -> $STATUS"
-          if [ "$STATUS" != "200" ]; then
-            echo "FAIL: /ai/agenthub/ returned $STATUS (expected 200)"
-            exit 1
-          fi
-
-          # Test that JS assets load correctly (not HTML)
-          JS_PATH=$(curl -s $BYPASS "$PREVIEW_URL/ai/agenthub/" | grep -o 'src="[^"]*\.js"' | head -1 | sed 's/src="//;s/"//')
-          if [ -n "$JS_PATH" ]; then
-            JS_CONTENT=$(curl -s $BYPASS "$PREVIEW_URL$JS_PATH" | head -c 50)
-            if echo "$JS_CONTENT" | grep -q "<!doctype"; then
-              echo "FAIL: JS asset returned HTML instead of JavaScript"
-              exit 1
-            fi
-            echo "JS asset loads correctly"
-          fi
-
-          # Test a sub-route (SPA routing)
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" $BYPASS "$PREVIEW_URL/ai/agenthub/teams")
-          echo "/ai/agenthub/teams -> $STATUS"
-          if [ "$STATUS" != "200" ]; then
-            echo "FAIL: /ai/agenthub/teams returned $STATUS (expected 200)"
-            exit 1
-          fi
-
-          echo "All smoke tests passed!"
+      # On push: run E2E against local dev server
+      - name: Run E2E locally
+        if: github.event_name == 'push'
+        run: npm run test:e2e

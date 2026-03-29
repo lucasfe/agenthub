@@ -1,5 +1,5 @@
 {
   "rewrites": [
-    { "source": "/ai/agenthub/(.*)", "destination": "/ai/agenthub/index.html" }
+    { "source": "/ai/agenthub/(.*)", "destination": "/index.html" }
   ]
 }

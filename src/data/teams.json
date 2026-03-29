@@ -46,13 +46,5 @@
     "color": "amber",
     "agents": ["data-scientist", "nlp-specialist", "computer-vision-engineer", "ai-researcher"],
     "createdAt": "2026-03-12"
-  },
-  {
-    "id": "qa-team-1774808104889",
-    "name": "QA Team 1774808104889",
-    "description": "QA exploratory test team",
-    "color": "blue",
-    "agents": [],
-    "createdAt": "2026-03-29"
   }
 ]

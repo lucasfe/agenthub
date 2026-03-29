@@ -1,5 +1,7 @@
 {
   "rewrites": [
+    { "source": "/ai/agenthub/assets/(.*)", "destination": "/assets/$1" },
+    { "source": "/ai/agenthub/favicon.svg", "destination": "/favicon.svg" },
     { "source": "/ai/agenthub/(.*)", "destination": "/index.html" }
   ]
 }

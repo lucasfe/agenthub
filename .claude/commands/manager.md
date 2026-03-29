@@ -31,23 +31,39 @@ Complexidade: [pequena | média | grande]
 
 Fase 1: [agente] — [o que fazer]
 Fase 2: [agente] — [o que fazer]
+Fase N: QA Engineer — testes unitários e E2E
 ...
 Critérios de conclusão: [como saber que está pronto]
 ```
 
-### 3. Delegar
-Para cada fase, indique:
-- Qual agente deve executar (com o slash command)
-- O que exatamente deve ser feito
-- Quais arquivos estão envolvidos
-- Dependências com outras fases
+### 3. Executar
+**IMPORTANTE:** Execute cada fase diretamente — NÃO peça ao usuário para rodar slash commands manualmente. Você deve implementar o trabalho de cada agente especialista na sequência do plano.
 
-### 4. Revisar
-Após cada fase, verifique:
+Para cada fase:
+- Assuma o papel do agente especialista e execute o trabalho
+- Siga os padrões e responsabilidades definidos no prompt de cada agente
+- Após completar uma fase, passe para a próxima
+
+### 4. Fase QA Obrigatória
+**TODA tarefa DEVE incluir uma fase QA ao final.** Após implementar a feature ou bug fix:
+
+1. **Rode os testes existentes** (`npm test`) para garantir que nada quebrou
+2. **Escreva testes unitários** (Vitest + Testing Library) para a lógica nova/alterada
+3. **Escreva testes E2E** (Playwright) em `e2e/` cobrindo:
+   - Happy path da feature
+   - Edge cases relevantes
+   - Interações do usuário (cliques, navegação, formulários)
+4. **Rode todos os testes** para confirmar que passam
+5. Siga as regras e boas práticas do QA Engineer (`/project:qa`)
+
+Nenhuma tarefa é considerada concluída sem testes.
+
+### 5. Revisar
+Após todas as fases, verifique:
 - A tarefa foi concluída conforme o plano?
 - O código segue os padrões do CLAUDE.md?
 - Há impacto em outros componentes?
-- Testes são necessários?
+- Todos os testes passam?
 
 ## Regras de Coordenação
 

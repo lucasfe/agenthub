@@ -197,7 +197,7 @@ export default function AgentDetailPage() {
 
   const colors = colorMap[agent.color] || colorMap.blue
   const IconComponent = Icons[agent.icon] || Icons.Bot
-  const categorySlug = agent.category.toLowerCase().replace(/\s+/g, '-')
+  const categorySlug = (agent.category || '').toLowerCase().replace(/\s+/g, '-')
   const content = agent.content || ''
 
   const handleContentCopy = () => {

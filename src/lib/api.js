@@ -30,6 +30,7 @@ export async function fetchAgent(id) {
 }
 
 export async function createAgent(agent) {
+  requireSupabase()
   const { data, error } = await supabase
     .from('agents')
     .insert(agent)

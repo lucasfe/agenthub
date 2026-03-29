@@ -99,12 +99,15 @@ jobs:
             exit 1
           fi
       - name: Smoke test preview URL
+        env:
+          BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: |
           PREVIEW_URL="${{ steps.vercel.outputs.url }}"
+          BYPASS="-H x-vercel-protection-bypass:$BYPASS_SECRET"
           echo "Testing preview: $PREVIEW_URL"
 
           # Test /ai/agenthub without trailing slash
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$PREVIEW_URL/ai/agenthub")
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" $BYPASS "$PREVIEW_URL/ai/agenthub")
           echo "/ai/agenthub -> $STATUS"
           if [ "$STATUS" != "200" ]; then
             echo "FAIL: /ai/agenthub returned $STATUS (expected 200)"
@@ -112,7 +115,7 @@ jobs:
           fi
 
           # Test /ai/agenthub/ with trailing slash
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$PREVIEW_URL/ai/agenthub/")
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" $BYPASS "$PREVIEW_URL/ai/agenthub/")
           echo "/ai/agenthub/ -> $STATUS"
           if [ "$STATUS" != "200" ]; then
             echo "FAIL: /ai/agenthub/ returned $STATUS (expected 200)"
@@ -120,9 +123,9 @@ jobs:
           fi
 
           # Test that JS assets load correctly (not HTML)
-          JS_PATH=$(curl -s "$PREVIEW_URL/ai/agenthub/" | grep -o 'src="[^"]*\.js"' | head -1 | sed 's/src="//;s/"//')
+          JS_PATH=$(curl -s $BYPASS "$PREVIEW_URL/ai/agenthub/" | grep -o 'src="[^"]*\.js"' | head -1 | sed 's/src="//;s/"//')
           if [ -n "$JS_PATH" ]; then
-            JS_CONTENT=$(curl -s "$PREVIEW_URL$JS_PATH" | head -c 50)
+            JS_CONTENT=$(curl -s $BYPASS "$PREVIEW_URL$JS_PATH" | head -c 50)
             if echo "$JS_CONTENT" | grep -q "<!doctype"; then
               echo "FAIL: JS asset returned HTML instead of JavaScript"
               exit 1
@@ -131,7 +134,7 @@ jobs:
           fi
 
           # Test a sub-route (SPA routing)
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$PREVIEW_URL/ai/agenthub/teams")
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" $BYPASS "$PREVIEW_URL/ai/agenthub/teams")
           echo "/ai/agenthub/teams -> $STATUS"
           if [ "$STATUS" != "200" ]; then
             echo "FAIL: /ai/agenthub/teams returned $STATUS (expected 200)"

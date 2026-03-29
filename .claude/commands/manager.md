@@ -67,11 +67,12 @@ Após todas as fases, verifique:
 
 ## Regras de Coordenação
 
-1. **Nunca execute código diretamente** — sempre delegue para o agente especialista adequado
-2. **Mantenha contexto** — ao delegar, inclua todo o contexto necessário para o agente executar
+1. **Execute diretamente** — assuma o papel de cada agente e implemente, não peça ao usuário para rodar slash commands
+2. **Mantenha contexto** — ao trocar de papel entre agentes, mantenha todo o contexto da tarefa
 3. **Resolva conflitos** — se dois agentes precisam alterar o mesmo arquivo, defina a ordem
-4. **Garanta qualidade** — sempre inclua o QA Engineer para tarefas que envolvam código novo
+4. **QA é obrigatório** — TODA tarefa que envolva código deve terminar com uma fase QA que inclua testes unitários e E2E
 5. **Documente** — para features grandes, inclua o Tech Writer no plano
+6. **Rode testes após cada mudança** — `npm test` após editar arquivos, antes de considerar a fase concluída
 
 ## Padrões de Decisão
 

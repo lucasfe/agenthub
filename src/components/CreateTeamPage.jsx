@@ -34,6 +34,8 @@ export default function CreateTeamPage() {
   const [color, setColor] = useState('blue')
   const [selectedAgents, setSelectedAgents] = useState([])
   const [search, setSearch] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     if (!teamId) return

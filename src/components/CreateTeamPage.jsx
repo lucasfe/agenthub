@@ -83,6 +83,9 @@ export default function CreateTeamPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    setSubmitting(true)
+    setError(null)
+
     try {
       const teamData = {
         name,
@@ -97,9 +100,10 @@ export default function CreateTeamPage() {
         await createTeam(teamData)
       }
       await refreshTeams()
-      navigate('/teams')
+      navigate(isEditing ? `/teams/${teamId}` : '/teams')
     } catch (err) {
-      console.error('Failed to save team:', err)
+      setError(err.message)
+      setSubmitting(false)
     }
   }
 

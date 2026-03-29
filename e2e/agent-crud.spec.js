@@ -105,7 +105,7 @@ test.describe('Agent Creation', () => {
     await expect(page.locator('h1').first()).toBeVisible({ timeout: DATA_TIMEOUT })
 
     // Use the search to find the agent
-    const searchInput = page.getByPlaceholder('Search agents...')
+    const searchInput = page.getByPlaceholder('Search components...')
     await searchInput.fill(agentName)
 
     // Agent should appear in filtered results

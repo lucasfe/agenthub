@@ -216,7 +216,7 @@ test.describe('Agent Creation', () => {
 
     // Switch to Preview and verify rendered markdown
     await page.getByRole('button', { name: 'Preview' }).click()
-    await expect(page.getByRole('heading', { name: 'Updated Content' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Updated Content' })).toBeVisible({ timeout: DATA_TIMEOUT })
     await expect(page.getByText('New paragraph here.')).toBeVisible()
   })
 

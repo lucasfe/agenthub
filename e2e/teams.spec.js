@@ -1,19 +1,20 @@
 import { test, expect } from '@playwright/test'
-import { cleanupTestData } from './helpers.js'
+import { cleanupByPrefix } from './helpers.js'
 
 const BASE = '/ai/agenthub'
 const T = 15000
 
-const RUN_ID = `e2e-${Date.now()}`
+// Names start with "E2E" so IDs always start with "e2e-" for bulk cleanup.
+const RUN_ID = Date.now().toString()
 let testCounter = 0
 const uniqueId = () => `${RUN_ID}-${++testCounter}`
 
-const createdTeamIds = []
+test.beforeAll(async () => {
+  await cleanupByPrefix('teams', 'e2e-%')
+})
 
 test.afterAll(async () => {
-  for (const id of createdTeamIds) {
-    await cleanupTestData('teams', id)
-  }
+  await cleanupByPrefix('teams', 'e2e-%')
 })
 
 test.describe('Teams', () => {

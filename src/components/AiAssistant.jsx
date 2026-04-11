@@ -292,17 +292,19 @@ export default function AiAssistant({ open, onClose }) {
   )
 }
 
-function MessageBubble({ role, content, error, showCursor }) {
+function MessageBubble({ role, content, error, showCursor, toolCall }) {
   const isUser = role === 'user'
-  if (!content && !showCursor) return null
+  if (!content && !showCursor && !toolCall) return null
 
   // Render markdown for assistant (non-error) messages; everything else is plain text.
   const renderAsMarkdown = role === 'assistant' && !error
+  // When a toolCall is present, let the bubble grow wider so the card has room.
+  const widthClass = toolCall ? 'max-w-[95%] w-full' : 'max-w-[85%]'
 
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div
-        className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+        className={`${widthClass} rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
           isUser
             ? 'bg-gradient-to-br from-purple-500 to-blue-500 text-white rounded-br-sm whitespace-pre-wrap'
             : error
@@ -310,13 +312,18 @@ function MessageBubble({ role, content, error, showCursor }) {
               : 'bg-bg-card border border-border-subtle text-text-primary rounded-bl-sm'
         }`}
       >
-        {renderAsMarkdown ? (
-          <Markdown text={content} variant="chat" />
-        ) : (
-          content
+        {content && (
+          renderAsMarkdown ? (
+            <Markdown text={content} variant="chat" />
+          ) : (
+            content
+          )
         )}
         {showCursor && (
           <span className="inline-block w-1.5 h-4 ml-0.5 bg-current align-middle animate-pulse" />
+        )}
+        {toolCall?.name === 'draft_agent' && (
+          <AgentDraftCard draft={toolCall.input} />
         )}
       </div>
     </div>

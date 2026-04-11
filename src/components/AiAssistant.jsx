@@ -131,17 +131,21 @@ export default function AiAssistant({ open, onClose }) {
         {/* Messages */}
         <div
           ref={listRef}
-          className="flex-1 overflow-y-auto px-5 py-5 space-y-4"
+          className="flex-1 overflow-y-auto px-5 py-5"
         >
-          {messages.map((msg, i) => (
-            <MessageBubble key={i} role={msg.role} content={msg.content} />
-          ))}
-          {isTyping && (
-            <div className="flex items-center gap-2 text-text-muted text-sm">
-              <Loader2 size={14} className="animate-spin" />
-              <span>Thinking…</span>
-            </div>
-          )}
+          <div
+            className={`space-y-4 ${fullscreen ? 'max-w-3xl mx-auto' : ''}`}
+          >
+            {messages.map((msg, i) => (
+              <MessageBubble key={i} role={msg.role} content={msg.content} />
+            ))}
+            {isTyping && (
+              <div className="flex items-center gap-2 text-text-muted text-sm">
+                <Loader2 size={14} className="animate-spin" />
+                <span>Thinking…</span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Input */}
@@ -149,7 +153,11 @@ export default function AiAssistant({ open, onClose }) {
           onSubmit={handleSend}
           className="border-t border-border-subtle p-4 shrink-0"
         >
-          <div className="flex items-end gap-2 bg-bg-input border border-border-subtle rounded-xl px-3 py-2 focus-within:border-border-hover transition-colors">
+          <div
+            className={`flex items-end gap-2 bg-bg-input border border-border-subtle rounded-xl px-3 py-2 focus-within:border-border-hover transition-colors ${
+              fullscreen ? 'max-w-3xl mx-auto' : ''
+            }`}
+          >
             <input
               ref={inputRef}
               type="text"

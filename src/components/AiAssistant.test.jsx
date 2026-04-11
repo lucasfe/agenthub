@@ -22,18 +22,53 @@ vi.mock('../lib/api', () => ({
   updateAgent: vi.fn().mockResolvedValue({ id: 'frontend-developer' }),
 }))
 
-// Controllable mock of the chat streaming client.
-const chatMock = vi.hoisted(() => ({
-  isChatConfigured: vi.fn(() => true),
-  streamChat: vi.fn(),
-}))
+// Controllable mock of the orchestration engine. The fake Session drains a
+// scripted list of events via the subscribe callback on the next microtask,
+// mirroring how the real engine streams events through `session._emit`.
+const orchestrationMock = vi.hoisted(() => {
+  const createFakeSession = (events) => {
+    let cancelled = false
+    const session = {
+      id: 'test-session',
+      mode: 'chat',
+      status: 'streaming',
+      subscribe: (fn) => {
+        queueMicrotask(() => {
+          for (const evt of events) {
+            if (cancelled) break
+            fn(evt)
+          }
+        })
+        return () => {}
+      },
+      cancel: vi.fn(() => {
+        cancelled = true
+      }),
+    }
+    return session
+  }
 
-vi.mock('../lib/chat', () => chatMock)
+  return {
+    isOrchestrationConfigured: vi.fn(() => true),
+    startSession: vi.fn(),
+    _createFakeSession: createFakeSession,
+  }
+})
+
+vi.mock('../lib/orchestration', () => orchestrationMock)
+
+// Respond to startSession() by returning a session that will emit `events`
+// once something subscribes to it.
+function scriptSession(events) {
+  orchestrationMock.startSession.mockImplementationOnce(() =>
+    orchestrationMock._createFakeSession(events),
+  )
+}
 
 describe('AiAssistant', () => {
   beforeEach(() => {
-    chatMock.isChatConfigured.mockReturnValue(true)
-    chatMock.streamChat.mockReset()
+    orchestrationMock.isOrchestrationConfigured.mockReturnValue(true)
+    orchestrationMock.startSession.mockReset()
   })
 
   it('does not render when closed', () => {
@@ -48,12 +83,13 @@ describe('AiAssistant', () => {
     expect(screen.getByText(/Hi! I'm your AI assistant/)).toBeInTheDocument()
   })
 
-  it('streams an assistant reply from the chat helper', async () => {
-    chatMock.streamChat.mockImplementation(async ({ onDelta, onDone }) => {
-      onDelta('Hello')
-      onDelta(' world')
-      onDone()
-    })
+  it('streams an assistant reply from the session', async () => {
+    scriptSession([
+      { type: 'router.classified', mode: 'chat' },
+      { type: 'chat.text', value: 'Hello' },
+      { type: 'chat.text', value: ' world' },
+      { type: 'chat.done' },
+    ])
 
     const user = userEvent.setup()
     renderWithProviders(<AiAssistant open={true} onClose={() => {}} />)
@@ -68,17 +104,19 @@ describe('AiAssistant', () => {
       expect(screen.getByText('Hello world')).toBeInTheDocument()
     })
 
-    expect(chatMock.streamChat).toHaveBeenCalledWith(
+    expect(orchestrationMock.startSession).toHaveBeenCalledWith(
       expect.objectContaining({
+        mode: 'chat',
         messages: [{ role: 'user', content: 'Hi there' }],
       }),
     )
   })
 
-  it('renders an AgentDraftCard when streamChat emits a tool_call', async () => {
-    chatMock.streamChat.mockImplementation(async ({ onDelta, onToolCall, onDone }) => {
-      onDelta('Beleza! Montei um draft:')
-      onToolCall({
+  it('renders an AgentDraftCard when the session emits a draft_agent tool_call', async () => {
+    scriptSession([
+      { type: 'chat.text', value: 'Beleza! Montei um draft:' },
+      {
+        type: 'chat.tool_call',
         name: 'draft_agent',
         input: {
           name: 'Security Auditor',
@@ -89,9 +127,9 @@ describe('AiAssistant', () => {
           color: 'rose',
           content: '## Responsibilities\n\nAudit code.',
         },
-      })
-      onDone()
-    })
+      },
+      { type: 'chat.done' },
+    ])
 
     const user = userEvent.setup()
     renderWithProviders(<AiAssistant open={true} onClose={() => {}} />)
@@ -107,18 +145,19 @@ describe('AiAssistant', () => {
     expect(screen.getByRole('button', { name: /create agent/i })).toBeInTheDocument()
   })
 
-  it('renders an AgentEditCard when streamChat emits an update_agent tool_call', async () => {
-    chatMock.streamChat.mockImplementation(async ({ onDelta, onToolCall, onDone }) => {
-      onDelta('Entendi, vou propor essa alteração:')
-      onToolCall({
+  it('renders an AgentEditCard when the session emits an update_agent tool_call', async () => {
+    scriptSession([
+      { type: 'chat.text', value: 'Entendi, vou propor essa alteração:' },
+      {
+        type: 'chat.tool_call',
         name: 'update_agent',
         input: {
           id: 'frontend-developer',
           updates: { color: 'purple' },
         },
-      })
-      onDone()
-    })
+      },
+      { type: 'chat.done' },
+    ])
 
     const user = userEvent.setup()
     renderWithProviders(<AiAssistant open={true} onClose={() => {}} />)
@@ -139,11 +178,11 @@ describe('AiAssistant', () => {
     expect(screen.getByRole('button', { name: /apply changes/i })).toBeInTheDocument()
   })
 
-  it('forwards agents context to streamChat on send', async () => {
-    chatMock.streamChat.mockImplementation(async ({ onDelta, onDone }) => {
-      onDelta('hello')
-      onDone()
-    })
+  it('forwards agents context to startSession on send', async () => {
+    scriptSession([
+      { type: 'chat.text', value: 'hello' },
+      { type: 'chat.done' },
+    ])
 
     const user = userEvent.setup()
     renderWithProviders(<AiAssistant open={true} onClose={() => {}} />)
@@ -152,17 +191,15 @@ describe('AiAssistant', () => {
     await user.click(screen.getByLabelText('Send message'))
 
     await waitFor(() => {
-      expect(chatMock.streamChat).toHaveBeenCalled()
+      expect(orchestrationMock.startSession).toHaveBeenCalled()
     })
-    const call = chatMock.streamChat.mock.calls[0][0]
+    const call = orchestrationMock.startSession.mock.calls[0][0]
     expect(Array.isArray(call.agents)).toBe(true)
     expect(call.agents.find((a) => a.id === 'frontend-developer')).toBeTruthy()
   })
 
-  it('shows an error bubble when streamChat fails', async () => {
-    chatMock.streamChat.mockImplementation(async ({ onError }) => {
-      onError(new Error('boom'))
-    })
+  it('shows an error bubble when the session emits chat.error', async () => {
+    scriptSession([{ type: 'chat.error', error: 'boom' }])
 
     const user = userEvent.setup()
     renderWithProviders(<AiAssistant open={true} onClose={() => {}} />)
@@ -175,8 +212,8 @@ describe('AiAssistant', () => {
     })
   })
 
-  it('shows a configuration notice when chat is not configured', async () => {
-    chatMock.isChatConfigured.mockReturnValue(false)
+  it('shows a configuration notice when orchestration is not configured', async () => {
+    orchestrationMock.isOrchestrationConfigured.mockReturnValue(false)
 
     const user = userEvent.setup()
     renderWithProviders(<AiAssistant open={true} onClose={() => {}} />)
@@ -185,7 +222,7 @@ describe('AiAssistant', () => {
     await user.click(screen.getByLabelText('Send message'))
 
     expect(screen.getByText(/Chat is not configured/)).toBeInTheDocument()
-    expect(chatMock.streamChat).not.toHaveBeenCalled()
+    expect(orchestrationMock.startSession).not.toHaveBeenCalled()
   })
 
   it('calls onClose when close button is clicked', async () => {
@@ -213,10 +250,10 @@ describe('AiAssistant', () => {
   })
 
   it('clears conversation back to just the welcome message', async () => {
-    chatMock.streamChat.mockImplementation(async ({ onDelta, onDone }) => {
-      onDelta('reply')
-      onDone()
-    })
+    scriptSession([
+      { type: 'chat.text', value: 'reply' },
+      { type: 'chat.done' },
+    ])
 
     const user = userEvent.setup()
     renderWithProviders(<AiAssistant open={true} onClose={() => {}} />)

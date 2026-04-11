@@ -176,7 +176,11 @@ export default function AiAssistant({ open, onClose }) {
               <Send size={14} />
             </button>
           </div>
-          <p className="text-[10px] text-text-muted mt-2 px-1">
+          <p
+            className={`text-[10px] text-text-muted mt-2 px-1 ${
+              fullscreen ? 'max-w-3xl mx-auto' : ''
+            }`}
+          >
             Responses are currently mocked — wire this up to a real API later.
           </p>
         </form>

@@ -176,9 +176,7 @@ test.describe('Agent Creation', () => {
   })
 
   test('editing content enables save and persists on save', async ({ page }) => {
-    const agentName = `Edit Agent ${uniqueId()}`
-    const agentId = agentName.toLowerCase().replace(/\s+/g, '-')
-    createdAgentIds.push(agentId)
+    const agentName = `E2E Edit Agent ${uniqueId()}`
 
     // Create agent with initial content
     await page.goto(`${BASE}/create`)

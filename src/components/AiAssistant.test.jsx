@@ -56,6 +56,23 @@ describe('AiAssistant', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
+  it('toggles fullscreen mode', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<AiAssistant open={true} onClose={() => {}} />)
+
+    const dialog = screen.getByRole('dialog')
+    expect(dialog.className).toContain('max-w-md')
+    expect(dialog.className).not.toContain('inset-0')
+
+    await user.click(screen.getByLabelText('Enter fullscreen'))
+
+    expect(dialog.className).toContain('inset-0')
+    expect(dialog.className).not.toContain('max-w-md')
+
+    await user.click(screen.getByLabelText('Exit fullscreen'))
+    expect(dialog.className).toContain('max-w-md')
+  })
+
   it('clears conversation back to just the welcome message', async () => {
     const user = userEvent.setup()
     renderWithProviders(<AiAssistant open={true} onClose={() => {}} />)

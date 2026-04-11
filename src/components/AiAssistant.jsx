@@ -108,6 +108,16 @@ export default function AiAssistant({ open, onClose }) {
           return copy
         })
       },
+      onToolCall: ({ name, input }) => {
+        setMessages((prev) => {
+          const copy = [...prev]
+          const last = copy[copy.length - 1]
+          if (last && last.role === 'assistant') {
+            copy[copy.length - 1] = { ...last, toolCall: { name, input } }
+          }
+          return copy
+        })
+      },
       onDone: () => {
         setIsStreaming(false)
         abortRef.current = null

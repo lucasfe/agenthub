@@ -15,6 +15,7 @@ vi.mock('../lib/api', () => ({
     { id: 'backend-developer', name: 'Backend Dev', category: 'Development Team', description: 'Backend expert', tags: ['Node'], icon: 'Server', color: 'green', popularity: 85 },
   ]),
   fetchTeams: vi.fn().mockResolvedValue([]),
+  fetchTools: vi.fn().mockResolvedValue([]),
   fetchTeam: vi.fn().mockResolvedValue({
     id: 'test-team',
     name: 'Test Team',

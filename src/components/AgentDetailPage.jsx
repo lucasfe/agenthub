@@ -319,7 +319,7 @@ export default function AgentDetailPage() {
                 <div>
                   <div className={`bg-bg-card border border-border-subtle rounded-2xl overflow-hidden ${!expanded ? 'max-h-[500px] relative' : ''}`}>
                     <div className="p-6 prose-dark">
-                      {renderMarkdown(content)}
+                      <Markdown text={content} />
                     </div>
                     {!expanded && (
                       <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-bg-card to-transparent pointer-events-none" />

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Sparkles, X, Send, Loader2 } from 'lucide-react'
+import { Sparkles, X, Send, Loader2, Maximize2, Minimize2 } from 'lucide-react'
 
 const INITIAL_MESSAGES = [
   {

@@ -4,28 +4,30 @@ import userEvent from '@testing-library/user-event'
 import CreateAgentPage from './CreateAgentPage'
 import { renderWithProviders } from '../test/test-utils'
 
-const mockTools = [
-  {
-    id: 'web_search',
-    name: 'Web Search',
-    description: 'Search the web for current information.',
-    icon: 'Search',
-    category: 'research',
-    input_schema: {},
-    requires_approval: false,
-    enabled: true,
-  },
-  {
-    id: 'generate_file',
-    name: 'Generate File',
-    description: 'Create a downloadable file.',
-    icon: 'FileDown',
-    category: 'files',
-    input_schema: {},
-    requires_approval: false,
-    enabled: true,
-  },
-]
+const { mockTools } = vi.hoisted(() => ({
+  mockTools: [
+    {
+      id: 'web_search',
+      name: 'Web Search',
+      description: 'Search the web for current information.',
+      icon: 'Search',
+      category: 'research',
+      input_schema: {},
+      requires_approval: false,
+      enabled: true,
+    },
+    {
+      id: 'generate_file',
+      name: 'Generate File',
+      description: 'Create a downloadable file.',
+      icon: 'FileDown',
+      category: 'files',
+      input_schema: {},
+      requires_approval: false,
+      enabled: true,
+    },
+  ],
+}))
 
 vi.mock('../lib/api', () => ({
   fetchAgents: vi.fn().mockResolvedValue([]),

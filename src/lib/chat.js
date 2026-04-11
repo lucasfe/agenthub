@@ -4,6 +4,7 @@
 // Usage:
 //   await streamChat({
 //     messages: [{ role: 'user', content: 'hi' }],
+//     agents: [{ id, name, category, description, tags }],  // context for the model
 //     onDelta: (text) => appendToLastBubble(text),
 //     onToolCall: ({ name, input }) => handleDraft(input),
 //     onDone: () => setTyping(false),

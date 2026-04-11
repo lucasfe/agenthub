@@ -42,7 +42,18 @@ export async function streamChat({
         Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
         apikey: SUPABASE_ANON_KEY,
       },
-      body: JSON.stringify({ messages }),
+      body: JSON.stringify({
+        messages,
+        agents_context: Array.isArray(agents)
+          ? agents.map((a) => ({
+              id: a.id,
+              name: a.name,
+              category: a.category,
+              description: a.description,
+              tags: a.tags,
+            }))
+          : undefined,
+      }),
       signal,
     })
   } catch (err) {

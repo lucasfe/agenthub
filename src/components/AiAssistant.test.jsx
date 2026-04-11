@@ -7,6 +7,7 @@ import { renderWithProviders } from '../test/test-utils'
 vi.mock('../lib/api', () => ({
   fetchAgents: vi.fn().mockResolvedValue([]),
   fetchTeams: vi.fn().mockResolvedValue([]),
+  createAgent: vi.fn().mockResolvedValue({ id: 'mock' }),
 }))
 
 // Controllable mock of the chat streaming client.

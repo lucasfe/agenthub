@@ -26,9 +26,7 @@ test.afterAll(async () => {
 
 test.describe('Agent Creation', () => {
   test('create agent with minimal fields', async ({ page }) => {
-    const agentName = `Test Agent ${uniqueId()}`
-    const agentId = agentName.toLowerCase().replace(/\s+/g, '-')
-    createdAgentIds.push(agentId)
+    const agentName = `E2E Test Agent ${uniqueId()}`
 
     await page.goto(`${BASE}/create`)
     await expect(page.getByRole('heading', { name: 'Create Agent' })).toBeVisible()

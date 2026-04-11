@@ -1,25 +1,27 @@
 import { test, expect } from '@playwright/test'
-import { cleanupTestData } from './helpers.js'
+import { cleanupByPrefix } from './helpers.js'
 
 const BASE = '/ai/agenthub'
 const DATA_TIMEOUT = 15000
 
-// Single run ID shared across all tests in this file
-const RUN_ID = `e2e-${Date.now()}`
+// Single run ID shared across all tests in this file.
+// Names start with "E2E" so the derived IDs always start with "e2e-",
+// allowing a single LIKE pattern to clean everything this suite creates.
+const RUN_ID = Date.now().toString()
 let testCounter = 0
 const uniqueId = () => `${RUN_ID}-${++testCounter}`
 
 // Run tests serially — they share cleanup state
 test.describe.configure({ mode: 'serial' })
 
-// Track created agent IDs for cleanup
-const createdAgentIds = []
+// Purge any agents from prior runs that leaked (e.g. CI timeout before afterAll),
+// then purge again after — so the next run always starts clean.
+test.beforeAll(async () => {
+  await cleanupByPrefix('agents', 'e2e-%')
+})
 
-// Clean up after all tests complete
 test.afterAll(async () => {
-  for (const id of createdAgentIds) {
-    await cleanupTestData('agents', id)
-  }
+  await cleanupByPrefix('agents', 'e2e-%')
 })
 
 test.describe('Agent Creation', () => {

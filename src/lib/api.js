@@ -123,3 +123,18 @@ export async function updateTeam(id, updates) {
   if (error) throw error
   return data
 }
+
+// ── Tools ───────────────────────────────────────────
+
+export async function fetchTools() {
+  requireSupabase()
+  const { data, error } = await supabase
+    .from('tools')
+    .select('*')
+    .eq('enabled', true)
+    .order('category', { ascending: true })
+    .order('name', { ascending: true })
+
+  if (error) throw error
+  return data
+}

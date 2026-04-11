@@ -273,19 +273,29 @@ export default function AiAssistant({ open, onClose }) {
 function MessageBubble({ role, content, error, showCursor }) {
   const isUser = role === 'user'
   if (!content && !showCursor) return null
+
+  // Render markdown for assistant (non-error) messages; everything else is plain text.
+  const renderAsMarkdown = role === 'assistant' && !error
+
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div
-        className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
+        className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
           isUser
-            ? 'bg-gradient-to-br from-purple-500 to-blue-500 text-white rounded-br-sm'
+            ? 'bg-gradient-to-br from-purple-500 to-blue-500 text-white rounded-br-sm whitespace-pre-wrap'
             : error
-              ? 'bg-rose-500/10 border border-rose-500/30 text-rose-300 rounded-bl-sm'
+              ? 'bg-rose-500/10 border border-rose-500/30 text-rose-300 rounded-bl-sm whitespace-pre-wrap'
               : 'bg-bg-card border border-border-subtle text-text-primary rounded-bl-sm'
         }`}
       >
-        {content}
-        {showCursor && <span className="inline-block w-1.5 h-4 ml-0.5 bg-current align-middle animate-pulse" />}
+        {renderAsMarkdown ? (
+          <Markdown text={content} variant="chat" />
+        ) : (
+          content
+        )}
+        {showCursor && (
+          <span className="inline-block w-1.5 h-4 ml-0.5 bg-current align-middle animate-pulse" />
+        )}
       </div>
     </div>
   )

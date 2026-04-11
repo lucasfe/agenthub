@@ -106,6 +106,58 @@ describe('AiAssistant', () => {
     expect(screen.getByRole('button', { name: /create agent/i })).toBeInTheDocument()
   })
 
+  it('renders an AgentEditCard when streamChat emits an update_agent tool_call', async () => {
+    chatMock.streamChat.mockImplementation(async ({ onDelta, onToolCall, onDone }) => {
+      onDelta('Entendi, vou propor essa alteração:')
+      onToolCall({
+        name: 'update_agent',
+        input: {
+          id: 'frontend-developer',
+          updates: { color: 'purple' },
+        },
+      })
+      onDone()
+    })
+
+    const user = userEvent.setup()
+    renderWithProviders(<AiAssistant open={true} onClose={() => {}} />)
+
+    await user.type(
+      screen.getByPlaceholderText('Type a message...'),
+      'muda a cor do frontend-developer pra roxo',
+    )
+    await user.click(screen.getByLabelText('Send message'))
+
+    await waitFor(() => {
+      expect(screen.getByText(/Edit proposal/i)).toBeInTheDocument()
+    })
+    expect(screen.getByText(/Entendi, vou propor/)).toBeInTheDocument()
+    expect(screen.getByText('Frontend Developer')).toBeInTheDocument()
+    expect(screen.getByText('color')).toBeInTheDocument()
+    expect(screen.getByText('purple')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /apply changes/i })).toBeInTheDocument()
+  })
+
+  it('forwards agents context to streamChat on send', async () => {
+    chatMock.streamChat.mockImplementation(async ({ onDelta, onDone }) => {
+      onDelta('hello')
+      onDone()
+    })
+
+    const user = userEvent.setup()
+    renderWithProviders(<AiAssistant open={true} onClose={() => {}} />)
+
+    await user.type(screen.getByPlaceholderText('Type a message...'), 'oi')
+    await user.click(screen.getByLabelText('Send message'))
+
+    await waitFor(() => {
+      expect(chatMock.streamChat).toHaveBeenCalled()
+    })
+    const call = chatMock.streamChat.mock.calls[0][0]
+    expect(Array.isArray(call.agents)).toBe(true)
+    expect(call.agents.find((a) => a.id === 'frontend-developer')).toBeTruthy()
+  })
+
   it('shows an error bubble when streamChat fails', async () => {
     chatMock.streamChat.mockImplementation(async ({ onError }) => {
       onError(new Error('boom'))

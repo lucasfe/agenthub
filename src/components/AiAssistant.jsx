@@ -22,7 +22,7 @@ export default function AiAssistant({ open, onClose }) {
   const [fullscreen, setFullscreen] = useState(false)
   const inputRef = useRef(null)
   const listRef = useRef(null)
-  const abortRef = useRef(null)
+  const sessionRef = useRef(null)
 
   // Focus the input when the panel opens
   useEffect(() => {
@@ -48,17 +48,60 @@ export default function AiAssistant({ open, onClose }) {
     }
   }, [messages, isStreaming])
 
-  // Abort any in-flight stream on unmount
+  // Cancel the active session on unmount
   useEffect(() => {
-    return () => abortRef.current?.abort()
+    return () => sessionRef.current?.cancel('unmount')
   }, [])
 
-  const handleSend = async (e) => {
+  const appendDelta = (delta) => {
+    setMessages((prev) => {
+      const copy = [...prev]
+      const last = copy[copy.length - 1]
+      if (last && last.role === 'assistant') {
+        copy[copy.length - 1] = { ...last, content: last.content + delta }
+      }
+      return copy
+    })
+  }
+
+  const attachToolCall = ({ name, input: toolInput }) => {
+    setMessages((prev) => {
+      const copy = [...prev]
+      const last = copy[copy.length - 1]
+      if (last && last.role === 'assistant') {
+        copy[copy.length - 1] = { ...last, toolCall: { name, input: toolInput } }
+      }
+      return copy
+    })
+  }
+
+  const showError = (message) => {
+    setMessages((prev) => {
+      const copy = [...prev]
+      const last = copy[copy.length - 1]
+      if (last && last.role === 'assistant' && last.content === '') {
+        copy[copy.length - 1] = {
+          role: 'assistant',
+          content: `⚠️ ${message}`,
+          error: true,
+        }
+      } else {
+        copy.push({
+          role: 'assistant',
+          content: `⚠️ ${message}`,
+          error: true,
+        })
+      }
+      return copy
+    })
+  }
+
+  const handleSend = (e) => {
     e.preventDefault()
     const text = input.trim()
     if (!text || isStreaming) return
 
-    if (!isChatConfigured()) {
+    if (!isOrchestrationConfigured()) {
       setMessages((prev) => [
         ...prev,
         { role: 'user', content: text },
@@ -95,65 +138,49 @@ export default function AiAssistant({ open, onClose }) {
     setInput('')
     setIsStreaming(true)
 
-    const controller = new AbortController()
-    abortRef.current = controller
-
-    await streamChat({
+    const session = startSession({
+      mode: 'chat',
       messages: outgoing,
       agents,
-      signal: controller.signal,
-      onDelta: (delta) => {
-        setMessages((prev) => {
-          const copy = [...prev]
-          const last = copy[copy.length - 1]
-          if (last && last.role === 'assistant') {
-            copy[copy.length - 1] = { ...last, content: last.content + delta }
-          }
-          return copy
-        })
-      },
-      onToolCall: ({ name, input }) => {
-        setMessages((prev) => {
-          const copy = [...prev]
-          const last = copy[copy.length - 1]
-          if (last && last.role === 'assistant') {
-            copy[copy.length - 1] = { ...last, toolCall: { name, input } }
-          }
-          return copy
-        })
-      },
-      onDone: () => {
-        setIsStreaming(false)
-        abortRef.current = null
-      },
-      onError: (err) => {
-        setMessages((prev) => {
-          const copy = [...prev]
-          const last = copy[copy.length - 1]
-          if (last && last.role === 'assistant' && last.content === '') {
-            copy[copy.length - 1] = {
-              role: 'assistant',
-              content: `⚠️ ${err.message}`,
-              error: true,
-            }
-          } else {
-            copy.push({
-              role: 'assistant',
-              content: `⚠️ ${err.message}`,
-              error: true,
-            })
-          }
-          return copy
-        })
-        setIsStreaming(false)
-        abortRef.current = null
-      },
+    })
+    sessionRef.current = session
+
+    const unsubscribe = session.subscribe((event) => {
+      switch (event.type) {
+        case 'router.classified':
+          // Phase 2: observe only. Phase 3 will route `task` to the planner.
+          break
+        case 'chat.text':
+          appendDelta(event.value)
+          break
+        case 'chat.tool_call':
+          attachToolCall({ name: event.name, input: event.input })
+          break
+        case 'chat.done':
+          setIsStreaming(false)
+          sessionRef.current = null
+          unsubscribe()
+          break
+        case 'chat.error':
+          showError(event.error || 'stream error')
+          setIsStreaming(false)
+          sessionRef.current = null
+          unsubscribe()
+          break
+        case 'run.cancelled':
+          setIsStreaming(false)
+          sessionRef.current = null
+          unsubscribe()
+          break
+        default:
+          break
+      }
     })
   }
 
   const handleClear = () => {
-    abortRef.current?.abort()
-    abortRef.current = null
+    sessionRef.current?.cancel('clear')
+    sessionRef.current = null
     setIsStreaming(false)
     setMessages(INITIAL_MESSAGES)
   }

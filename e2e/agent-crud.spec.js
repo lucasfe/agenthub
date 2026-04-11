@@ -219,9 +219,7 @@ test.describe('Agent Creation', () => {
   })
 
   test('preview tab renders markdown properly', async ({ page }) => {
-    const agentName = `Preview Agent ${uniqueId()}`
-    const agentId = agentName.toLowerCase().replace(/\s+/g, '-')
-    createdAgentIds.push(agentId)
+    const agentName = `E2E Preview Agent ${uniqueId()}`
 
     // Create agent with markdown content
     await page.goto(`${BASE}/create`)

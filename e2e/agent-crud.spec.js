@@ -76,9 +76,7 @@ test.describe('Agent Creation', () => {
   })
 
   test('create agent shows loading state during submission', async ({ page }) => {
-    const agentName = `Loading Agent ${uniqueId()}`
-    const agentId = agentName.toLowerCase().replace(/\s+/g, '-')
-    createdAgentIds.push(agentId)
+    const agentName = `E2E Loading Agent ${uniqueId()}`
 
     await page.goto(`${BASE}/create`)
     await page.getByPlaceholder('e.g. Frontend Developer').fill(agentName)

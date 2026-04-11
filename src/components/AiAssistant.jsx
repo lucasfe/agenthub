@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Sparkles, X, Send, Loader2, Maximize2, Minimize2 } from 'lucide-react'
-import { streamChat, isChatConfigured } from '../lib/chat'
+import { startSession, isOrchestrationConfigured } from '../lib/orchestration'
 import Markdown from '../lib/markdown'
 import AgentDraftCard from './AgentDraftCard'
 import AgentEditCard from './AgentEditCard'

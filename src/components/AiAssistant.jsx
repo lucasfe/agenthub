@@ -231,12 +231,14 @@ export default function AiAssistant({ open, onClose }) {
                   content={msg.content}
                   error={msg.error}
                   showCursor={showCursor}
+                  toolCall={msg.toolCall}
                 />
               )
             })}
             {isStreaming &&
               messages[messages.length - 1]?.role === 'assistant' &&
-              messages[messages.length - 1]?.content === '' && (
+              messages[messages.length - 1]?.content === '' &&
+              !messages[messages.length - 1]?.toolCall && (
                 <div className="flex items-center gap-2 text-text-muted text-sm">
                   <Loader2 size={14} className="animate-spin" />
                   <span>Thinking…</span>

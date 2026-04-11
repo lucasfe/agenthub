@@ -179,7 +179,10 @@ Deno.serve(async (req: Request) => {
     )
   }
 
-  let body: { messages?: Array<{ role: string; content: string }> }
+  let body: {
+    messages?: Array<{ role: string; content: string }>
+    agents_context?: unknown
+  }
   try {
     body = await req.json()
   } catch {
@@ -201,6 +204,8 @@ Deno.serve(async (req: Request) => {
     })
   }
 
+  const systemPrompt = buildSystemPrompt(body.agents_context)
+
   const upstream = await fetch(ANTHROPIC_API_URL, {
     method: 'POST',
     headers: {
@@ -211,9 +216,9 @@ Deno.serve(async (req: Request) => {
     body: JSON.stringify({
       model: MODEL,
       max_tokens: MAX_TOKENS,
-      system: SYSTEM_PROMPT,
+      system: systemPrompt,
       messages: cleanMessages,
-      tools: [DRAFT_AGENT_TOOL],
+      tools: [DRAFT_AGENT_TOOL, UPDATE_AGENT_TOOL],
       stream: true,
     }),
   })

@@ -1,25 +1,19 @@
 // Supabase Edge Function: chat
 //
-// Proxies chat requests to the Anthropic API with streaming. The Anthropic
-// messages endpoint natively returns SSE when `stream: true` is set; this
-// function parses those events and re-emits a simpler protocol to the browser:
+// Proxies chat requests to the Anthropic API with streaming and tool use.
+// Anthropic's messages endpoint returns SSE when `stream: true`; this function
+// parses those events and re-emits a simpler protocol to the browser:
 //
-//   data: {"type":"text","value":"..."}\n\n  (one per token chunk)
-//   data: {"type":"done"}\n\n               (final event)
-//   data: {"type":"error","value":"..."}\n\n (on failure)
-//
-// Deployment:
-//   supabase functions deploy chat
-//   supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
-//
-// Invocation from the frontend uses the anon key via the Authorization header,
-// which is the default behavior of supabase.functions.invoke / fetch.
+//   data: {"type":"text","value":"..."}\n\n               (one per token chunk)
+//   data: {"type":"tool_call","name":"...","input":{...}}\n\n  (when a tool block finishes)
+//   data: {"type":"done"}\n\n                             (final event)
+//   data: {"type":"error","value":"..."}\n\n              (on failure)
 
 // deno-lint-ignore-file no-explicit-any
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages'
 const MODEL = 'claude-sonnet-4-6'
-const MAX_TOKENS = 1024
+const MAX_TOKENS = 2048
 
 const SYSTEM_PROMPT = `You are the AI assistant for Lucas AI Hub, an internal web app for browsing, creating, and managing AI agent templates.
 
@@ -30,7 +24,67 @@ Users of this hub can:
 - Bundle agents into named "teams" for reuse
 - Use ⌘K to jump to any agent or team by name
 
-Help users discover agents, explain what each agent does, suggest which agents to stack for a given task, and answer general questions about using the hub. Be concise and friendly. If the user asks something unrelated to the hub, answer helpfully but briefly.`
+You have access to a \`draft_agent\` tool. When the user asks to create a new agent (e.g. "create an agent that does X", "build me a security agent", "monta um agente de..."), call this tool to propose a draft. The draft appears as an interactive card in the chat — THE USER CONFIRMS THE CREATION, not you. You are NOT writing to the database directly; the user clicks "Create" to commit.
+
+When calling the tool:
+- Write a short, friendly one-sentence explanation BEFORE calling the tool (e.g. "Beleza! Montei um draft pra você revisar:")
+- Fill ALL required fields with reasonable defaults based on the user's request
+- Use 3–5 relevant tags
+- Write the \`content\` field as a 2–4 paragraph markdown system prompt for the agent, using "##" subheadings for "Responsibilities", "Approach", etc.
+- For \`icon\`, pick a PascalCase lucide-react icon name that matches the agent's purpose (e.g. Shield, Code, Database, Palette, Bot). If unsure, use Bot.
+
+If the user wants to iterate on a previous draft ("change the color to purple", "add more tags"), call \`draft_agent\` again with the updated fields — a new draft card will appear.
+
+DO NOT call \`draft_agent\` for questions about existing agents, how the hub works, or general conversation. Only use it when the user clearly wants to create something new.
+
+For everything else, help users discover agents, explain what each does, and answer questions about using the hub. Be concise and friendly.`
+
+const DRAFT_AGENT_TOOL = {
+  name: 'draft_agent',
+  description:
+    'Propose a new agent draft for the user to review and confirm. The draft is rendered as an interactive card in the chat — the user clicks a button to actually create the agent. Call this whenever the user asks to build/create a new agent.',
+  input_schema: {
+    type: 'object',
+    required: ['name', 'category', 'description', 'tags', 'icon', 'color', 'content'],
+    properties: {
+      name: {
+        type: 'string',
+        description: 'Display name of the agent, in Title Case. Example: "Security Auditor".',
+      },
+      category: {
+        type: 'string',
+        enum: ['Development Team', 'AI Specialists'],
+        description: 'Which category the agent belongs to.',
+      },
+      description: {
+        type: 'string',
+        description: 'A single-sentence summary of what this agent does.',
+      },
+      tags: {
+        type: 'array',
+        items: { type: 'string' },
+        minItems: 2,
+        maxItems: 6,
+        description: 'Short topical tags (e.g. "OWASP", "Pentest", "React").',
+      },
+      icon: {
+        type: 'string',
+        description:
+          'PascalCase name of a lucide-react icon that matches this agent. Examples: Shield, Code, Database, Palette, Bot, Sparkles, Bug, Wrench.',
+      },
+      color: {
+        type: 'string',
+        enum: ['blue', 'green', 'purple', 'amber', 'rose', 'cyan'],
+        description: 'Accent color for the agent card.',
+      },
+      content: {
+        type: 'string',
+        description:
+          'The full markdown system prompt for this agent. 2–4 paragraphs, using "##" subheadings for sections like Responsibilities, Approach, etc.',
+      },
+    },
+  },
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -84,7 +138,6 @@ Deno.serve(async (req: Request) => {
     })
   }
 
-  // Call Anthropic with streaming enabled
   const upstream = await fetch(ANTHROPIC_API_URL, {
     method: 'POST',
     headers: {
@@ -97,6 +150,7 @@ Deno.serve(async (req: Request) => {
       max_tokens: MAX_TOKENS,
       system: SYSTEM_PROMPT,
       messages: cleanMessages,
+      tools: [DRAFT_AGENT_TOOL],
       stream: true,
     }),
   })
@@ -109,12 +163,15 @@ Deno.serve(async (req: Request) => {
     )
   }
 
-  // Bridge Anthropic's SSE stream → simplified SSE for the client
+  // Bridge Anthropic's SSE stream → simplified SSE for the client.
+  // We track tool_use blocks by their `index` so we can accumulate the
+  // streamed `partial_json` deltas and emit one `tool_call` event per block.
   const stream = new ReadableStream({
     async start(controller) {
       const reader = upstream.body!.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
+      const toolBlocks = new Map<number, { name: string; json: string }>()
 
       try {
         while (true) {
@@ -122,13 +179,10 @@ Deno.serve(async (req: Request) => {
           if (done) break
 
           buffer += decoder.decode(value, { stream: true })
-
-          // SSE events are separated by double newlines
           const events = buffer.split('\n\n')
           buffer = events.pop() ?? ''
 
           for (const raw of events) {
-            // Each event can have multiple `data:` lines; we only care about the data
             const dataLine = raw.split('\n').find((l) => l.startsWith('data:'))
             if (!dataLine) continue
             const jsonStr = dataLine.slice(5).trim()
@@ -141,12 +195,47 @@ Deno.serve(async (req: Request) => {
               continue
             }
 
-            if (evt.type === 'content_block_delta' && evt.delta?.type === 'text_delta') {
-              controller.enqueue(sseEvent({ type: 'text', value: evt.delta.text }))
+            if (evt.type === 'content_block_start') {
+              // Start tracking a tool_use block if this is one
+              if (evt.content_block?.type === 'tool_use') {
+                toolBlocks.set(evt.index, {
+                  name: evt.content_block.name,
+                  json: '',
+                })
+              }
+            } else if (evt.type === 'content_block_delta') {
+              if (evt.delta?.type === 'text_delta') {
+                controller.enqueue(sseEvent({ type: 'text', value: evt.delta.text }))
+              } else if (evt.delta?.type === 'input_json_delta') {
+                const block = toolBlocks.get(evt.index)
+                if (block) {
+                  block.json += evt.delta.partial_json ?? ''
+                }
+              }
+            } else if (evt.type === 'content_block_stop') {
+              const block = toolBlocks.get(evt.index)
+              if (block) {
+                try {
+                  const input = JSON.parse(block.json || '{}')
+                  controller.enqueue(
+                    sseEvent({ type: 'tool_call', name: block.name, input }),
+                  )
+                } catch (err) {
+                  controller.enqueue(
+                    sseEvent({
+                      type: 'error',
+                      value: `failed to parse tool input: ${(err as Error).message}`,
+                    }),
+                  )
+                }
+                toolBlocks.delete(evt.index)
+              }
             } else if (evt.type === 'message_stop') {
               controller.enqueue(sseEvent({ type: 'done' }))
             } else if (evt.type === 'error') {
-              controller.enqueue(sseEvent({ type: 'error', value: evt.error?.message ?? 'stream error' }))
+              controller.enqueue(
+                sseEvent({ type: 'error', value: evt.error?.message ?? 'stream error' }),
+              )
             }
           }
         }

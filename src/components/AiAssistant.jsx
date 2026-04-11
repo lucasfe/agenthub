@@ -41,26 +41,95 @@ export default function AiAssistant({ open, onClose }) {
     if (listRef.current) {
       listRef.current.scrollTop = listRef.current.scrollHeight
     }
-  }, [messages, isTyping])
+  }, [messages, isStreaming])
 
-  const handleSend = (e) => {
+  // Abort any in-flight stream on unmount
+  useEffect(() => {
+    return () => abortRef.current?.abort()
+  }, [])
+
+  const handleSend = async (e) => {
     e.preventDefault()
     const text = input.trim()
-    if (!text || isTyping) return
+    if (!text || isStreaming) return
 
-    setMessages((prev) => [...prev, { role: 'user', content: text }])
+    if (!isChatConfigured()) {
+      setMessages((prev) => [
+        ...prev,
+        { role: 'user', content: text },
+        {
+          role: 'assistant',
+          content:
+            'Chat is not configured. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`, then deploy the `chat` Edge Function with `ANTHROPIC_API_KEY` secret.',
+          error: true,
+        },
+      ])
+      setInput('')
+      return
+    }
+
+    // Build the outgoing history: strip the welcome message and any error
+    // bubbles so we don't feed them back to the model.
+    const userMessage = { role: 'user', content: text }
+    const nextMessages = [...messages, userMessage]
+    const outgoing = nextMessages
+      .filter((m) => !m.error && m !== WELCOME_MESSAGE)
+      .map(({ role, content }) => ({ role, content }))
+
+    // Add the user message plus an empty assistant placeholder to stream into
+    setMessages([...nextMessages, { role: 'assistant', content: '' }])
     setInput('')
-    setIsTyping(true)
+    setIsStreaming(true)
 
-    // Mock an assistant reply. Replace with a real API call later.
-    const reply = MOCK_REPLIES[Math.floor(Math.random() * MOCK_REPLIES.length)]
-    setTimeout(() => {
-      setMessages((prev) => [...prev, { role: 'assistant', content: reply }])
-      setIsTyping(false)
-    }, 700)
+    const controller = new AbortController()
+    abortRef.current = controller
+
+    await streamChat({
+      messages: outgoing,
+      signal: controller.signal,
+      onDelta: (delta) => {
+        setMessages((prev) => {
+          const copy = [...prev]
+          const last = copy[copy.length - 1]
+          if (last && last.role === 'assistant') {
+            copy[copy.length - 1] = { ...last, content: last.content + delta }
+          }
+          return copy
+        })
+      },
+      onDone: () => {
+        setIsStreaming(false)
+        abortRef.current = null
+      },
+      onError: (err) => {
+        setMessages((prev) => {
+          const copy = [...prev]
+          const last = copy[copy.length - 1]
+          if (last && last.role === 'assistant' && last.content === '') {
+            copy[copy.length - 1] = {
+              role: 'assistant',
+              content: `⚠️ ${err.message}`,
+              error: true,
+            }
+          } else {
+            copy.push({
+              role: 'assistant',
+              content: `⚠️ ${err.message}`,
+              error: true,
+            })
+          }
+          return copy
+        })
+        setIsStreaming(false)
+        abortRef.current = null
+      },
+    })
   }
 
   const handleClear = () => {
+    abortRef.current?.abort()
+    abortRef.current = null
+    setIsStreaming(false)
     setMessages(INITIAL_MESSAGES)
   }
 

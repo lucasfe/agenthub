@@ -1,18 +1,24 @@
 // Supabase Edge Function: chat
 //
-// Proxies chat requests to the Anthropic API with streaming and tool use.
-// Anthropic's messages endpoint returns SSE when `stream: true`; this function
-// parses those events and re-emits a simpler protocol to the browser:
+// Orchestration gateway: accepts a `mode` parameter, classifies the incoming
+// message via a Haiku router, and routes to the appropriate branch. Emits the
+// namespaced SSE protocol (Decision 15) back to the browser:
 //
-//   data: {"type":"text","value":"..."}\n\n               (one per token chunk)
-//   data: {"type":"tool_call","name":"...","input":{...}}\n\n  (when a tool block finishes)
-//   data: {"type":"done"}\n\n                             (final event)
-//   data: {"type":"error","value":"..."}\n\n              (on failure)
+//   data: {"type":"router.classified","session_id":"...","timestamp":...,"mode":"chat"|"crud"|"task"}
+//   data: {"type":"chat.text","session_id":"...","timestamp":...,"value":"..."}
+//   data: {"type":"chat.tool_call","session_id":"...","timestamp":...,"name":"...","input":{...}}
+//   data: {"type":"chat.done","session_id":"...","timestamp":...}
+//   data: {"type":"chat.error","session_id":"...","timestamp":...,"error":"..."}
+//
+// Phase 2 scope: only the `chat` branch is wired up. The router runs for every
+// request but its classification is logged and ignored — everything still flows
+// through the chat branch. Phase 3 will route `task` to the planner.
 
 // deno-lint-ignore-file no-explicit-any
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages'
-const MODEL = 'claude-sonnet-4-6'
+const CHAT_MODEL = Deno.env.get('CHAT_MODEL') || 'claude-sonnet-4-6'
+const ROUTER_MODEL = Deno.env.get('ROUTER_MODEL') || 'claude-haiku-4-5-20251001'
 const MAX_TOKENS = 2048
 
 const BASE_SYSTEM_PROMPT = `You are the AI assistant for Lucas AI Hub, an internal web app for browsing, creating, and managing AI agent templates.
@@ -59,6 +65,20 @@ If the user wants to iterate on a previous update/draft, call the relevant tool 
 DO NOT call tools for questions about the hub itself, how features work, or general conversation. Only use tools when the user clearly wants to CREATE or MODIFY something.
 
 Be concise, friendly, and reply in the same language the user used.`
+
+const ROUTER_SYSTEM_PROMPT = `You are a fast intent classifier for the Lucas AI Hub assistant. Given the latest user message, reply with exactly ONE word — no punctuation, no explanation — from this set:
+
+- "chat" — questions, greetings, conversation, requests for information about the hub or its agents
+- "crud" — asking to create, modify, delete an agent (e.g. "cria um agente X", "muda a cor do Y", "apaga Z")
+- "task" — asking for a piece of work to be executed by running agents (e.g. "faz um ppt sobre X", "escreve um pitch", "analisa esse texto")
+
+Examples:
+- "quais agentes tem?" -> chat
+- "cria um agente de SEO" -> crud
+- "faz um pitch deck" -> task
+- "oi tudo bem" -> chat
+
+Reply with only: chat, crud, or task.`
 
 const AGENT_FIELD_PROPS = {
   name: {
@@ -155,8 +175,158 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
-function sseEvent(payload: unknown): Uint8Array {
-  return new TextEncoder().encode(`data: ${JSON.stringify(payload)}\n\n`)
+function makeEmitter(
+  controller: ReadableStreamDefaultController<Uint8Array>,
+  sessionId: string,
+) {
+  const encoder = new TextEncoder()
+  return (type: string, payload: Record<string, unknown> = {}) => {
+    const evt = {
+      type,
+      session_id: sessionId,
+      timestamp: Date.now(),
+      ...payload,
+    }
+    controller.enqueue(encoder.encode(`data: ${JSON.stringify(evt)}\n\n`))
+  }
+}
+
+// Quick one-shot classification with Haiku. Non-streaming. Returns 'chat' as
+// a safe default on any error or unexpected response — the router should
+// never be a point of failure for the whole request.
+async function classifyIntent(
+  latestUserMessage: string,
+  apiKey: string,
+): Promise<'chat' | 'crud' | 'task'> {
+  try {
+    const res = await fetch(ANTHROPIC_API_URL, {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: ROUTER_MODEL,
+        max_tokens: 8,
+        system: ROUTER_SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: latestUserMessage }],
+      }),
+    })
+    if (!res.ok) return 'chat'
+    const data = await res.json()
+    const text = (data?.content?.[0]?.text ?? '').trim().toLowerCase()
+    if (text === 'crud' || text === 'task' || text === 'chat') return text
+    return 'chat'
+  } catch (err) {
+    console.error('[router] classify error', err)
+    return 'chat'
+  }
+}
+
+// Chat branch: proxies streaming Anthropic SSE and re-emits as namespaced
+// events (`chat.text`, `chat.tool_call`, `chat.done`, `chat.error`).
+async function runChatBranch(
+  emit: (type: string, payload?: Record<string, unknown>) => void,
+  options: {
+    messages: Array<{ role: string; content: string }>
+    systemPrompt: string
+    apiKey: string
+  },
+) {
+  const upstream = await fetch(ANTHROPIC_API_URL, {
+    method: 'POST',
+    headers: {
+      'x-api-key': options.apiKey,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: CHAT_MODEL,
+      max_tokens: MAX_TOKENS,
+      system: options.systemPrompt,
+      messages: options.messages,
+      tools: [DRAFT_AGENT_TOOL, UPDATE_AGENT_TOOL],
+      stream: true,
+    }),
+  })
+
+  if (!upstream.ok || !upstream.body) {
+    const errText = await upstream.text().catch(() => 'unknown error')
+    emit('chat.error', { error: `Anthropic API error: ${upstream.status} ${errText}` })
+    return
+  }
+
+  const reader = upstream.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  const toolBlocks = new Map<number, { name: string; json: string }>()
+
+  try {
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const events = buffer.split('\n\n')
+      buffer = events.pop() ?? ''
+
+      for (const raw of events) {
+        const dataLine = raw.split('\n').find((l) => l.startsWith('data:'))
+        if (!dataLine) continue
+        const jsonStr = dataLine.slice(5).trim()
+        if (!jsonStr) continue
+
+        let evt: any
+        try {
+          evt = JSON.parse(jsonStr)
+        } catch {
+          continue
+        }
+
+        if (evt.type === 'content_block_start') {
+          if (evt.content_block?.type === 'tool_use') {
+            toolBlocks.set(evt.index, {
+              name: evt.content_block.name,
+              json: '',
+            })
+          }
+        } else if (evt.type === 'content_block_delta') {
+          if (evt.delta?.type === 'text_delta') {
+            emit('chat.text', { value: evt.delta.text })
+          } else if (evt.delta?.type === 'input_json_delta') {
+            const block = toolBlocks.get(evt.index)
+            if (block) {
+              block.json += evt.delta.partial_json ?? ''
+            }
+          }
+        } else if (evt.type === 'content_block_stop') {
+          const block = toolBlocks.get(evt.index)
+          if (block) {
+            try {
+              const input = JSON.parse(block.json || '{}')
+              emit('chat.tool_call', { name: block.name, input })
+            } catch (err) {
+              emit('chat.error', {
+                error: `failed to parse tool input: ${(err as Error).message}`,
+              })
+            }
+            toolBlocks.delete(evt.index)
+          }
+        } else if (evt.type === 'message_stop') {
+          emit('chat.done', {})
+          return
+        } else if (evt.type === 'error') {
+          emit('chat.error', { error: evt.error?.message ?? 'stream error' })
+          return
+        }
+      }
+    }
+    // Stream closed without explicit message_stop
+    emit('chat.done', {})
+  } catch (err) {
+    emit('chat.error', { error: (err as Error).message })
+  }
 }
 
 Deno.serve(async (req: Request) => {
@@ -180,6 +350,8 @@ Deno.serve(async (req: Request) => {
   }
 
   let body: {
+    mode?: string
+    session_id?: string
     messages?: Array<{ role: string; content: string }>
     agents_context?: unknown
   }
@@ -192,124 +364,57 @@ Deno.serve(async (req: Request) => {
     })
   }
 
+  const mode = typeof body.mode === 'string' ? body.mode : 'chat'
+  const sessionId =
+    typeof body.session_id === 'string' && body.session_id
+      ? body.session_id
+      : crypto.randomUUID()
+
   const messages = Array.isArray(body.messages) ? body.messages : []
   const cleanMessages = messages
-    .filter((m) => (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim())
+    .filter(
+      (m) =>
+        (m.role === 'user' || m.role === 'assistant') &&
+        typeof m.content === 'string' &&
+        m.content.trim(),
+    )
     .map((m) => ({ role: m.role, content: m.content }))
 
   if (cleanMessages.length === 0) {
-    return new Response(JSON.stringify({ error: 'At least one user message is required' }), {
-      status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
-  }
-
-  const systemPrompt = buildSystemPrompt(body.agents_context)
-
-  const upstream = await fetch(ANTHROPIC_API_URL, {
-    method: 'POST',
-    headers: {
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: MAX_TOKENS,
-      system: systemPrompt,
-      messages: cleanMessages,
-      tools: [DRAFT_AGENT_TOOL, UPDATE_AGENT_TOOL],
-      stream: true,
-    }),
-  })
-
-  if (!upstream.ok || !upstream.body) {
-    const errText = await upstream.text().catch(() => 'unknown error')
     return new Response(
-      JSON.stringify({ error: `Anthropic API error: ${upstream.status} ${errText}` }),
-      { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      JSON.stringify({ error: 'At least one user message is required' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )
   }
 
-  // Bridge Anthropic's SSE stream → simplified SSE for the client.
-  // We track tool_use blocks by their `index` so we can accumulate the
-  // streamed `partial_json` deltas and emit one `tool_call` event per block.
-  const stream = new ReadableStream({
+  const systemPrompt = buildSystemPrompt(body.agents_context)
+  const lastUser = [...cleanMessages].reverse().find((m) => m.role === 'user')
+
+  const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      const reader = upstream.body!.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ''
-      const toolBlocks = new Map<number, { name: string; json: string }>()
+      const emit = makeEmitter(controller, sessionId)
 
       try {
-        while (true) {
-          const { value, done } = await reader.read()
-          if (done) break
+        // Router: classify the latest user message. In Phase 2 the result is
+        // logged and emitted but the chat branch always runs.
+        const classification = lastUser
+          ? await classifyIntent(lastUser.content, apiKey)
+          : 'chat'
+        console.log(
+          `[router] session=${sessionId} mode=${mode} classified=${classification}`,
+        )
+        emit('router.classified', { mode: classification })
 
-          buffer += decoder.decode(value, { stream: true })
-          const events = buffer.split('\n\n')
-          buffer = events.pop() ?? ''
-
-          for (const raw of events) {
-            const dataLine = raw.split('\n').find((l) => l.startsWith('data:'))
-            if (!dataLine) continue
-            const jsonStr = dataLine.slice(5).trim()
-            if (!jsonStr) continue
-
-            let evt: any
-            try {
-              evt = JSON.parse(jsonStr)
-            } catch {
-              continue
-            }
-
-            if (evt.type === 'content_block_start') {
-              // Start tracking a tool_use block if this is one
-              if (evt.content_block?.type === 'tool_use') {
-                toolBlocks.set(evt.index, {
-                  name: evt.content_block.name,
-                  json: '',
-                })
-              }
-            } else if (evt.type === 'content_block_delta') {
-              if (evt.delta?.type === 'text_delta') {
-                controller.enqueue(sseEvent({ type: 'text', value: evt.delta.text }))
-              } else if (evt.delta?.type === 'input_json_delta') {
-                const block = toolBlocks.get(evt.index)
-                if (block) {
-                  block.json += evt.delta.partial_json ?? ''
-                }
-              }
-            } else if (evt.type === 'content_block_stop') {
-              const block = toolBlocks.get(evt.index)
-              if (block) {
-                try {
-                  const input = JSON.parse(block.json || '{}')
-                  controller.enqueue(
-                    sseEvent({ type: 'tool_call', name: block.name, input }),
-                  )
-                } catch (err) {
-                  controller.enqueue(
-                    sseEvent({
-                      type: 'error',
-                      value: `failed to parse tool input: ${(err as Error).message}`,
-                    }),
-                  )
-                }
-                toolBlocks.delete(evt.index)
-              }
-            } else if (evt.type === 'message_stop') {
-              controller.enqueue(sseEvent({ type: 'done' }))
-            } else if (evt.type === 'error') {
-              controller.enqueue(
-                sseEvent({ type: 'error', value: evt.error?.message ?? 'stream error' }),
-              )
-            }
-          }
-        }
-        controller.close()
+        // Phase 2: regardless of mode or classification, run the chat branch.
+        // Phase 3 will route `task` messages into the planner.
+        await runChatBranch(emit, {
+          messages: cleanMessages,
+          systemPrompt,
+          apiKey,
+        })
       } catch (err) {
-        controller.enqueue(sseEvent({ type: 'error', value: (err as Error).message }))
+        emit('chat.error', { error: (err as Error).message })
+      } finally {
         controller.close()
       }
     },

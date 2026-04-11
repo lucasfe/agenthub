@@ -17,10 +17,7 @@ vi.mock('../lib/api', () => ({
     },
   ]),
   fetchTeams: vi.fn().mockResolvedValue([]),
-<<<<<<< HEAD
   fetchTools: vi.fn().mockResolvedValue([]),
-=======
->>>>>>> origin/main
   createAgent: vi.fn().mockResolvedValue({ id: 'mock' }),
   updateAgent: vi.fn().mockResolvedValue({ id: 'frontend-developer' }),
 }))

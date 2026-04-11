@@ -26,17 +26,30 @@ export default function Header() {
   return (
     <>
       <header className="h-16 border-b border-border-subtle flex items-center justify-between px-6 bg-bg-sidebar/50 backdrop-blur-sm sticky top-0 z-30">
-        {/* Search trigger */}
-        <button
-          onClick={() => setPaletteOpen(true)}
-          className="relative flex-1 max-w-xl flex items-center gap-3 bg-bg-input border border-border-subtle rounded-xl px-4 py-2.5 text-sm text-text-muted hover:border-border-hover transition-colors text-left"
-        >
-          <Search size={16} />
-          <span className="flex-1">Search components...</span>
-          <kbd className="text-[11px] text-text-muted bg-bg-primary border border-border-subtle rounded-md px-1.5 py-0.5 font-mono">
-            ⌘K
-          </kbd>
-        </button>
+        <div className="flex-1 max-w-xl flex items-center gap-3">
+          {/* Search trigger */}
+          <button
+            onClick={() => setPaletteOpen(true)}
+            className="relative flex-1 flex items-center gap-3 bg-bg-input border border-border-subtle rounded-xl px-4 py-2.5 text-sm text-text-muted hover:border-border-hover transition-colors text-left"
+          >
+            <Search size={16} />
+            <span className="flex-1">Search components...</span>
+            <kbd className="text-[11px] text-text-muted bg-bg-primary border border-border-subtle rounded-md px-1.5 py-0.5 font-mono">
+              ⌘K
+            </kbd>
+          </button>
+
+          {/* AI Assistant trigger */}
+          <button
+            onClick={() => setAssistantOpen(true)}
+            aria-label="Open AI assistant"
+            title="AI Assistant"
+            className="group relative shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center shadow-md hover:shadow-lg hover:scale-105 transition-all"
+          >
+            <Sparkles size={18} className="text-white" />
+            <span className="absolute inset-0 rounded-xl bg-gradient-to-br from-purple-400 to-blue-400 opacity-0 group-hover:opacity-40 blur-md transition-opacity -z-10" />
+          </button>
+        </div>
 
         {/* Right Actions */}
         <div className="flex items-center gap-3 ml-6">

@@ -88,9 +88,7 @@ test.describe('Agent Creation', () => {
   })
 
   test('delete agent via confirmation modal', async ({ page }) => {
-    const agentName = `Delete Agent ${uniqueId()}`
-    const agentId = agentName.toLowerCase().replace(/\s+/g, '-')
-    createdAgentIds.push(agentId)
+    const agentName = `E2E Delete Agent ${uniqueId()}`
 
     // Create the agent first
     await page.goto(`${BASE}/create`)

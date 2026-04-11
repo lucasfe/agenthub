@@ -329,7 +329,27 @@ function MessageBubble({ role, content, error, showCursor, toolCall }) {
         {toolCall?.name === 'draft_agent' && (
           <AgentDraftCard draft={toolCall.input} />
         )}
+        {toolCall?.name === 'update_agent' && (
+          <AgentEditCard
+            targetId={toolCall.input?.id}
+            updates={toolCall.input?.updates}
+          />
+        )}
       </div>
     </div>
   )
+}
+
+// Serialize a previous assistant tool call as a short text summary, so the
+// next outgoing request gives Claude enough context to iterate without having
+// to re-send the full tool_use block (which would require tool_result).
+function serializeToolCall(toolCall) {
+  if (!toolCall) return ''
+  if (toolCall.name === 'draft_agent') {
+    return `\n\n[I drafted a new agent with these fields: ${JSON.stringify(toolCall.input)}]`
+  }
+  if (toolCall.name === 'update_agent') {
+    return `\n\n[I proposed an update to agent "${toolCall.input?.id}" with these changes: ${JSON.stringify(toolCall.input?.updates ?? {})}]`
+  }
+  return `\n\n[I called the "${toolCall.name}" tool with: ${JSON.stringify(toolCall.input)}]`
 }

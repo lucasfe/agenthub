@@ -58,9 +58,7 @@ test.describe('Agent Creation', () => {
   })
 
   test('create agent shows error on duplicate ID', async ({ page }) => {
-    const agentName = `Dup Agent ${uniqueId()}`
-    const agentId = agentName.toLowerCase().replace(/\s+/g, '-')
-    createdAgentIds.push(agentId)
+    const agentName = `E2E Dup Agent ${uniqueId()}`
 
     await page.goto(`${BASE}/create`)
     await page.getByPlaceholder('e.g. Frontend Developer').fill(agentName)

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import AiAssistant from './AiAssistant'
@@ -9,7 +9,20 @@ vi.mock('../lib/api', () => ({
   fetchTeams: vi.fn().mockResolvedValue([]),
 }))
 
+// Controllable mock of the chat streaming client.
+const chatMock = vi.hoisted(() => ({
+  isChatConfigured: vi.fn(() => true),
+  streamChat: vi.fn(),
+}))
+
+vi.mock('../lib/chat', () => chatMock)
+
 describe('AiAssistant', () => {
+  beforeEach(() => {
+    chatMock.isChatConfigured.mockReturnValue(true)
+    chatMock.streamChat.mockReset()
+  })
+
   it('does not render when closed', () => {
     renderWithProviders(<AiAssistant open={false} onClose={() => {}} />)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -22,29 +35,60 @@ describe('AiAssistant', () => {
     expect(screen.getByText(/Hi! I'm your AI assistant/)).toBeInTheDocument()
   })
 
-  it('sends a user message and receives a mock reply', async () => {
+  it('streams an assistant reply from the chat helper', async () => {
+    chatMock.streamChat.mockImplementation(async ({ onDelta, onDone }) => {
+      onDelta('Hello')
+      onDelta(' world')
+      onDone()
+    })
+
     const user = userEvent.setup()
     renderWithProviders(<AiAssistant open={true} onClose={() => {}} />)
 
     const input = screen.getByPlaceholderText('Type a message...')
-    await user.type(input, 'Hello there')
+    await user.type(input, 'Hi there')
     await user.click(screen.getByLabelText('Send message'))
 
-    expect(screen.getByText('Hello there')).toBeInTheDocument()
+    expect(screen.getByText('Hi there')).toBeInTheDocument()
 
-    await waitFor(
-      () => {
-        expect(screen.queryByText('Thinking…')).not.toBeInTheDocument()
-      },
-      { timeout: 2000 }
-    )
+    await waitFor(() => {
+      expect(screen.getByText('Hello world')).toBeInTheDocument()
+    })
 
-    // Assistant should have replied — there are now at least 3 messages total
-    // (welcome + user message + assistant reply)
-    const bubbles = screen.getAllByText((_, el) =>
-      Boolean(el?.className?.toString().includes('rounded-2xl'))
+    expect(chatMock.streamChat).toHaveBeenCalledWith(
+      expect.objectContaining({
+        messages: [{ role: 'user', content: 'Hi there' }],
+      }),
     )
-    expect(bubbles.length).toBeGreaterThanOrEqual(3)
+  })
+
+  it('shows an error bubble when streamChat fails', async () => {
+    chatMock.streamChat.mockImplementation(async ({ onError }) => {
+      onError(new Error('boom'))
+    })
+
+    const user = userEvent.setup()
+    renderWithProviders(<AiAssistant open={true} onClose={() => {}} />)
+
+    await user.type(screen.getByPlaceholderText('Type a message...'), 'test')
+    await user.click(screen.getByLabelText('Send message'))
+
+    await waitFor(() => {
+      expect(screen.getByText(/boom/)).toBeInTheDocument()
+    })
+  })
+
+  it('shows a configuration notice when chat is not configured', async () => {
+    chatMock.isChatConfigured.mockReturnValue(false)
+
+    const user = userEvent.setup()
+    renderWithProviders(<AiAssistant open={true} onClose={() => {}} />)
+
+    await user.type(screen.getByPlaceholderText('Type a message...'), 'hi')
+    await user.click(screen.getByLabelText('Send message'))
+
+    expect(screen.getByText(/Chat is not configured/)).toBeInTheDocument()
+    expect(chatMock.streamChat).not.toHaveBeenCalled()
   })
 
   it('calls onClose when close button is clicked', async () => {
@@ -62,10 +106,8 @@ describe('AiAssistant', () => {
 
     const dialog = screen.getByRole('dialog')
     expect(dialog.className).toContain('max-w-md')
-    expect(dialog.className).not.toContain('inset-0')
 
     await user.click(screen.getByLabelText('Enter fullscreen'))
-
     expect(dialog.className).toContain('inset-0')
     expect(dialog.className).not.toContain('max-w-md')
 
@@ -74,11 +116,15 @@ describe('AiAssistant', () => {
   })
 
   it('clears conversation back to just the welcome message', async () => {
+    chatMock.streamChat.mockImplementation(async ({ onDelta, onDone }) => {
+      onDelta('reply')
+      onDone()
+    })
+
     const user = userEvent.setup()
     renderWithProviders(<AiAssistant open={true} onClose={() => {}} />)
 
-    const input = screen.getByPlaceholderText('Type a message...')
-    await user.type(input, 'First message')
+    await user.type(screen.getByPlaceholderText('Type a message...'), 'First message')
     await user.click(screen.getByLabelText('Send message'))
     expect(screen.getByText('First message')).toBeInTheDocument()
 

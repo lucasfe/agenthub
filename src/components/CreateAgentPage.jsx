@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router'
 import * as Icons from 'lucide-react'
 import { createAgent } from '../lib/api'
@@ -17,21 +17,38 @@ const colorOptions = [
 
 const categoryOptions = ['Development Team', 'AI Specialists']
 
-const toolOptions = ['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep']
+const DEFAULT_MODEL = 'claude-sonnet-4-6'
 
-const modelOptions = ['Claude Sonnet', 'Claude Opus', 'Claude Haiku']
+const modelOptions = [
+  {
+    id: 'claude-opus-4-6',
+    label: 'Claude Opus',
+    hint: 'Best for complex reasoning, planning, ambiguous tasks. ~5× cost.',
+  },
+  {
+    id: 'claude-sonnet-4-6',
+    label: 'Claude Sonnet',
+    hint: 'Balanced default — great for most writing, coding and analysis.',
+  },
+  {
+    id: 'claude-haiku-4-5-20251001',
+    label: 'Claude Haiku',
+    hint: 'Fastest and cheapest. Best for classification, rewriting, short replies.',
+  },
+]
 
 export default function CreateAgentPage() {
   const navigate = useNavigate()
-  const { refreshAgents } = useData()
+  const { refreshAgents, tools: availableTools } = useData()
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState('Development Team')
   const [icon, setIcon] = useState('Bot')
   const [color, setColor] = useState('blue')
   const [tags, setTags] = useState('')
-  const [tools, setTools] = useState(['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep'])
-  const [model, setModel] = useState('Claude Sonnet')
+  const [tools, setTools] = useState([])
+  const [model, setModel] = useState(DEFAULT_MODEL)
+  const [capabilities, setCapabilities] = useState('')
   const [content, setContent] = useState('')
   const [iconPickerOpen, setIconPickerOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -39,9 +56,19 @@ export default function CreateAgentPage() {
 
   const IconPreview = Icons[icon] || Icons.Bot
 
-  const toggleTool = (tool) => {
+  const toolsByCategory = useMemo(() => {
+    const groups = new Map()
+    for (const t of availableTools || []) {
+      const cat = t.category || 'other'
+      if (!groups.has(cat)) groups.set(cat, [])
+      groups.get(cat).push(t)
+    }
+    return Array.from(groups.entries())
+  }, [availableTools])
+
+  const toggleTool = (toolId) => {
     setTools((prev) =>
-      prev.includes(tool) ? prev.filter((t) => t !== tool) : [...prev, tool]
+      prev.includes(toolId) ? prev.filter((t) => t !== toolId) : [...prev, toolId]
     )
   }
 
@@ -67,6 +94,10 @@ export default function CreateAgentPage() {
         content,
         tools,
         model,
+        capabilities: capabilities
+          .split(',')
+          .map((c) => c.trim())
+          .filter(Boolean),
       })
       await refreshAgents()
       navigate(`/agent/${categorySlug}/${agentId}`)

@@ -348,7 +348,6 @@ export default function AgentDetailPage() {
           {activeTab === 'tools' && (
             <div>
               <h2 className="text-base font-semibold text-text-primary mb-3">Available Tools</h2>
-<<<<<<< HEAD
               {(agent.tools || []).length === 0 ? (
                 <p className="text-sm text-text-muted italic">This agent has no tools configured.</p>
               ) : (
@@ -387,16 +386,6 @@ export default function AgentDetailPage() {
                         {cap}
                       </span>
                     ))}
-=======
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {(agent.tools || defaultTools).map((tool) => (
-                  <div
-                    key={tool}
-                    className="flex items-center gap-2.5 px-4 py-3 bg-bg-card border border-border-subtle rounded-xl"
-                  >
-                    <Icons.Wrench size={14} className="text-text-muted" />
-                    <span className="text-sm text-text-secondary font-mono">{tool}</span>
->>>>>>> origin/main
                   </div>
                 </div>
               )}
@@ -408,13 +397,9 @@ export default function AgentDetailPage() {
               <h2 className="text-base font-semibold text-text-primary mb-3">Model</h2>
               <div className="inline-flex items-center gap-2.5 px-4 py-3 bg-bg-card border border-border-subtle rounded-xl">
                 <Icons.Cpu size={14} className="text-text-muted" />
-<<<<<<< HEAD
                 <span className="text-sm text-text-secondary font-medium">
                   {MODEL_LABELS[agent.model] || agent.model || 'Claude Sonnet'}
                 </span>
-=======
-                <span className="text-sm text-text-secondary font-medium">{agent.model || 'Claude Sonnet'}</span>
->>>>>>> origin/main
               </div>
             </div>
           )}

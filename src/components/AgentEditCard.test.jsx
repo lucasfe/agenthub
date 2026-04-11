@@ -7,7 +7,10 @@ import { renderWithProviders } from '../test/test-utils'
 const apiMock = vi.hoisted(() => ({
   fetchAgents: vi.fn(),
   fetchTeams: vi.fn(),
+<<<<<<< HEAD
   fetchTools: vi.fn().mockResolvedValue([]),
+=======
+>>>>>>> origin/main
   updateAgent: vi.fn(),
 }))
 

@@ -94,10 +94,13 @@ export default function CreateAgentPage() {
         content,
         tools,
         model,
+<<<<<<< HEAD
         capabilities: capabilities
           .split(',')
           .map((c) => c.trim())
           .filter(Boolean),
+=======
+>>>>>>> origin/main
       })
       await refreshAgents()
       navigate(`/agent/${categorySlug}/${agentId}`)

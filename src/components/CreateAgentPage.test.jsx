@@ -117,9 +117,14 @@ describe('CreateAgentPage', () => {
         featured: false,
         popularity: 0,
         content: '',
+<<<<<<< HEAD
         tools: [],
         model: 'claude-sonnet-4-6',
         capabilities: [],
+=======
+        tools: ['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep'],
+        model: 'Claude Sonnet',
+>>>>>>> origin/main
       })
     })
   })

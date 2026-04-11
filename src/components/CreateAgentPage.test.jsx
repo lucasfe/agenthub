@@ -4,9 +4,33 @@ import userEvent from '@testing-library/user-event'
 import CreateAgentPage from './CreateAgentPage'
 import { renderWithProviders } from '../test/test-utils'
 
+const mockTools = [
+  {
+    id: 'web_search',
+    name: 'Web Search',
+    description: 'Search the web for current information.',
+    icon: 'Search',
+    category: 'research',
+    input_schema: {},
+    requires_approval: false,
+    enabled: true,
+  },
+  {
+    id: 'generate_file',
+    name: 'Generate File',
+    description: 'Create a downloadable file.',
+    icon: 'FileDown',
+    category: 'files',
+    input_schema: {},
+    requires_approval: false,
+    enabled: true,
+  },
+]
+
 vi.mock('../lib/api', () => ({
   fetchAgents: vi.fn().mockResolvedValue([]),
   fetchTeams: vi.fn().mockResolvedValue([]),
+  fetchTools: vi.fn().mockResolvedValue(mockTools),
   createAgent: vi.fn().mockResolvedValue({ id: 'test-agent' }),
 }))
 
@@ -47,10 +71,12 @@ describe('CreateAgentPage', () => {
     expect(screen.getByTitle('Cyan')).toBeInTheDocument()
   })
 
-  it('renders tool toggles', () => {
+  it('renders DB-driven tools grouped by category', async () => {
     renderWithProviders(<CreateAgentPage />)
-    expect(screen.getByText('Bash')).toBeInTheDocument()
-    expect(screen.getByText('Glob')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText('Web Search')).toBeInTheDocument()
+      expect(screen.getByText('Generate File')).toBeInTheDocument()
+    })
   })
 
   it('renders model options', () => {
@@ -58,6 +84,13 @@ describe('CreateAgentPage', () => {
     expect(screen.getByText('Claude Sonnet')).toBeInTheDocument()
     expect(screen.getByText('Claude Opus')).toBeInTheDocument()
     expect(screen.getByText('Claude Haiku')).toBeInTheDocument()
+  })
+
+  it('renders a capabilities input', () => {
+    renderWithProviders(<CreateAgentPage />)
+    expect(
+      screen.getByPlaceholderText(/comma-separated/i)
+    ).toBeInTheDocument()
   })
 
   it('submits the form and calls createAgent', async () => {
@@ -82,8 +115,9 @@ describe('CreateAgentPage', () => {
         featured: false,
         popularity: 0,
         content: '',
-        tools: ['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep'],
-        model: 'Claude Sonnet',
+        tools: [],
+        model: 'claude-sonnet-4-6',
+        capabilities: [],
       })
     })
   })

@@ -8,6 +8,7 @@ vi.mock('../lib/api', () => ({
     { id: 'frontend-developer', name: 'Frontend Dev', category: 'Development Team', description: 'Frontend', tags: ['React'], icon: 'Monitor', color: 'blue', popularity: 90 },
   ]),
   fetchTeams: vi.fn().mockResolvedValue([]),
+  fetchTools: vi.fn().mockResolvedValue([]),
 }))
 
 const mockTeam = {

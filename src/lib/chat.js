@@ -76,6 +76,8 @@ export async function streamChat({ messages, onDelta, onToolCall, onDone, onErro
 
         if (evt.type === 'text') {
           onDelta?.(evt.value)
+        } else if (evt.type === 'tool_call') {
+          onToolCall?.({ name: evt.name, input: evt.input })
         } else if (evt.type === 'done') {
           onDone?.()
           return

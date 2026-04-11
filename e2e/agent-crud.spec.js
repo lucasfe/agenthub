@@ -40,9 +40,7 @@ test.describe('Agent Creation', () => {
   })
 
   test('create agent with all fields filled', async ({ page }) => {
-    const agentName = `Full Agent ${uniqueId()}`
-    const agentId = agentName.toLowerCase().replace(/\s+/g, '-')
-    createdAgentIds.push(agentId)
+    const agentName = `E2E Full Agent ${uniqueId()}`
 
     await page.goto(`${BASE}/create`)
 

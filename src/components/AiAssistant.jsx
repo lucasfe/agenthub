@@ -241,15 +241,19 @@ export default function AiAssistant({ open, onClose }) {
               onChange={(e) => setInput(e.target.value)}
               placeholder="Type a message..."
               className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-muted outline-none py-1.5"
-              disabled={isTyping}
+              disabled={isStreaming}
             />
             <button
               type="submit"
-              disabled={!input.trim() || isTyping}
+              disabled={!input.trim() || isStreaming}
               className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
               aria-label="Send message"
             >
-              <Send size={14} />
+              {isStreaming ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Send size={14} />
+              )}
             </button>
           </div>
           <p
@@ -257,7 +261,7 @@ export default function AiAssistant({ open, onClose }) {
               fullscreen ? 'max-w-3xl mx-auto' : ''
             }`}
           >
-            Responses are currently mocked — wire this up to a real API later.
+            Powered by Claude via Supabase Edge Functions.
           </p>
         </form>
       </aside>

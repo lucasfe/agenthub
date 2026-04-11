@@ -70,6 +70,7 @@ export default function Header() {
       </header>
 
       <CommandPalette open={paletteOpen} onClose={closePalette} />
+      <AiAssistant open={assistantOpen} onClose={closeAssistant} />
     </>
   )
 }

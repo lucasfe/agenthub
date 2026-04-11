@@ -81,11 +81,15 @@ export default function AiAssistant({ open, onClose }) {
         aria-hidden="true"
       />
 
-      {/* Slide-out panel */}
+      {/* Panel — slide-out on the right, or full screen */}
       <aside
         role="dialog"
         aria-label="AI Assistant"
-        className="fixed top-0 right-0 h-full w-full max-w-md z-50 bg-bg-sidebar border-l border-border-subtle shadow-2xl flex flex-col"
+        className={`fixed z-50 bg-bg-sidebar shadow-2xl flex flex-col ${
+          fullscreen
+            ? 'inset-0'
+            : 'top-0 right-0 h-full w-full max-w-md border-l border-border-subtle'
+        }`}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 h-16 border-b border-border-subtle shrink-0">

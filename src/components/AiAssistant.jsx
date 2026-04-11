@@ -100,6 +100,7 @@ export default function AiAssistant({ open, onClose }) {
 
     await streamChat({
       messages: outgoing,
+      agents,
       signal: controller.signal,
       onDelta: (delta) => {
         setMessages((prev) => {

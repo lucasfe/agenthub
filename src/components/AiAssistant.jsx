@@ -199,15 +199,28 @@ export default function AiAssistant({ open, onClose }) {
           <div
             className={`space-y-4 ${fullscreen ? 'max-w-3xl mx-auto' : ''}`}
           >
-            {messages.map((msg, i) => (
-              <MessageBubble key={i} role={msg.role} content={msg.content} />
-            ))}
-            {isTyping && (
-              <div className="flex items-center gap-2 text-text-muted text-sm">
-                <Loader2 size={14} className="animate-spin" />
-                <span>Thinking…</span>
-              </div>
-            )}
+            {messages.map((msg, i) => {
+              const isLast = i === messages.length - 1
+              const showCursor =
+                isStreaming && isLast && msg.role === 'assistant' && !msg.error
+              return (
+                <MessageBubble
+                  key={i}
+                  role={msg.role}
+                  content={msg.content}
+                  error={msg.error}
+                  showCursor={showCursor}
+                />
+              )
+            })}
+            {isStreaming &&
+              messages[messages.length - 1]?.role === 'assistant' &&
+              messages[messages.length - 1]?.content === '' && (
+                <div className="flex items-center gap-2 text-text-muted text-sm">
+                  <Loader2 size={14} className="animate-spin" />
+                  <span>Thinking…</span>
+                </div>
+              )}
           </div>
         </div>
 

@@ -111,6 +111,14 @@ export default function AiAssistant({ open, onClose }) {
               Clear
             </button>
             <button
+              onClick={() => setFullscreen((v) => !v)}
+              className="p-2 rounded-lg hover:bg-bg-input text-text-secondary hover:text-text-primary transition-colors"
+              aria-label={fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+              title={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+            >
+              {fullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+            </button>
+            <button
               onClick={onClose}
               className="p-2 rounded-lg hover:bg-bg-input text-text-secondary hover:text-text-primary transition-colors"
               aria-label="Close assistant"

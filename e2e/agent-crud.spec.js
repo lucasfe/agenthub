@@ -141,9 +141,7 @@ test.describe('Agent Creation', () => {
   })
 
   test('created agent is accessible via detail page', async ({ page }) => {
-    const agentName = `Detail Agent ${uniqueId()}`
-    const agentId = agentName.toLowerCase().replace(/\s+/g, '-')
-    createdAgentIds.push(agentId)
+    const agentName = `E2E Detail Agent ${uniqueId()}`
 
     await page.goto(`${BASE}/create`)
     await page.getByPlaceholder('e.g. Frontend Developer').fill(agentName)

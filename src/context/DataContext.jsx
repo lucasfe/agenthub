@@ -1,11 +1,12 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import { fetchAgents, fetchTeams } from '../lib/api'
+import { fetchAgents, fetchTeams, fetchTools } from '../lib/api'
 
 const DataContext = createContext()
 
 export function DataProvider({ children }) {
   const [agents, setAgents] = useState([])
   const [teams, setTeams] = useState([])
+  const [tools, setTools] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -14,6 +15,7 @@ export function DataProvider({ children }) {
     const results = await Promise.allSettled([
       fetchAgents(),
       fetchTeams(),
+      fetchTools(),
     ])
 
     if (results[0].status === 'fulfilled') {
@@ -26,6 +28,12 @@ export function DataProvider({ children }) {
       setTeams(results[1].value)
     } else {
       console.error('Failed to load teams:', results[1].reason)
+    }
+
+    if (results[2].status === 'fulfilled') {
+      setTools(results[2].value)
+    } else {
+      console.error('Failed to load tools:', results[2].reason)
     }
 
     const errors = results.filter(r => r.status === 'rejected').map(r => r.reason.message)
@@ -55,8 +63,17 @@ export function DataProvider({ children }) {
     }
   }
 
+  const refreshTools = async () => {
+    try {
+      const data = await fetchTools()
+      setTools(data)
+    } catch (err) {
+      console.error('Failed to refresh tools:', err)
+    }
+  }
+
   return (
-    <DataContext.Provider value={{ agents, teams, loading, error, refreshAgents, refreshTeams }}>
+    <DataContext.Provider value={{ agents, teams, tools, loading, error, refreshAgents, refreshTeams, refreshTools }}>
       {children}
     </DataContext.Provider>
   )

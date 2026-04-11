@@ -15,6 +15,7 @@ const WELCOME_MESSAGE = {
 const INITIAL_MESSAGES = [WELCOME_MESSAGE]
 
 export default function AiAssistant({ open, onClose }) {
+  const { agents } = useData()
   const [messages, setMessages] = useState(INITIAL_MESSAGES)
   const [input, setInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)

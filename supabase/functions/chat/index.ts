@@ -60,6 +60,44 @@ DO NOT call tools for questions about the hub itself, how features work, or gene
 
 Be concise, friendly, and reply in the same language the user used.`
 
+const AGENT_FIELD_PROPS = {
+  name: {
+    type: 'string',
+    description: 'Display name of the agent, in Title Case. Example: "Security Auditor".',
+  },
+  category: {
+    type: 'string',
+    enum: ['Development Team', 'AI Specialists'],
+    description: 'Which category the agent belongs to.',
+  },
+  description: {
+    type: 'string',
+    description: 'A single-sentence summary of what this agent does.',
+  },
+  tags: {
+    type: 'array',
+    items: { type: 'string' },
+    minItems: 1,
+    maxItems: 6,
+    description: 'Short topical tags (e.g. "OWASP", "Pentest", "React").',
+  },
+  icon: {
+    type: 'string',
+    description:
+      'PascalCase name of a lucide-react icon (e.g. Shield, Code, Database, Palette, Bot, Sparkles, Bug, Wrench).',
+  },
+  color: {
+    type: 'string',
+    enum: ['blue', 'green', 'purple', 'amber', 'rose', 'cyan'],
+    description: 'Accent color for the agent card.',
+  },
+  content: {
+    type: 'string',
+    description:
+      'The full markdown system prompt for this agent. 2–4 paragraphs, using "##" subheadings for sections like Responsibilities, Approach, etc.',
+  },
+}
+
 const DRAFT_AGENT_TOOL = {
   name: 'draft_agent',
   description:
@@ -67,44 +105,48 @@ const DRAFT_AGENT_TOOL = {
   input_schema: {
     type: 'object',
     required: ['name', 'category', 'description', 'tags', 'icon', 'color', 'content'],
+    properties: AGENT_FIELD_PROPS,
+  },
+}
+
+const UPDATE_AGENT_TOOL = {
+  name: 'update_agent',
+  description:
+    'Propose an update to an existing agent for the user to review and confirm. Renders as a diff card in the chat — the user clicks "Apply changes" to commit. Call this whenever the user asks to modify, edit, or change an existing agent.',
+  input_schema: {
+    type: 'object',
+    required: ['id', 'updates'],
     properties: {
-      name: {
-        type: 'string',
-        description: 'Display name of the agent, in Title Case. Example: "Security Auditor".',
-      },
-      category: {
-        type: 'string',
-        enum: ['Development Team', 'AI Specialists'],
-        description: 'Which category the agent belongs to.',
-      },
-      description: {
-        type: 'string',
-        description: 'A single-sentence summary of what this agent does.',
-      },
-      tags: {
-        type: 'array',
-        items: { type: 'string' },
-        minItems: 2,
-        maxItems: 6,
-        description: 'Short topical tags (e.g. "OWASP", "Pentest", "React").',
-      },
-      icon: {
+      id: {
         type: 'string',
         description:
-          'PascalCase name of a lucide-react icon that matches this agent. Examples: Shield, Code, Database, Palette, Bot, Sparkles, Bug, Wrench.',
+          'The kebab-case ID of the target agent. Must match an agent from the "Existing Agents" summary.',
       },
-      color: {
-        type: 'string',
-        enum: ['blue', 'green', 'purple', 'amber', 'rose', 'cyan'],
-        description: 'Accent color for the agent card.',
-      },
-      content: {
-        type: 'string',
+      updates: {
+        type: 'object',
         description:
-          'The full markdown system prompt for this agent. 2–4 paragraphs, using "##" subheadings for sections like Responsibilities, Approach, etc.',
+          'Partial object with ONLY the fields being changed. Do not include fields that remain the same.',
+        properties: AGENT_FIELD_PROPS,
+        additionalProperties: false,
       },
     },
   },
+}
+
+function buildSystemPrompt(agentsContext: unknown): string {
+  if (!Array.isArray(agentsContext) || agentsContext.length === 0) {
+    return BASE_SYSTEM_PROMPT
+  }
+  const lines = agentsContext
+    .filter((a: any) => a && typeof a.id === 'string' && typeof a.name === 'string')
+    .map((a: any) => {
+      const tags = Array.isArray(a.tags) && a.tags.length > 0 ? ` [${a.tags.join(', ')}]` : ''
+      const desc = typeof a.description === 'string' && a.description ? ` — ${a.description}` : ''
+      const cat = typeof a.category === 'string' && a.category ? ` (${a.category})` : ''
+      return `- ${a.id}: ${a.name}${cat}${desc}${tags}`
+    })
+  if (lines.length === 0) return BASE_SYSTEM_PROMPT
+  return `${BASE_SYSTEM_PROMPT}\n\n## Existing Agents\n\n${lines.join('\n')}`
 }
 
 const corsHeaders = {

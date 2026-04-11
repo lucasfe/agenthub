@@ -63,6 +63,38 @@ describe('AiAssistant', () => {
     )
   })
 
+  it('renders an AgentDraftCard when streamChat emits a tool_call', async () => {
+    chatMock.streamChat.mockImplementation(async ({ onDelta, onToolCall, onDone }) => {
+      onDelta('Beleza! Montei um draft:')
+      onToolCall({
+        name: 'draft_agent',
+        input: {
+          name: 'Security Auditor',
+          category: 'AI Specialists',
+          description: 'Expert in OWASP',
+          tags: ['OWASP', 'Pentest'],
+          icon: 'Shield',
+          color: 'rose',
+          content: '## Responsibilities\n\nAudit code.',
+        },
+      })
+      onDone()
+    })
+
+    const user = userEvent.setup()
+    renderWithProviders(<AiAssistant open={true} onClose={() => {}} />)
+
+    await user.type(screen.getByPlaceholderText('Type a message...'), 'cria um agente de security')
+    await user.click(screen.getByLabelText('Send message'))
+
+    await waitFor(() => {
+      expect(screen.getByText('Security Auditor')).toBeInTheDocument()
+    })
+    expect(screen.getByText(/Beleza! Montei um draft/)).toBeInTheDocument()
+    expect(screen.getByText(/Expert in OWASP/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /create agent/i })).toBeInTheDocument()
+  })
+
   it('shows an error bubble when streamChat fails', async () => {
     chatMock.streamChat.mockImplementation(async ({ onError }) => {
       onError(new Error('boom'))

@@ -5,9 +5,20 @@ import AiAssistant from './AiAssistant'
 import { renderWithProviders } from '../test/test-utils'
 
 vi.mock('../lib/api', () => ({
-  fetchAgents: vi.fn().mockResolvedValue([]),
+  fetchAgents: vi.fn().mockResolvedValue([
+    {
+      id: 'frontend-developer',
+      name: 'Frontend Developer',
+      category: 'Development Team',
+      description: 'Expert in React',
+      tags: ['React', 'CSS'],
+      icon: 'Monitor',
+      color: 'blue',
+    },
+  ]),
   fetchTeams: vi.fn().mockResolvedValue([]),
   createAgent: vi.fn().mockResolvedValue({ id: 'mock' }),
+  updateAgent: vi.fn().mockResolvedValue({ id: 'frontend-developer' }),
 }))
 
 // Controllable mock of the chat streaming client.

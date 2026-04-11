@@ -75,16 +75,16 @@ export default function AiAssistant({ open, onClose }) {
 
     // Build the outgoing history: strip the welcome message and any error
     // bubbles so we don't feed them back to the model. For assistant messages
-    // that had a previous draft_agent toolCall, serialize the draft as text
-    // so Claude has context for iteration without needing to re-send tool_use.
+    // that had a previous toolCall, serialize it as text so Claude has
+    // context for iteration without needing to re-send tool_use blocks.
     const userMessage = { role: 'user', content: text }
     const nextMessages = [...messages, userMessage]
     const outgoing = nextMessages
       .filter((m) => !m.error && m !== WELCOME_MESSAGE)
       .map((m) => {
         if (m.role === 'assistant' && m.toolCall) {
-          const draftSummary = `\n\n[I drafted an agent with these fields: ${JSON.stringify(m.toolCall.input)}]`
-          return { role: m.role, content: (m.content || '') + draftSummary }
+          const summary = serializeToolCall(m.toolCall)
+          return { role: m.role, content: (m.content || '') + summary }
         }
         return { role: m.role, content: m.content }
       })

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Sparkles, X, Send, Loader2, Maximize2, Minimize2 } from 'lucide-react'
 import { streamChat, isChatConfigured } from '../lib/chat'
+import Markdown from '../lib/markdown'
 
 const WELCOME_MESSAGE = {
   role: 'assistant',

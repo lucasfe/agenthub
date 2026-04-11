@@ -1,29 +1,23 @@
 import { useState, useEffect, useRef } from 'react'
 import { Sparkles, X, Send, Loader2, Maximize2, Minimize2 } from 'lucide-react'
+import { streamChat, isChatConfigured } from '../lib/chat'
 
-const INITIAL_MESSAGES = [
-  {
-    role: 'assistant',
-    content:
-      "Hi! I'm your AI assistant. Ask me anything about agents, teams, or how to get the most out of this hub.",
-  },
-]
+const WELCOME_MESSAGE = {
+  role: 'assistant',
+  content:
+    "Hi! I'm your AI assistant. Ask me anything about agents, teams, or how to get the most out of this hub.",
+}
 
-// Placeholder replies until a real backend is wired up.
-const MOCK_REPLIES = [
-  "Great question! I can help you explore agents and teams — try describing the task you want to accomplish.",
-  "You can stack multiple agents together and download them as a ZIP using the stack button in the bottom-right.",
-  "Teams are curated bundles of agents. Browse them in the Teams section or create your own from scratch.",
-  "Use ⌘K anywhere to quickly jump to any agent or team by name.",
-]
+const INITIAL_MESSAGES = [WELCOME_MESSAGE]
 
 export default function AiAssistant({ open, onClose }) {
   const [messages, setMessages] = useState(INITIAL_MESSAGES)
   const [input, setInput] = useState('')
-  const [isTyping, setIsTyping] = useState(false)
+  const [isStreaming, setIsStreaming] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
   const inputRef = useRef(null)
   const listRef = useRef(null)
+  const abortRef = useRef(null)
 
   // Focus the input when the panel opens
   useEffect(() => {

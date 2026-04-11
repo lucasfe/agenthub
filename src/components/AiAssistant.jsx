@@ -21,6 +21,7 @@ export default function AiAssistant({ open, onClose }) {
   const [messages, setMessages] = useState(INITIAL_MESSAGES)
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
+  const [fullscreen, setFullscreen] = useState(false)
   const inputRef = useRef(null)
   const listRef = useRef(null)
 

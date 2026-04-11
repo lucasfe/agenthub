@@ -3,6 +3,8 @@ import { Sparkles, X, Send, Loader2, Maximize2, Minimize2 } from 'lucide-react'
 import { streamChat, isChatConfigured } from '../lib/chat'
 import Markdown from '../lib/markdown'
 import AgentDraftCard from './AgentDraftCard'
+import AgentEditCard from './AgentEditCard'
+import { useData } from '../context/DataContext'
 
 const WELCOME_MESSAGE = {
   role: 'assistant',

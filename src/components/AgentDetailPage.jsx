@@ -14,12 +14,16 @@ const colorMap = {
   cyan: { bg: 'from-cyan-500/15 to-cyan-600/5', border: 'border-cyan-500/20', icon: 'text-cyan-400', tag: 'bg-cyan-500/10 text-cyan-300' },
 }
 
-const defaultTools = ['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep']
+const MODEL_LABELS = {
+  'claude-opus-4-6': 'Claude Opus',
+  'claude-sonnet-4-6': 'Claude Sonnet',
+  'claude-haiku-4-5-20251001': 'Claude Haiku',
+}
 
 export default function AgentDetailPage() {
   const { category, agentId } = useParams()
   const navigate = useNavigate()
-  const { refreshAgents } = useData()
+  const { refreshAgents, tools: availableTools } = useData()
   const [agent, setAgent] = useState(null)
   const [agentLoading, setAgentLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('description')

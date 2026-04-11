@@ -1,10 +1,11 @@
 // Chat streaming client — calls the `chat` Supabase Edge Function and parses
-// its SSE stream, invoking callbacks as text deltas arrive.
+// its SSE stream, invoking callbacks as text deltas and tool calls arrive.
 //
 // Usage:
 //   await streamChat({
 //     messages: [{ role: 'user', content: 'hi' }],
 //     onDelta: (text) => appendToLastBubble(text),
+//     onToolCall: ({ name, input }) => handleDraft(input),
 //     onDone: () => setTyping(false),
 //     onError: (err) => showError(err),
 //     signal: abortController.signal,

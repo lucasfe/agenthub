@@ -19,7 +19,15 @@ export function isChatConfigured() {
   return Boolean(SUPABASE_URL && SUPABASE_ANON_KEY)
 }
 
-export async function streamChat({ messages, onDelta, onToolCall, onDone, onError, signal }) {
+export async function streamChat({
+  messages,
+  agents,
+  onDelta,
+  onToolCall,
+  onDone,
+  onError,
+  signal,
+}) {
   if (!isChatConfigured()) {
     onError?.(new Error('Chat is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.'))
     return

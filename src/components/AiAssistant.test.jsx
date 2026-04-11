@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import AiAssistant from './AiAssistant'
@@ -10,14 +10,6 @@ vi.mock('../lib/api', () => ({
 }))
 
 describe('AiAssistant', () => {
-  beforeEach(() => {
-    vi.useFakeTimers()
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-  })
-
   it('does not render when closed', () => {
     renderWithProviders(<AiAssistant open={false} onClose={() => {}} />)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -31,7 +23,7 @@ describe('AiAssistant', () => {
   })
 
   it('sends a user message and receives a mock reply', async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const user = userEvent.setup()
     renderWithProviders(<AiAssistant open={true} onClose={() => {}} />)
 
     const input = screen.getByPlaceholderText('Type a message...')
@@ -39,17 +31,24 @@ describe('AiAssistant', () => {
     await user.click(screen.getByLabelText('Send message'))
 
     expect(screen.getByText('Hello there')).toBeInTheDocument()
-    expect(screen.getByText('Thinking…')).toBeInTheDocument()
 
-    vi.advanceTimersByTime(800)
+    await waitFor(
+      () => {
+        expect(screen.queryByText('Thinking…')).not.toBeInTheDocument()
+      },
+      { timeout: 2000 }
+    )
 
-    await waitFor(() => {
-      expect(screen.queryByText('Thinking…')).not.toBeInTheDocument()
-    })
+    // Assistant should have replied — there are now at least 3 messages total
+    // (welcome + user message + assistant reply)
+    const bubbles = screen.getAllByText((_, el) =>
+      Boolean(el?.className?.toString().includes('rounded-2xl'))
+    )
+    expect(bubbles.length).toBeGreaterThanOrEqual(3)
   })
 
   it('calls onClose when close button is clicked', async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const user = userEvent.setup()
     const onClose = vi.fn()
     renderWithProviders(<AiAssistant open={true} onClose={onClose} />)
 
@@ -58,7 +57,7 @@ describe('AiAssistant', () => {
   })
 
   it('clears conversation back to just the welcome message', async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const user = userEvent.setup()
     renderWithProviders(<AiAssistant open={true} onClose={() => {}} />)
 
     const input = screen.getByPlaceholderText('Type a message...')

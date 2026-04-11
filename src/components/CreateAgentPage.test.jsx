@@ -89,7 +89,7 @@ describe('CreateAgentPage', () => {
   it('renders a capabilities input', () => {
     renderWithProviders(<CreateAgentPage />)
     expect(
-      screen.getByPlaceholderText(/comma-separated/i)
+      screen.getByPlaceholderText(/market research, pitch writing/i)
     ).toBeInTheDocument()
   })
 

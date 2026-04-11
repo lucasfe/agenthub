@@ -1,13 +1,16 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Search, GitBranch, Moon, Sun } from 'lucide-react'
+import { Search, GitBranch, Moon, Sun, Sparkles } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 import CommandPalette from './CommandPalette'
+import AiAssistant from './AiAssistant'
 
 export default function Header() {
   const { theme, toggleTheme } = useTheme()
   const [paletteOpen, setPaletteOpen] = useState(false)
+  const [assistantOpen, setAssistantOpen] = useState(false)
 
   const closePalette = useCallback(() => setPaletteOpen(false), [])
+  const closeAssistant = useCallback(() => setAssistantOpen(false), [])
 
   useEffect(() => {
     const handleKeyDown = (e) => {

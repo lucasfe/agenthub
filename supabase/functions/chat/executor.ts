@@ -645,6 +645,7 @@ async function runStep(
   emit: EmitFn,
   apiKey: string,
   signal: AbortSignal,
+  userId?: string,
 ): Promise<{
   text: string
   tokens_in: number

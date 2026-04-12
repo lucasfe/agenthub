@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Bot, Users, LogIn, ChevronsLeft, ChevronsRight } from 'lucide-react'
+import { Bot, Users, LogIn, LogOut, Settings, ChevronsLeft, ChevronsRight } from 'lucide-react'
 import { Link, useLocation } from 'react-router'
 import { useData } from '../context/DataContext'
+import { useAuth } from '../context/AuthContext'
 
 export default function Sidebar() {
   const location = useLocation()

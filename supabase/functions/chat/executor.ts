@@ -953,6 +953,7 @@ export async function runExecutorBranch(
 
       if (result.error) {
         emit('step.error', { step_id: step.id, error: result.error })
+        currentStepId = null
         status = 'error'
         errorMessage = result.error
         failedStepId = step.id
@@ -966,6 +967,7 @@ export async function runExecutorBranch(
         tokens_in: result.tokens_in,
         tokens_out: result.tokens_out,
       })
+      currentStepId = null
     }
 
     if (status === 'done') {
@@ -984,8 +986,27 @@ export async function runExecutorBranch(
     }
   } catch (err) {
     status = 'error'
-    errorMessage = (err as Error).message
-    emit('run.error', { run_id: runId, error: errorMessage })
+    // Friendly message for the wall-clock timeout (AbortError).
+    const raw = (err as Error).message || 'unknown error'
+    const isAbort =
+      (err as Error)?.name === 'AbortError' ||
+      raw.includes('aborted') ||
+      raw.includes('abort')
+    errorMessage = isAbort
+      ? 'Run exceeded the wall-clock time limit. Try a shorter task, split into more steps, or increase RUN_TIMEOUT_MS.'
+      : raw
+
+    // If we were in the middle of a step when the error hit, surface the
+    // step as errored so the UI doesn't keep spinning it forever.
+    if (currentStepId !== null) {
+      emit('step.error', { step_id: currentStepId, error: errorMessage })
+      failedStepId = currentStepId
+    }
+    emit('run.error', {
+      run_id: runId,
+      error: errorMessage,
+      failed_step_id: failedStepId,
+    })
   }
 
   // Log the completed run (fire-and-forget).

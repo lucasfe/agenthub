@@ -837,6 +837,7 @@ async function runStep(
             agentsContext,
             stepId: step.id,
             toolCallId: toolUse.id,
+            userId,
           })
         } catch (err) {
           result = { ok: false, error: (err as Error).message }

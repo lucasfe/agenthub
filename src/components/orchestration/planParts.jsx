@@ -3,6 +3,7 @@
 // right-side panel). Keep this file purely presentational — state management
 // lives in the parents.
 
+import { useState } from 'react'
 import * as Icons from 'lucide-react'
 import { downloadText, safeFilename } from '../../lib/download'
 

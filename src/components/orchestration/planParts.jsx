@@ -467,7 +467,7 @@ export function ToolCallBadge({ call, availableTools }) {
 // ─── RefineInput (shared) ───────────────────────────────────────────────────
 
 export function RefineInput({ isRefining, onSubmit }) {
-  const [text, setText] = React.useState('')
+  const [text, setText] = useState('')
   const handleSubmit = (e) => {
     e.preventDefault()
     const v = text.trim()

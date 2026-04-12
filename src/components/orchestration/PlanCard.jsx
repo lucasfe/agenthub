@@ -271,6 +271,14 @@ function StepRow({ step, state, isActive, availableTools }) {
   const liveText = state?.text || ''
   const liveTools = state?.toolCalls || []
   const stepDuration = formatDuration(state?.duration_ms)
+  const hasDownloadableText =
+    (status === 'done' || status === 'error') && liveText.trim().length > 0
+
+  const handleDownloadStep = () => {
+    const filename = `${safeFilename(step.agent_id)}_step_${step.id}.md`
+    const header = `# Step ${step.id} — ${step.agent_name || step.agent_id}\n\n_${step.task}_\n\n`
+    downloadText(header + liveText, filename, 'text/markdown')
+  }
 
   let statusBadge = null
   if (status === 'running') {

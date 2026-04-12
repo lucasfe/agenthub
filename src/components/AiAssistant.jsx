@@ -23,6 +23,9 @@ export default function AiAssistant({ open, onClose }) {
   const [input, setInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
+  // Which assistant message (by index) is currently opened in the side
+  // review panel. null means no panel is open. One panel at a time.
+  const [reviewPanelMsgIdx, setReviewPanelMsgIdx] = useState(null)
   const inputRef = useRef(null)
   const listRef = useRef(null)
   // Tracks the currently running session and which message index it writes to.

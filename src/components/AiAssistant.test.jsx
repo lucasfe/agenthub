@@ -517,7 +517,10 @@ describe('AiAssistant', () => {
       { type: 'run.done', run_id: 'run-dl', duration_ms: 1200 },
     ])
 
-    // Mock URL + click for the jsdom download helpers
+    // Mock URL + click for the jsdom download helpers (jsdom doesn't
+    // implement createObjectURL, so stub first then spy on the stub).
+    if (!URL.createObjectURL) URL.createObjectURL = () => 'blob://stub'
+    if (!URL.revokeObjectURL) URL.revokeObjectURL = () => {}
     const createSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob://fake')
     const revokeSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
     const clickSpy = vi

@@ -616,7 +616,7 @@ describe('AiAssistant', () => {
     await user.click(screen.getByLabelText('Send message'))
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /approve & run/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /quick approve/i })).toBeInTheDocument()
     })
 
     scriptSession([

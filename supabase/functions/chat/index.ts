@@ -786,6 +786,7 @@ Deno.serve(async (req: Request) => {
               stepAnswers: body.step_answers,
               apiKey,
               signal: timeoutController.signal,
+              userId,
             })
           } finally {
             clearTimeout(timeoutId)

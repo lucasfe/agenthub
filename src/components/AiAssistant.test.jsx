@@ -693,7 +693,7 @@ describe('AiAssistant', () => {
     await user.click(screen.getByLabelText('Send message'))
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /approve & run/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /quick approve/i })).toBeInTheDocument()
     })
 
     scriptSession([
@@ -703,12 +703,12 @@ describe('AiAssistant', () => {
       { type: 'run.error', run_id: 'run-err', error: 'Sub-agent exploded', failed_step_id: 1 },
     ])
 
-    await user.click(screen.getByRole('button', { name: /approve & run/i }))
+    await user.click(screen.getByRole('button', { name: /quick approve/i }))
 
     await waitFor(() => {
       expect(screen.getByText('Plan failed')).toBeInTheDocument()
     })
-    expect(screen.getAllByText(/Sub-agent exploded/).length).toBeGreaterThan(0)
-    expect(screen.getByText(/Failed at step 1/i)).toBeInTheDocument()
+    // Compact card detail line combines both pieces
+    expect(screen.getByText(/Failed at step 1.*Sub-agent exploded/i)).toBeInTheDocument()
   })
 })

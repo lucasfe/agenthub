@@ -1152,6 +1152,7 @@ export async function runExecutorBranch(
     stepAnswers?: Record<string | number, Record<string, string>>
     apiKey: string
     signal: AbortSignal
+    userId?: string
   },
 ): Promise<void> {
   const runId = crypto.randomUUID()

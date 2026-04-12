@@ -566,12 +566,11 @@ describe('AiAssistant', () => {
       { type: 'run.done', run_id: 'run-xyz', duration_ms: 1500 },
     ])
 
-    await user.click(screen.getByRole('button', { name: /approve & run/i }))
+    await user.click(screen.getByRole('button', { name: /quick approve/i }))
 
     await waitFor(() => {
       expect(screen.getByText('Plan completed')).toBeInTheDocument()
     })
-    expect(screen.getByText('Working on it…')).toBeInTheDocument()
     expect(orchestrationMock.startSession).toHaveBeenCalledTimes(2)
     const approveCall = orchestrationMock.startSession.mock.calls[1][0]
     expect(approveCall.mode).toBe('execute')

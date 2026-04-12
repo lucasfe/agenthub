@@ -614,6 +614,13 @@ export default function AiAssistant({ open, onClose }) {
                   <span>Planning…</span>
                 </div>
               )}
+            {isStreaming &&
+              messages[messages.length - 1]?.planStatus === 'analyzing' && (
+                <div className="flex items-center gap-2 text-text-muted text-sm">
+                  <Loader2 size={14} className="animate-spin" />
+                  <span>Analyzing requirements…</span>
+                </div>
+              )}
           </div>
         </div>
 

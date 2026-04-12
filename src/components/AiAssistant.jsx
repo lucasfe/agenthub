@@ -677,11 +677,13 @@ function MessageBubble({
   runSummary,
   runError,
   failedStepId,
+  stepAnswers,
   availableTools,
   availableAgents,
   onRefinePlan,
   onApprovePlan,
   onCancelPlan,
+  onAnswerChange,
 }) {
   const isUser = role === 'user'
   const hasPlan = Boolean(plan || planFallback || planStatus === 'proposing')

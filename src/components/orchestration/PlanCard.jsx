@@ -58,6 +58,32 @@ export default function PlanCard({
   const actualDuration = formatDuration(runSummary?.duration_ms)
   const stepCount = plan?.steps?.length ?? 0
 
+  // Any step output we can offer as a download? Collects done/error steps
+  // that produced any text. Also used to decide whether "Download all" shows.
+  const downloadableSteps = useMemo(() => {
+    if (!plan?.steps) return []
+    return plan.steps
+      .map((step) => {
+        const state = stepStates?.[step.id]
+        const text = state?.text?.trim() || ''
+        if (!text) return null
+        return { step, state, text }
+      })
+      .filter(Boolean)
+  }, [plan, stepStates])
+
+  const handleDownloadAll = () => {
+    if (downloadableSteps.length === 0) return
+    const header = `# Plan output\n\n`
+    const body = downloadableSteps
+      .map(({ step, text }) => {
+        const name = step.agent_name || step.agent_id
+        return `## Step ${step.id} — ${name}\n\n_${step.task}_\n\n${text}`
+      })
+      .join('\n\n---\n\n')
+    downloadText(header + body, 'plan-output.md', 'text/markdown')
+  }
+
   let headerLabel = 'Proposed plan'
   let HeaderIcon = Icons.ListChecks
   let headerTone = 'text-blue-300'

@@ -532,6 +532,16 @@ export default function AiAssistant({ open, onClose }) {
 
   if (!open) return null
 
+  // Resolve which message (if any) is currently shown in the review panel.
+  const reviewPanelOpen =
+    reviewPanelMsgIdx !== null &&
+    reviewPanelMsgIdx >= 0 &&
+    reviewPanelMsgIdx < messages.length
+  const reviewMsg = reviewPanelOpen ? messages[reviewPanelMsgIdx] : null
+  // In compact mode the aside is 400px wide — no room for a split view, so
+  // the panel overlays the chat. In fullscreen we split horizontally.
+  const compactPanelOverlay = reviewPanelOpen && !fullscreen
+
   return (
     <>
       {/* Backdrop */}
@@ -545,12 +555,18 @@ export default function AiAssistant({ open, onClose }) {
       <aside
         role="dialog"
         aria-label="AI Assistant"
-        className={`fixed z-50 bg-bg-sidebar shadow-2xl flex flex-col ${
+        className={`fixed z-50 bg-bg-sidebar shadow-2xl flex flex-row ${
           fullscreen
             ? 'inset-0'
             : 'top-0 right-0 h-full w-full max-w-md border-l border-border-subtle'
         }`}
       >
+        {/* Chat column (hidden when panel overlays in compact mode) */}
+        <div
+          className={`flex flex-col min-w-0 ${
+            compactPanelOverlay ? 'hidden' : 'flex-1'
+          }`}
+        >
         {/* Header */}
         <div className="flex items-center justify-between px-5 h-16 border-b border-border-subtle shrink-0">
           <div className="flex items-center gap-3">

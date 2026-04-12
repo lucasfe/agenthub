@@ -103,17 +103,28 @@ export default function PlanCard({
       {/* Refine input */}
       {!isLocked && (
         <form onSubmit={handleRefine} className="px-4 pb-3">
-          <div className="flex items-center gap-2 bg-bg-input border border-border-subtle rounded-lg px-3 py-1.5 focus-within:border-border-hover transition-colors">
+          <div className="flex items-center gap-2 bg-bg-input border border-border-subtle rounded-lg pl-3 pr-1.5 py-1 focus-within:border-border-hover transition-colors">
             <Icons.Wand2 size={13} className="text-text-muted shrink-0" />
             <input
               type="text"
               value={refineText}
               onChange={(e) => setRefineText(e.target.value)}
               placeholder={isRefining ? 'Refining plan…' : 'Refine plan (e.g. "remove step 3")'}
-              className="flex-1 bg-transparent text-xs text-text-primary placeholder:text-text-muted outline-none py-1"
+              className="flex-1 bg-transparent text-xs text-text-primary placeholder:text-text-muted outline-none py-1.5"
               disabled={isRefining}
             />
-            {isRefining && <Icons.Loader2 size={13} className="text-text-muted animate-spin" />}
+            <button
+              type="submit"
+              disabled={isRefining || !refineText.trim()}
+              aria-label="Refine plan"
+              className="p-1.5 rounded-md text-text-muted hover:text-text-primary hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              {isRefining ? (
+                <Icons.Loader2 size={13} className="animate-spin" />
+              ) : (
+                <Icons.ArrowRight size={13} />
+              )}
+            </button>
           </div>
         </form>
       )}

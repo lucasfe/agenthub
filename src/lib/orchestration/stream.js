@@ -36,6 +36,7 @@ export async function streamOrchestration({
   refinement,
   plan,
   originalTask,
+  stepAnswers,
   signal,
   onEvent,
 }) {

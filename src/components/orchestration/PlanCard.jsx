@@ -169,6 +169,9 @@ export default function PlanCard({
               state={state}
               isActive={isActive}
               availableTools={availableTools}
+              answers={stepAnswers?.[step.id] || {}}
+              editable={!isLocked}
+              onAnswerChange={(key, value) => onAnswerChange?.(step.id, key, value)}
             />
           )
         })}

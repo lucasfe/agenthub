@@ -251,12 +251,28 @@ export default function PlanCard({
         </form>
       )}
 
+      {/* Missing required warning */}
+      {!isLocked && missingRequiredCount > 0 && (
+        <div className="mx-4 mb-3 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center gap-2">
+          <Icons.AlertTriangle size={13} className="text-amber-400 shrink-0" />
+          <p className="text-xs text-amber-200/90">
+            {missingRequiredCount} required field
+            {missingRequiredCount === 1 ? '' : 's'} needed before running.
+          </p>
+        </div>
+      )}
+
       {/* Actions */}
       {!isLocked && (
         <div className="px-4 py-3 bg-black/20 border-t border-white/5 flex items-center gap-2">
           <button
             onClick={onApprove}
-            disabled={isRefining}
+            disabled={isRefining || missingRequiredCount > 0}
+            title={
+              missingRequiredCount > 0
+                ? `${missingRequiredCount} required field${missingRequiredCount === 1 ? '' : 's'} pending`
+                : undefined
+            }
             className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-medium text-white bg-blue-500 hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Icons.Play size={13} />

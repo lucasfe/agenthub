@@ -304,11 +304,20 @@ export default function PlanCard({
   )
 }
 
-function StepRow({ step, state, isActive, availableTools }) {
+function StepRow({
+  step,
+  state,
+  isActive,
+  availableTools,
+  answers = {},
+  editable = false,
+  onAnswerChange,
+}) {
   const colors = colorMap[step.agent_color] || colorMap.blue
   const IconComponent = Icons[step.agent_icon] || Icons.Bot
   const inputs = Array.isArray(step.inputs) ? step.inputs : []
   const declaredTools = Array.isArray(step.tools_used) ? step.tools_used : []
+  const requirements = Array.isArray(step.requirements) ? step.requirements : []
   const hasSensitive = declaredTools.some((toolId) => {
     const meta = availableTools?.find((t) => t.id === toolId)
     return meta?.requires_approval

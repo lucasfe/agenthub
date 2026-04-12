@@ -384,7 +384,8 @@ describe('AiAssistant', () => {
     ])
 
     const refineInput = screen.getByPlaceholderText(/refine plan/i)
-    await user.type(refineInput, 'make step 1 shorter{Enter}')
+    await user.type(refineInput, 'make step 1 shorter')
+    await user.click(screen.getByLabelText('Refine plan'))
 
     await waitFor(() => {
       expect(screen.getByText('Sketch something refined')).toBeInTheDocument()

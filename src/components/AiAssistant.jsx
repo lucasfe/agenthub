@@ -123,6 +123,9 @@ export default function AiAssistant({ open, onClose }) {
         case 'plan.proposing':
           patchMessageAt(messageIdx, { planStatus: 'proposing' })
           break
+        case 'plan.analyzing_requirements':
+          patchMessageAt(messageIdx, { planStatus: 'analyzing' })
+          break
         case 'plan.proposed':
           patchMessageAt(messageIdx, (msg) => ({
             ...msg,
@@ -130,6 +133,7 @@ export default function AiAssistant({ open, onClose }) {
             planStatus: 'proposed',
             planFallback: null,
             refineError: null,
+            stepAnswers: seedStepAnswers(event.plan, msg.stepAnswers),
           }))
           setIsStreaming(false)
           sessionRef.current = null

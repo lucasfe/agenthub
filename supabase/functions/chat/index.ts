@@ -669,6 +669,8 @@ Deno.serve(async (req: Request) => {
     agents_context?: unknown
     tools_context?: unknown
     refinement?: { previous_plan?: unknown; instructions?: string }
+    plan?: { steps?: unknown[] }
+    original_task?: string
   }
   try {
     body = await req.json()

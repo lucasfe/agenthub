@@ -60,6 +60,23 @@ export default function PlanCard({
   const actualDuration = formatDuration(runSummary?.duration_ms)
   const stepCount = plan?.steps?.length ?? 0
 
+  // Count required requirements that are still missing an answer. Used to
+  // gate the Approve & run button and surface a warning message.
+  const missingRequiredCount = useMemo(() => {
+    if (!plan?.steps) return 0
+    let count = 0
+    for (const step of plan.steps) {
+      const reqs = Array.isArray(step.requirements) ? step.requirements : []
+      const answers = stepAnswers?.[step.id] || {}
+      for (const req of reqs) {
+        if (!req || req.required !== true) continue
+        const v = answers[req.key]
+        if (typeof v !== 'string' || !v.trim()) count += 1
+      }
+    }
+    return count
+  }, [plan, stepAnswers])
+
   // Any step output we can offer as a download? Collects done/error steps
   // that produced any text. Also used to decide whether "Download all" shows.
   const downloadableSteps = useMemo(() => {

@@ -10,7 +10,7 @@ export async function fetchAgents() {
   requireSupabase()
   const { data, error } = await supabase
     .from('agents')
-    .select('id, name, category, description, tags, icon, color, featured, popularity')
+    .select('id, name, category, description, tags, icon, color, featured, popularity, tools, model, capabilities')
     .order('popularity', { ascending: false })
 
   if (error) throw error

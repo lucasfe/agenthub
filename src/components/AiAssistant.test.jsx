@@ -399,7 +399,7 @@ describe('AiAssistant', () => {
     expect(secondCall.refinement.instructions).toBe('make step 1 shorter')
   })
 
-  it('locks the PlanCard when the user approves', async () => {
+  it('executes the plan end-to-end when the user approves', async () => {
     scriptSession([
       {
         type: 'plan.proposed',
@@ -427,11 +427,87 @@ describe('AiAssistant', () => {
     await user.click(screen.getByLabelText('Send message'))
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /approve/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /approve & run/i })).toBeInTheDocument()
     })
 
-    await user.click(screen.getByRole('button', { name: /approve/i }))
-    expect(screen.getByText('Approved')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /approve/i })).not.toBeInTheDocument()
+    // Arm the executor session events BEFORE the user clicks approve.
+    scriptSession([
+      { type: 'run.started', run_id: 'run-xyz' },
+      {
+        type: 'step.started',
+        step_id: 1,
+        agent_id: 'frontend-developer',
+        agent_name: 'Frontend Developer',
+        agent_color: 'blue',
+        agent_icon: 'Monitor',
+      },
+      { type: 'step.text', step_id: 1, value: 'Working on it…' },
+      {
+        type: 'step.done',
+        step_id: 1,
+        duration_ms: 1234,
+        tokens_in: 50,
+        tokens_out: 10,
+      },
+      { type: 'run.done', run_id: 'run-xyz', duration_ms: 1500 },
+    ])
+
+    await user.click(screen.getByRole('button', { name: /approve & run/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Plan completed')).toBeInTheDocument()
+    })
+    expect(screen.getByText('Working on it…')).toBeInTheDocument()
+    expect(orchestrationMock.startSession).toHaveBeenCalledTimes(2)
+    const approveCall = orchestrationMock.startSession.mock.calls[1][0]
+    expect(approveCall.mode).toBe('execute')
+    expect(approveCall.plan).toBeTruthy()
+    expect(approveCall.plan.steps).toHaveLength(1)
+  })
+
+  it('surfaces a step error during execution', async () => {
+    scriptSession([
+      {
+        type: 'plan.proposed',
+        plan: {
+          steps: [
+            {
+              id: 1,
+              agent_id: 'frontend-developer',
+              agent_name: 'Frontend Developer',
+              agent_color: 'blue',
+              agent_icon: 'Monitor',
+              task: 'Fails',
+              inputs: ['original_task'],
+              tools_used: [],
+            },
+          ],
+        },
+      },
+    ])
+
+    const user = userEvent.setup()
+    renderWithProviders(<AiAssistant open={true} onClose={() => {}} />)
+
+    await user.type(screen.getByPlaceholderText('Type a message...'), 'task')
+    await user.click(screen.getByLabelText('Send message'))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /approve & run/i })).toBeInTheDocument()
+    })
+
+    scriptSession([
+      { type: 'run.started', run_id: 'run-err' },
+      { type: 'step.started', step_id: 1 },
+      { type: 'step.error', step_id: 1, error: 'Sub-agent exploded' },
+      { type: 'run.error', run_id: 'run-err', error: 'Sub-agent exploded', failed_step_id: 1 },
+    ])
+
+    await user.click(screen.getByRole('button', { name: /approve & run/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Plan failed')).toBeInTheDocument()
+    })
+    expect(screen.getByText(/Sub-agent exploded/)).toBeInTheDocument()
   })
 })

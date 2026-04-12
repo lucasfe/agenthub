@@ -400,10 +400,27 @@ async function runStep(
       ? `\n\n## Environment notice\n\nThe following tools were planned for this step but are NOT available in this environment: ${skippedIds.join(', ')}. Do NOT attempt to call them. Work around them — use your training knowledge or the remaining tools.`
       : ''
 
+  // Inject user-provided answers for this step's requirements (if any).
+  const answerEntries = Object.entries(stepAnswers || {}).filter(
+    ([, v]) => typeof v === 'string' && v.trim(),
+  )
+  const answersBlock =
+    answerEntries.length > 0
+      ? `\n\n## User-provided answers\n\nThese are the user's answers to the requirements the planner identified for this step. Treat them as authoritative.\n\n${answerEntries
+          .map(([k, v]) => `- **${k}**: ${v}`)
+          .join('\n')}`
+      : ''
+
+  // Autonomous-mode preamble — sub-agents run in a one-shot execution, with
+  // no human on the other side. If the agent's system prompt says to "ask the
+  // user first", this preamble overrides it: make assumptions, state them,
+  // produce output.
+  const autonomousPreamble = `\n\n## Autonomous mode\n\nYou are running in autonomous mode. There is NO user available to answer questions mid-step. All the information you need is above (original request, prior step outputs, user-provided answers). Do NOT ask questions, do NOT request clarification, do NOT output "please tell me X". If something is ambiguous, make a reasonable assumption and STATE it explicitly in your output. Proceed directly to producing the deliverable.`
+
   const messages: any[] = [
     {
       role: 'user',
-      content: `${stepContext}${unavailableNotice}\n\n## Your task\n\n${step.task}`,
+      content: `${stepContext}${unavailableNotice}${answersBlock}${autonomousPreamble}\n\n## Your task\n\n${step.task}`,
     },
   ]
 

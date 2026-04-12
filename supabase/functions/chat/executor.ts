@@ -31,6 +31,7 @@ export interface ToolContext {
   agentsContext: any[]
   stepId: number
   toolCallId: string
+  userId?: string
 }
 
 export interface ToolArtifact {

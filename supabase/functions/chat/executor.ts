@@ -158,12 +158,43 @@ async function generateMarkdown(
   },
   _ctx: ToolContext,
 ): Promise<ToolResult> {
-  const title = typeof input.title === 'string' ? input.title : ''
+  const title = typeof input.title === 'string' ? input.title.trim() : ''
   const sections = Array.isArray(input.sections) ? input.sections : []
 
+  // Strict: reject empty calls so the sub-agent sees a real error instead of
+  // looping on a trivially-successful no-op.
+  if (!title) {
+    return {
+      ok: false,
+      error:
+        'generate_markdown requires a non-empty `title`. Provide the document title.',
+    }
+  }
+  const validSections = sections.filter(
+    (s) => s && (typeof s.heading === 'string' || typeof s.body === 'string'),
+  )
+  if (validSections.length === 0) {
+    return {
+      ok: false,
+      error:
+        'generate_markdown requires at least one non-empty section (each with `heading` and `body`).',
+    }
+  }
+  const totalBodyLen = validSections.reduce(
+    (acc, s) => acc + (typeof s.body === 'string' ? s.body.length : 0),
+    0,
+  )
+  if (totalBodyLen < 20) {
+    return {
+      ok: false,
+      error:
+        'generate_markdown sections look empty (total body < 20 chars). Write the full content directly into each section\'s `body` field — do NOT call this tool with placeholders.',
+    }
+  }
+
   const lines: string[] = []
-  if (title) lines.push(`# ${title}`, '')
-  for (const s of sections) {
+  lines.push(`# ${title}`, '')
+  for (const s of validSections) {
     if (s.heading) lines.push(`## ${s.heading}`, '')
     if (s.body) lines.push(s.body, '')
   }
@@ -171,11 +202,11 @@ async function generateMarkdown(
 
   return {
     ok: true,
-    result: { markdown: md, section_count: sections.length },
-    summary: `Generated ${sections.length} section${sections.length === 1 ? '' : 's'}`,
+    result: { markdown: md, section_count: validSections.length },
+    summary: `Generated ${validSections.length} section${validSections.length === 1 ? '' : 's'} (${md.length} chars)`,
     artifact: {
       type: 'text',
-      name: title || 'document',
+      name: title,
       format: 'md',
       content: md,
     },
@@ -186,9 +217,30 @@ async function generateFile(
   input: { filename: string; format: string; content: string },
   _ctx: ToolContext,
 ): Promise<ToolResult> {
-  const filename = typeof input.filename === 'string' ? input.filename : 'output.txt'
+  const filename =
+    typeof input.filename === 'string' && input.filename.trim()
+      ? input.filename.trim()
+      : ''
   const format = typeof input.format === 'string' ? input.format : 'txt'
   const content = typeof input.content === 'string' ? input.content : ''
+
+  // Strict: require a filename AND substantive content. The most common
+  // failure mode was the model calling this tool with an empty `content`
+  // parameter and looping on the trivial success.
+  if (!filename) {
+    return {
+      ok: false,
+      error: 'generate_file requires a non-empty `filename`.',
+    }
+  }
+  if (content.trim().length < 20) {
+    return {
+      ok: false,
+      error:
+        'generate_file requires substantive `content` (at least 20 chars). Write the complete file content inline as the `content` argument — do NOT call this tool with an empty or placeholder value.',
+    }
+  }
+
   return {
     ok: true,
     result: { filename, format, size: content.length },

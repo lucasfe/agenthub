@@ -250,6 +250,24 @@ export const TOOL_HANDLERS: Record<string, ToolHandler> = {
   save_artifact: saveArtifact,
 }
 
+// Which tools are functional in the current environment. Some tools depend on
+// external config (API keys) — if that config is missing, we'd rather drop the
+// tool from the sub-agent's toolset than let it loop on repeated failures.
+function getAvailableTools(): Set<string> {
+  const available = new Set(Object.keys(TOOL_HANDLERS))
+  if (!Deno.env.get('TAVILY_API_KEY')) {
+    available.delete('web_search')
+  }
+  return available
+}
+
+function describeUnavailableReason(toolId: string): string {
+  if (toolId === 'web_search') {
+    return 'TAVILY_API_KEY is not configured in the Edge Function secrets.'
+  }
+  return 'Tool is not available in this environment.'
+}
+
 // ─── Anthropic tool schema derivation ───────────────────────────────────────
 
 function buildAnthropicTool(toolId: string, toolsContext: any[]): any | null {

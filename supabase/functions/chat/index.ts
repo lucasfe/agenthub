@@ -792,6 +792,7 @@ Deno.serve(async (req: Request) => {
             agentsContext: agentsContextRaw,
             toolsContext: toolsContextRaw,
             refinement: body.refinement,
+            originalTask: lastUser?.content || '',
             apiKey,
           })
         } else {

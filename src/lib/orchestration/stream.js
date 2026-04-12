@@ -7,12 +7,14 @@
 //
 // Usage:
 //   await streamOrchestration({
-//     mode: 'chat' | 'planned' | 'direct' | 'team',
+//     mode: 'chat' | 'planned' | 'execute' | 'direct' | 'team',
 //     sessionId,
 //     messages,
 //     agents,
 //     tools,
 //     refinement,     // optional: { previous_plan, instructions }
+//     plan,           // optional: approved plan (mode='execute')
+//     originalTask,   // optional: original user task (mode='execute')
 //     signal,
 //     onEvent: (evt) => { ... },
 //   })

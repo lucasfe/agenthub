@@ -465,6 +465,87 @@ describe('AiAssistant', () => {
     expect(approveCall.plan.steps).toHaveLength(1)
   })
 
+  it('offers per-step and all-output downloads after a run completes', async () => {
+    scriptSession([
+      {
+        type: 'plan.proposed',
+        plan: {
+          steps: [
+            {
+              id: 1,
+              agent_id: 'technical-writer',
+              agent_name: 'Technical Writer',
+              agent_color: 'amber',
+              agent_icon: 'FileText',
+              task: 'Write section A',
+              inputs: ['original_task'],
+              tools_used: [],
+            },
+            {
+              id: 2,
+              agent_id: 'technical-writer',
+              agent_name: 'Technical Writer',
+              agent_color: 'amber',
+              agent_icon: 'FileText',
+              task: 'Write section B',
+              inputs: ['step_1'],
+              tools_used: [],
+            },
+          ],
+        },
+      },
+    ])
+
+    const user = userEvent.setup()
+    renderWithProviders(<AiAssistant open={true} onClose={() => {}} />)
+
+    await user.type(screen.getByPlaceholderText('Type a message...'), 'write docs')
+    await user.click(screen.getByLabelText('Send message'))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /approve & run/i })).toBeInTheDocument()
+    })
+
+    scriptSession([
+      { type: 'run.started', run_id: 'run-dl' },
+      { type: 'step.started', step_id: 1 },
+      { type: 'step.text', step_id: 1, value: '# Section A\n\nBody' },
+      { type: 'step.done', step_id: 1, duration_ms: 500 },
+      { type: 'step.started', step_id: 2 },
+      { type: 'step.text', step_id: 2, value: '# Section B\n\nMore' },
+      { type: 'step.done', step_id: 2, duration_ms: 500 },
+      { type: 'run.done', run_id: 'run-dl', duration_ms: 1200 },
+    ])
+
+    // Mock URL + click for the jsdom download helpers
+    const createSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob://fake')
+    const revokeSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+    const clickSpy = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => {})
+
+    await user.click(screen.getByRole('button', { name: /approve & run/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Plan completed')).toBeInTheDocument()
+    })
+
+    // Per-step download buttons should be visible (one per step with text)
+    const stepDownloads = screen.getAllByLabelText(/download step \d+ output/i)
+    expect(stepDownloads.length).toBe(2)
+    await user.click(stepDownloads[0])
+    expect(clickSpy).toHaveBeenCalled()
+
+    // Download all button should also appear in the run summary
+    const downloadAll = screen.getByRole('button', { name: /download all/i })
+    await user.click(downloadAll)
+    expect(createSpy).toHaveBeenCalled()
+
+    createSpy.mockRestore()
+    revokeSpy.mockRestore()
+    clickSpy.mockRestore()
+  })
+
   it('surfaces a step error during execution', async () => {
     scriptSession([
       {

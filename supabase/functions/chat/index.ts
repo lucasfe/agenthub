@@ -2,24 +2,23 @@
 //
 // Orchestration gateway: accepts a `mode` parameter, classifies the incoming
 // message via a Haiku router, and routes to the appropriate branch. Emits the
-// namespaced SSE protocol (Decision 15) back to the browser:
+// namespaced SSE protocol (Decision 15) back to the browser.
 //
-//   data: {"type":"router.classified","session_id":"...","timestamp":...,"mode":"chat"|"crud"|"task"}
-//   data: {"type":"chat.text","session_id":"...","timestamp":...,"value":"..."}
-//   data: {"type":"chat.tool_call","session_id":"...","timestamp":...,"name":"...","input":{...}}
-//   data: {"type":"chat.done","session_id":"...","timestamp":...}
-//   data: {"type":"chat.error","session_id":"...","timestamp":...,"error":"..."}
-//
-// Phase 2 scope: only the `chat` branch is wired up. The router runs for every
-// request but its classification is logged and ignored — everything still flows
-// through the chat branch. Phase 3 will route `task` to the planner.
+// Phase 3 scope:
+// - Router (Haiku) classifies every message as chat/crud/task
+// - `task` → planner branch (Opus), returns a plan card or fallback
+// - `chat`/`crud` → chat branch (Sonnet), same as Phase 2
+// - Planner only plans, does not execute yet (execution is Phase 4)
 
 // deno-lint-ignore-file no-explicit-any
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages'
 const CHAT_MODEL = Deno.env.get('CHAT_MODEL') || 'claude-sonnet-4-6'
+const PLANNER_MODEL = Deno.env.get('PLANNER_MODEL') || 'claude-opus-4-6'
 const ROUTER_MODEL = Deno.env.get('ROUTER_MODEL') || 'claude-haiku-4-5-20251001'
 const MAX_TOKENS = 2048
+const PLANNER_MAX_TOKENS = 4096
+const MAX_PLAN_STEPS = 5
 
 const BASE_SYSTEM_PROMPT = `You are the AI assistant for Lucas AI Hub, an internal web app for browsing, creating, and managing AI agent templates.
 

@@ -436,7 +436,7 @@ async function createGoogleSlides(
       const err = await createRes.text().catch(() => '')
       return {
         ok: false,
-        error: `Failed to create presentation: ${createRes.status} ${err.slice(0, 200)}`,
+        error: `Failed to create presentation (${createRes.status}): ${err.slice(0, 500)}. SA email: ${sa.client_email}, project: ${sa.project_id}`,
       }
     }
     const presData = await createRes.json()

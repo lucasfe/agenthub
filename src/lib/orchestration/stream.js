@@ -11,6 +11,8 @@
 //     sessionId,
 //     messages,
 //     agents,
+//     tools,
+//     refinement,     // optional: { previous_plan, instructions }
 //     signal,
 //     onEvent: (evt) => { ... },
 //   })

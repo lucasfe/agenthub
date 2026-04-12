@@ -266,4 +266,171 @@ describe('AiAssistant', () => {
     expect(screen.queryByText('First message')).not.toBeInTheDocument()
     expect(screen.getByText(/Hi! I'm your AI assistant/)).toBeInTheDocument()
   })
+
+  it('renders a PlanCard when the session emits plan.proposed', async () => {
+    scriptSession([
+      { type: 'router.classified', mode: 'task' },
+      { type: 'plan.proposing' },
+      {
+        type: 'plan.proposed',
+        plan: {
+          steps: [
+            {
+              id: 1,
+              agent_id: 'frontend-developer',
+              agent_name: 'Frontend Developer',
+              agent_color: 'blue',
+              agent_icon: 'Monitor',
+              task: 'Research React trends',
+              inputs: ['original_task'],
+              tools_used: ['web_search'],
+            },
+          ],
+          estimated_duration_ms: 12000,
+        },
+      },
+    ])
+
+    const user = userEvent.setup()
+    renderWithProviders(<AiAssistant open={true} onClose={() => {}} />)
+
+    await user.type(screen.getByPlaceholderText('Type a message...'), 'faz uma análise')
+    await user.click(screen.getByLabelText('Send message'))
+
+    await waitFor(() => {
+      expect(screen.getByText('Proposed plan')).toBeInTheDocument()
+    })
+    expect(screen.getByText(/1 step/)).toBeInTheDocument()
+    expect(screen.getByText('Research React trends')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /approve/i })).toBeInTheDocument()
+  })
+
+  it('renders a PlanFallbackCard when the session emits plan.fallback', async () => {
+    scriptSession([
+      { type: 'router.classified', mode: 'task' },
+      { type: 'plan.proposing' },
+      {
+        type: 'plan.fallback',
+        reason: 'No agent specializes in legal contract analysis.',
+        suggested_agent_type: 'legal analyst',
+      },
+    ])
+
+    const user = userEvent.setup()
+    renderWithProviders(<AiAssistant open={true} onClose={() => {}} />)
+
+    await user.type(screen.getByPlaceholderText('Type a message...'), 'analisa esse contrato')
+    await user.click(screen.getByLabelText('Send message'))
+
+    await waitFor(() => {
+      expect(screen.getByText('No suitable agent')).toBeInTheDocument()
+    })
+    expect(screen.getByText(/No agent specializes in legal contract analysis/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /create agent/i })).toBeInTheDocument()
+  })
+
+  it('triggers a refinement session when the user submits refine text', async () => {
+    scriptSession([
+      { type: 'router.classified', mode: 'task' },
+      { type: 'plan.proposing' },
+      {
+        type: 'plan.proposed',
+        plan: {
+          steps: [
+            {
+              id: 1,
+              agent_id: 'frontend-developer',
+              agent_name: 'Frontend Developer',
+              agent_color: 'blue',
+              agent_icon: 'Monitor',
+              task: 'Sketch something',
+              inputs: ['original_task'],
+              tools_used: [],
+            },
+          ],
+        },
+      },
+    ])
+
+    const user = userEvent.setup()
+    renderWithProviders(<AiAssistant open={true} onClose={() => {}} />)
+
+    await user.type(screen.getByPlaceholderText('Type a message...'), 'task')
+    await user.click(screen.getByLabelText('Send message'))
+
+    await waitFor(() => {
+      expect(screen.getByText('Proposed plan')).toBeInTheDocument()
+    })
+
+    // Arm the NEXT session call (the one triggered by refine)
+    scriptSession([
+      {
+        type: 'plan.proposed',
+        plan: {
+          steps: [
+            {
+              id: 1,
+              agent_id: 'frontend-developer',
+              agent_name: 'Frontend Developer',
+              agent_color: 'blue',
+              agent_icon: 'Monitor',
+              task: 'Sketch something refined',
+              inputs: ['original_task'],
+              tools_used: [],
+            },
+          ],
+        },
+      },
+    ])
+
+    const refineInput = screen.getByPlaceholderText(/refine plan/i)
+    await user.type(refineInput, 'make step 1 shorter{Enter}')
+
+    await waitFor(() => {
+      expect(screen.getByText('Sketch something refined')).toBeInTheDocument()
+    })
+
+    // startSession was called twice: once for the initial plan, once for refine.
+    expect(orchestrationMock.startSession).toHaveBeenCalledTimes(2)
+    const secondCall = orchestrationMock.startSession.mock.calls[1][0]
+    expect(secondCall.mode).toBe('planned')
+    expect(secondCall.refinement).toBeTruthy()
+    expect(secondCall.refinement.instructions).toBe('make step 1 shorter')
+  })
+
+  it('locks the PlanCard when the user approves', async () => {
+    scriptSession([
+      {
+        type: 'plan.proposed',
+        plan: {
+          steps: [
+            {
+              id: 1,
+              agent_id: 'frontend-developer',
+              agent_name: 'Frontend Developer',
+              agent_color: 'blue',
+              agent_icon: 'Monitor',
+              task: 'Do a thing',
+              inputs: ['original_task'],
+              tools_used: [],
+            },
+          ],
+        },
+      },
+    ])
+
+    const user = userEvent.setup()
+    renderWithProviders(<AiAssistant open={true} onClose={() => {}} />)
+
+    await user.type(screen.getByPlaceholderText('Type a message...'), 'task')
+    await user.click(screen.getByLabelText('Send message'))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /approve/i })).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole('button', { name: /approve/i }))
+    expect(screen.getByText('Approved')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /approve/i })).not.toBeInTheDocument()
+  })
 })

@@ -83,6 +83,7 @@ export async function streamOrchestration({
         refinement: refinement || undefined,
         plan: plan || undefined,
         original_task: originalTask || undefined,
+        step_answers: stepAnswers || undefined,
       }),
       signal,
     })

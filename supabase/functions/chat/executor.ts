@@ -298,6 +298,270 @@ async function saveArtifact(
   }
 }
 
+// ─── Google Slides tool ─────────────────────────────────────────────────────
+
+function base64url(input: string | ArrayBuffer): string {
+  let b64: string
+  if (typeof input === 'string') {
+    b64 = btoa(input)
+  } else {
+    b64 = btoa(String.fromCharCode(...new Uint8Array(input)))
+  }
+  return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
+async function getGoogleAccessToken(sa: any): Promise<string> {
+  const now = Math.floor(Date.now() / 1000)
+  const header = { alg: 'RS256', typ: 'JWT' }
+  const claims = {
+    iss: sa.client_email,
+    scope:
+      'https://www.googleapis.com/auth/presentations https://www.googleapis.com/auth/drive',
+    aud: sa.token_uri || 'https://oauth2.googleapis.com/token',
+    iat: now,
+    exp: now + 3600,
+  }
+
+  const encodedHeader = base64url(JSON.stringify(header))
+  const encodedClaims = base64url(JSON.stringify(claims))
+  const signingInput = `${encodedHeader}.${encodedClaims}`
+
+  const pemContents = sa.private_key
+    .replace('-----BEGIN PRIVATE KEY-----', '')
+    .replace('-----END PRIVATE KEY-----', '')
+    .replace(/\n/g, '')
+  const binaryDer = Uint8Array.from(atob(pemContents), (c) => c.charCodeAt(0))
+
+  const key = await crypto.subtle.importKey(
+    'pkcs8',
+    binaryDer,
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  )
+
+  const signature = await crypto.subtle.sign(
+    'RSASSA-PKCS1-v1_5',
+    key,
+    new TextEncoder().encode(signingInput),
+  )
+
+  const jwt = `${signingInput}.${base64url(signature)}`
+
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`,
+  })
+  const data = await res.json()
+  if (!data.access_token) {
+    throw new Error(`Google auth failed: ${JSON.stringify(data).slice(0, 300)}`)
+  }
+  return data.access_token
+}
+
+async function createGoogleSlides(
+  input: {
+    title: string
+    slides: Array<{
+      title: string
+      body: string
+      speaker_notes?: string
+      layout?: string
+    }>
+  },
+  ctx: ToolContext,
+): Promise<ToolResult> {
+  const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
+  if (!saJson) {
+    return {
+      ok: false,
+      error:
+        'GOOGLE_SERVICE_ACCOUNT_JSON is not configured in Edge Function secrets.',
+    }
+  }
+
+  let sa: any
+  try {
+    sa = JSON.parse(saJson)
+  } catch {
+    return { ok: false, error: 'Invalid GOOGLE_SERVICE_ACCOUNT_JSON format.' }
+  }
+
+  const title = typeof input.title === 'string' ? input.title.trim() : ''
+  if (!title) {
+    return { ok: false, error: 'create_google_slides requires a non-empty `title`.' }
+  }
+
+  const slides = Array.isArray(input.slides) ? input.slides : []
+  if (slides.length === 0) {
+    return {
+      ok: false,
+      error: 'create_google_slides requires at least one slide in `slides`.',
+    }
+  }
+
+  // Validate that slides have content — prevent empty-content loops.
+  for (let i = 0; i < slides.length; i++) {
+    const s = slides[i]
+    if (
+      (!s.title || typeof s.title !== 'string' || !s.title.trim()) &&
+      (!s.body || typeof s.body !== 'string' || !s.body.trim())
+    ) {
+      return {
+        ok: false,
+        error: `Slide ${i + 1} has no title or body. Every slide must have at least one of them with real content.`,
+      }
+    }
+  }
+
+  try {
+    // 1. Authenticate
+    const token = await getGoogleAccessToken(sa)
+
+    // 2. Create empty presentation
+    const createRes = await fetch(
+      'https://slides.googleapis.com/v1/presentations',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ title }),
+        signal: ctx.signal,
+      },
+    )
+    if (!createRes.ok) {
+      const err = await createRes.text().catch(() => '')
+      return {
+        ok: false,
+        error: `Failed to create presentation: ${createRes.status} ${err.slice(0, 200)}`,
+      }
+    }
+    const presData = await createRes.json()
+    const presentationId: string = presData.presentationId
+    const defaultSlideId: string | undefined = presData.slides?.[0]?.objectId
+
+    // 3. Build batch update requests
+    const requests: any[] = []
+
+    // Delete the default empty title slide that comes with a new presentation.
+    if (defaultSlideId) {
+      requests.push({ deleteObject: { objectId: defaultSlideId } })
+    }
+
+    for (let i = 0; i < slides.length; i++) {
+      const slide = slides[i]
+      const slideId = `s${i}`
+      const titlePh = `${slideId}_t`
+      const bodyPh = `${slideId}_b`
+      const layout = slide.layout || 'TITLE_AND_BODY'
+
+      const mappings: any[] = [
+        {
+          layoutPlaceholder: { type: 'TITLE', index: 0 },
+          objectId: titlePh,
+        },
+      ]
+      if (layout === 'TITLE_AND_BODY') {
+        mappings.push({
+          layoutPlaceholder: { type: 'BODY', index: 0 },
+          objectId: bodyPh,
+        })
+      }
+
+      requests.push({
+        createSlide: {
+          objectId: slideId,
+          insertionIndex: i,
+          slideLayoutReference: { predefinedLayout: layout },
+          placeholderIdMappings: mappings,
+        },
+      })
+
+      if (typeof slide.title === 'string' && slide.title.trim()) {
+        requests.push({
+          insertText: { objectId: titlePh, text: slide.title.trim() },
+        })
+      }
+
+      if (
+        layout === 'TITLE_AND_BODY' &&
+        typeof slide.body === 'string' &&
+        slide.body.trim()
+      ) {
+        requests.push({
+          insertText: { objectId: bodyPh, text: slide.body.trim() },
+        })
+      }
+    }
+
+    // 4. Execute batch update
+    const batchRes = await fetch(
+      `https://slides.googleapis.com/v1/presentations/${presentationId}:batchUpdate`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ requests }),
+        signal: ctx.signal,
+      },
+    )
+    if (!batchRes.ok) {
+      const err = await batchRes.text().catch(() => '')
+      return {
+        ok: false,
+        error: `Failed to add slides: ${batchRes.status} ${err.slice(0, 200)}`,
+      }
+    }
+
+    // 5. Share with user (optional)
+    const shareEmail = Deno.env.get('GOOGLE_SLIDES_SHARE_EMAIL')
+    if (shareEmail) {
+      const shareRes = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${presentationId}/permissions`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            role: 'writer',
+            type: 'user',
+            emailAddress: shareEmail,
+          }),
+        },
+      )
+      if (!shareRes.ok) {
+        const err = await shareRes.text().catch(() => '')
+        console.warn(`[google-slides] share failed: ${shareRes.status} ${err.slice(0, 200)}`)
+      }
+    }
+
+    // 6. Return URL
+    const url = `https://docs.google.com/presentation/d/${presentationId}/edit`
+    return {
+      ok: true,
+      result: {
+        url,
+        presentation_id: presentationId,
+        slide_count: slides.length,
+        shared_with: shareEmail || null,
+      },
+      summary: `Created ${slides.length}-slide presentation: ${url}`,
+    }
+  } catch (err) {
+    return {
+      ok: false,
+      error: `Google Slides error: ${(err as Error).message}`,
+    }
+  }
+}
+
 export const TOOL_HANDLERS: Record<string, ToolHandler> = {
   web_search: webSearch,
   fetch_url: fetchUrl,
@@ -305,6 +569,7 @@ export const TOOL_HANDLERS: Record<string, ToolHandler> = {
   generate_file: generateFile,
   read_agent: readAgent,
   save_artifact: saveArtifact,
+  create_google_slides: createGoogleSlides,
 }
 
 // Which tools are functional in the current environment. Some tools depend on

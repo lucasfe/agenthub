@@ -65,6 +65,7 @@ export async function streamOrchestration({
               model: a.model,
               tools: a.tools,
               capabilities: a.capabilities,
+              content: a.content,
             }))
           : undefined,
         tools_context: Array.isArray(tools)
@@ -74,9 +75,12 @@ export async function streamOrchestration({
               description: t.description,
               category: t.category,
               requires_approval: t.requires_approval,
+              input_schema: t.input_schema,
             }))
           : undefined,
         refinement: refinement || undefined,
+        plan: plan || undefined,
+        original_task: originalTask || undefined,
       }),
       signal,
     })

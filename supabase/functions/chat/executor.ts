@@ -66,7 +66,7 @@ async function webSearch(
     }
   }
 
-  const max = Math.min(Math.max(1, input.max_results ?? 5), 10)
+  const max = Math.min(Math.max(1, input.max_results ?? 2), 5)
   try {
     const res = await fetch('https://api.tavily.com/search', {
       method: 'POST',
@@ -88,7 +88,7 @@ async function webSearch(
       ? data.results.map((r: any) => ({
           title: r.title,
           url: r.url,
-          snippet: r.content,
+          snippet: typeof r.content === 'string' ? r.content.slice(0, 300) : '',
         }))
       : []
     return {

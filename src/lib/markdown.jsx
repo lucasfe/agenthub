@@ -186,9 +186,10 @@ function classes(variant) {
       ol: 'my-1.5 space-y-0.5 list-decimal list-outside pl-5',
       ul: 'my-1.5 space-y-0.5 list-disc list-outside pl-5',
       li: 'text-sm leading-relaxed',
-      p: 'text-sm leading-relaxed my-1.5 first:mt-0 last:mb-0',
+      p: 'text-sm leading-relaxed my-1.5 first:mt-0 last:mb-0 break-words',
       strong: 'font-semibold',
-      codeInline: 'text-[11px] bg-black/25 px-1.5 py-0.5 rounded font-mono',
+      codeInline: 'text-[11px] bg-black/25 px-1.5 py-0.5 rounded font-mono break-all',
+      link: 'text-blue-400 hover:text-blue-300 underline underline-offset-2 break-all',
     }
   }
 

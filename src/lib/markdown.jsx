@@ -205,8 +205,9 @@ function classes(variant) {
     ol: 'my-3 space-y-1.5 list-decimal list-inside',
     ul: 'my-3 space-y-1.5 list-disc list-inside',
     li: 'text-sm text-text-secondary leading-relaxed',
-    p: 'text-sm text-text-secondary leading-relaxed my-3',
+    p: 'text-sm text-text-secondary leading-relaxed my-3 break-words',
     strong: 'font-semibold text-text-primary',
     codeInline: 'text-xs bg-white/5 text-text-secondary px-1.5 py-0.5 rounded font-mono',
+    link: 'text-blue-400 hover:text-blue-300 underline underline-offset-2 break-all',
   }
 }

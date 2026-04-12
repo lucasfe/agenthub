@@ -640,22 +640,25 @@ describe('AiAssistant', () => {
       .spyOn(HTMLAnchorElement.prototype, 'click')
       .mockImplementation(() => {})
 
-    await user.click(screen.getByRole('button', { name: /approve & run/i }))
+    await user.click(screen.getByRole('button', { name: /quick approve/i }))
 
     await waitFor(() => {
       expect(screen.getByText('Plan completed')).toBeInTheDocument()
     })
 
-    // Per-step download buttons should be visible (one per step with text)
-    const stepDownloads = screen.getAllByLabelText(/download step \d+ output/i)
-    expect(stepDownloads.length).toBe(2)
-    await user.click(stepDownloads[0])
-    expect(clickSpy).toHaveBeenCalled()
-
-    // Download all button should also appear in the run summary
+    // Download all button is visible in the compact card's action row
     const downloadAll = screen.getByRole('button', { name: /download all/i })
     await user.click(downloadAll)
     expect(createSpy).toHaveBeenCalled()
+
+    // Open the details panel to access per-step download buttons
+    await user.click(screen.getByRole('button', { name: /open details/i }))
+    await waitFor(() => {
+      expect(screen.getAllByLabelText(/download step \d+ output/i).length).toBe(2)
+    })
+    const stepDownloads = screen.getAllByLabelText(/download step \d+ output/i)
+    await user.click(stepDownloads[0])
+    expect(clickSpy).toHaveBeenCalled()
 
     createSpy.mockRestore()
     revokeSpy.mockRestore()

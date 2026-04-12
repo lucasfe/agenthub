@@ -19,26 +19,25 @@ describe('safeFilename', () => {
 })
 
 describe('downloadText', () => {
-  let originalCreateObjectURL
-  let originalRevokeObjectURL
   let createSpy
-  let revokeSpy
   let clickSpy
 
   beforeEach(() => {
-    originalCreateObjectURL = URL.createObjectURL
-    originalRevokeObjectURL = URL.revokeObjectURL
-    createSpy = vi.fn(() => 'blob://fake')
-    revokeSpy = vi.fn()
-    URL.createObjectURL = createSpy
-    URL.revokeObjectURL = revokeSpy
+    vi.useFakeTimers()
+    // jsdom doesn't implement these by default; install stubs that persist
+    // through the test's microtask + timer tail.
+    if (!URL.createObjectURL) URL.createObjectURL = () => 'blob://stub'
+    if (!URL.revokeObjectURL) URL.revokeObjectURL = () => {}
+    createSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob://fake')
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
     clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
   })
 
   afterEach(() => {
-    URL.createObjectURL = originalCreateObjectURL
-    URL.revokeObjectURL = originalRevokeObjectURL
-    clickSpy.mockRestore()
+    // Flush the deferred revokeObjectURL while spies are still installed.
+    vi.runAllTimers()
+    vi.useRealTimers()
+    vi.restoreAllMocks()
   })
 
   it('creates a blob URL and clicks the anchor', () => {

@@ -446,6 +446,9 @@ export default function AiAssistant({ open, onClose }) {
     if (isStreaming) return
     const target = messages[messageIdx]
     if (!target || !target.plan) return
+    // Block approval when required requirements are missing. UI already
+    // reflects this via a disabled button, but defend against calls.
+    if (countMissingRequired(target.plan, target.stepAnswers || {}) > 0) return
 
     patchMessageAt(messageIdx, {
       planStatus: 'executing',
@@ -462,9 +465,23 @@ export default function AiAssistant({ open, onClose }) {
       tools,
       plan: target.plan,
       originalTask: target.originalTask || '',
+      stepAnswers: target.stepAnswers || {},
     })
     sessionRef.current = { session, messageIdx }
     subscribeSession(session, messageIdx)
+  }
+
+  const handleAnswerChange = (messageIdx, stepId, key, value) => {
+    patchMessageAt(messageIdx, (msg) => ({
+      ...msg,
+      stepAnswers: {
+        ...(msg.stepAnswers || {}),
+        [stepId]: {
+          ...(msg.stepAnswers?.[stepId] || {}),
+          [key]: value,
+        },
+      },
+    }))
   }
 
   const handleCancelPlan = (messageIdx) => {

@@ -31,6 +31,8 @@ function GoogleSlidesIntegration() {
     }
   }, [session])
 
+  const [pendingCode, setPendingCode] = useState(null)
+
   const handleCallback = useCallback(async (code) => {
     if (!session || connecting) return
     setConnecting(true)
@@ -57,6 +59,7 @@ function GoogleSlidesIntegration() {
       setError(err.message)
     } finally {
       setConnecting(false)
+      setPendingCode(null)
     }
   }, [session, connecting])
 
@@ -64,15 +67,23 @@ function GoogleSlidesIntegration() {
     checkConnection()
   }, [checkConnection])
 
+  // Capture the code from URL on mount
   useEffect(() => {
     const code = searchParams.get('code')
     if (code) {
+      setPendingCode(code)
       searchParams.delete('code')
       searchParams.delete('scope')
       setSearchParams(searchParams, { replace: true })
-      handleCallback(code)
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Process the code once session is available
+  useEffect(() => {
+    if (pendingCode && session && !connecting) {
+      handleCallback(pendingCode)
+    }
+  }, [pendingCode, session, connecting, handleCallback])
 
   const handleConnect = () => {
     if (!GOOGLE_CLIENT_ID) {

@@ -13,7 +13,7 @@
 
 // deno-lint-ignore-file no-explicit-any
 
-import { runExecutorBranch } from './executor.ts'
+import { analyzeRequirements, runExecutorBranch } from './executor.ts'
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages'
 const CHAT_MODEL = Deno.env.get('CHAT_MODEL') || 'claude-sonnet-4-6'

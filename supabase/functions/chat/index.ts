@@ -570,6 +570,7 @@ async function runPlannerBranch(
     agentsContext: any[]
     toolsContext: any[]
     refinement?: { previous_plan?: unknown; instructions?: string }
+    originalTask: string
     apiKey: string
   },
 ) {

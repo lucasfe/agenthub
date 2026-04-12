@@ -353,19 +353,51 @@ async function runStep(
   // Restrict tools to those declared in the plan AND owned by the agent.
   const declaredIds = new Set<string>(Array.isArray(step.tools_used) ? step.tools_used : [])
   const agentToolIds = new Set<string>(Array.isArray(agent.tools) ? agent.tools : [])
+  const availableInEnv = getAvailableTools()
   const allowedIds: string[] = []
+  const skippedIds: string[] = []
   for (const id of declaredIds) {
-    if (agentToolIds.has(id)) allowedIds.push(id)
+    if (!agentToolIds.has(id)) continue
+    if (!availableInEnv.has(id)) {
+      skippedIds.push(id)
+      continue
+    }
+    allowedIds.push(id)
+  }
+
+  // If the plan declared tools that aren't available in this environment,
+  // surface a single "skipped" tool_call event per tool so the user sees why.
+  for (const skipped of skippedIds) {
+    const fakeId = `skip-${step.id}-${skipped}`
+    const reason = describeUnavailableReason(skipped)
+    emit('step.tool_call_start', {
+      step_id: step.id,
+      tool_call_id: fakeId,
+      name: skipped,
+      input: {},
+    })
+    emit('step.tool_call_done', {
+      step_id: step.id,
+      tool_call_id: fakeId,
+      status: 'error',
+      error: `Not configured — ${reason}`,
+      duration_ms: 0,
+    })
   }
 
   const anthropicTools = allowedIds
     .map((id) => buildAnthropicTool(id, toolsContext))
     .filter(Boolean) as any[]
 
+  const unavailableNotice =
+    skippedIds.length > 0
+      ? `\n\n## Environment notice\n\nThe following tools were planned for this step but are NOT available in this environment: ${skippedIds.join(', ')}. Do NOT attempt to call them. Work around them — use your training knowledge or the remaining tools.`
+      : ''
+
   const messages: any[] = [
     {
       role: 'user',
-      content: `${stepContext}\n\n## Your task\n\n${step.task}`,
+      content: `${stepContext}${unavailableNotice}\n\n## Your task\n\n${step.task}`,
     },
   ]
 

@@ -462,11 +462,17 @@ describe('AiAssistant', () => {
     await user.type(screen.getByPlaceholderText('Type a message...'), 'faz um pitch')
     await user.click(screen.getByLabelText('Send message'))
 
+    // Plan proposed with required fields → open the panel to see requirements
+    await waitFor(() => {
+      expect(screen.getByText('Plan proposed')).toBeInTheDocument()
+    })
+    await user.click(screen.getByRole('button', { name: /review & approve/i }))
+
     await waitFor(() => {
       expect(screen.getByText('Needs from you')).toBeInTheDocument()
     })
 
-    // Approve button should be disabled while the required field is empty.
+    // Approve button (in the panel) should be disabled while required field is empty.
     const approveBtn = screen.getByRole('button', { name: /approve & run/i })
     expect(approveBtn).toBeDisabled()
     expect(screen.getByText(/1 required field needed/i)).toBeInTheDocument()

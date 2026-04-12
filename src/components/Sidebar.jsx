@@ -13,6 +13,7 @@ export default function Sidebar() {
   const browseItems = [
     { icon: Bot, label: 'Agents', count: agents.length, path: '/' },
     { icon: Users, label: 'Teams', count: teams.length, path: '/teams' },
+    { icon: Columns3, label: 'Board', path: '/board' },
   ]
 
   return (

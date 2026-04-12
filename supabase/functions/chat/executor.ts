@@ -362,8 +362,8 @@ async function createGoogleSlides(
   }
 
   try {
-    // 1. Authenticate
-    const token = await getGoogleAccessToken(sa)
+    // 1. Authenticate via OAuth2 refresh token
+    const token = await getGoogleAccessToken()
 
     // 2. Create empty presentation
     const createRes = await fetch(

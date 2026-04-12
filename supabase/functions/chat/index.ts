@@ -664,6 +664,8 @@ Deno.serve(async (req: Request) => {
     session_id?: string
     messages?: Array<{ role: string; content: string }>
     agents_context?: unknown
+    tools_context?: unknown
+    refinement?: { previous_plan?: unknown; instructions?: string }
   }
   try {
     body = await req.json()
@@ -697,31 +699,58 @@ Deno.serve(async (req: Request) => {
     )
   }
 
-  const systemPrompt = buildSystemPrompt(body.agents_context)
+  const agentsContextRaw = Array.isArray(body.agents_context)
+    ? (body.agents_context as any[])
+    : []
+  const toolsContextRaw = Array.isArray(body.tools_context)
+    ? (body.tools_context as any[])
+    : []
+  const systemPrompt = buildSystemPrompt(agentsContextRaw)
   const lastUser = [...cleanMessages].reverse().find((m) => m.role === 'user')
+  const isRefinement = Boolean(
+    body.refinement && (body.refinement.previous_plan || body.refinement.instructions),
+  )
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       const emit = makeEmitter(controller, sessionId)
 
       try {
-        // Router: classify the latest user message. In Phase 2 the result is
-        // logged and emitted but the chat branch always runs.
-        const classification = lastUser
-          ? await classifyIntent(lastUser.content, apiKey)
-          : 'chat'
+        // Router: classify the latest user message unless this is a refinement
+        // call (which is always a task re-plan by definition).
+        let classification: 'chat' | 'crud' | 'task'
+        if (isRefinement) {
+          classification = 'task'
+        } else if (lastUser) {
+          classification = await classifyIntent(lastUser.content, apiKey)
+        } else {
+          classification = 'chat'
+        }
         console.log(
-          `[router] session=${sessionId} mode=${mode} classified=${classification}`,
+          `[router] session=${sessionId} mode=${mode} classified=${classification} refinement=${isRefinement}`,
         )
         emit('router.classified', { mode: classification })
 
-        // Phase 2: regardless of mode or classification, run the chat branch.
-        // Phase 3 will route `task` messages into the planner.
-        await runChatBranch(emit, {
-          messages: cleanMessages,
-          systemPrompt,
-          apiKey,
-        })
+        // Route: task → planner, everything else → chat branch.
+        // `mode: 'planned'` forces the planner regardless of classification.
+        const goPlanner =
+          mode === 'planned' || classification === 'task' || isRefinement
+
+        if (goPlanner) {
+          await runPlannerBranch(emit, {
+            messages: cleanMessages,
+            agentsContext: agentsContextRaw,
+            toolsContext: toolsContextRaw,
+            refinement: body.refinement,
+            apiKey,
+          })
+        } else {
+          await runChatBranch(emit, {
+            messages: cleanMessages,
+            systemPrompt,
+            apiKey,
+          })
+        }
       } catch (err) {
         emit('chat.error', { error: (err as Error).message })
       } finally {

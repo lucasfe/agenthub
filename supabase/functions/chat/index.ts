@@ -715,12 +715,43 @@ Deno.serve(async (req: Request) => {
   const isRefinement = Boolean(
     body.refinement && (body.refinement.previous_plan || body.refinement.instructions),
   )
+  const isExecute = mode === 'execute'
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       const emit = makeEmitter(controller, sessionId)
 
       try {
+        // Execute mode: skip router+planner, run an already-approved plan.
+        if (isExecute) {
+          const plan = body.plan as any
+          if (!plan || !Array.isArray(plan.steps) || plan.steps.length === 0) {
+            emit('run.error', { error: 'execute mode requires a plan with at least one step' })
+            return
+          }
+          const originalTask =
+            typeof body.original_task === 'string' && body.original_task
+              ? body.original_task
+              : lastUser?.content || ''
+          emit('router.classified', { mode: 'execute' })
+          // Enforce Decision 10: 90s wall clock cap for the whole run.
+          const timeoutController = new AbortController()
+          const timeoutId = setTimeout(() => timeoutController.abort(), 90_000)
+          try {
+            await runExecutorBranch(emit, {
+              plan,
+              originalTask,
+              agentsContext: agentsContextRaw,
+              toolsContext: toolsContextRaw,
+              apiKey,
+              signal: timeoutController.signal,
+            })
+          } finally {
+            clearTimeout(timeoutId)
+          }
+          return
+        }
+
         // Router: classify the latest user message unless this is a refinement
         // call (which is always a task re-plan by definition).
         let classification: 'chat' | 'crud' | 'task'

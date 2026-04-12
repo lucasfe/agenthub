@@ -808,6 +808,7 @@ export async function runExecutorBranch(
     originalTask: string
     agentsContext: any[]
     toolsContext: any[]
+    stepAnswers?: Record<string | number, Record<string, string>>
     apiKey: string
     signal: AbortSignal
   },

@@ -399,6 +399,97 @@ describe('AiAssistant', () => {
     expect(secondCall.refinement.instructions).toBe('make step 1 shorter')
   })
 
+  it('blocks approve until required requirements are filled and bundles answers on execute', async () => {
+    scriptSession([
+      {
+        type: 'router.classified',
+        mode: 'task',
+      },
+      { type: 'plan.analyzing_requirements' },
+      {
+        type: 'plan.proposed',
+        plan: {
+          steps: [
+            {
+              id: 1,
+              agent_id: 'powerpoint-presenter',
+              agent_name: 'PowerPoint Presenter',
+              agent_color: 'amber',
+              agent_icon: 'FileText',
+              task: 'Create a pitch deck',
+              inputs: ['original_task'],
+              tools_used: [],
+              requirements: [
+                {
+                  key: 'objective',
+                  question: 'Qual é o objetivo?',
+                  required: true,
+                  suggested: '',
+                },
+                {
+                  key: 'slides',
+                  question: 'Quantos slides?',
+                  required: false,
+                  suggested: '10',
+                },
+              ],
+            },
+          ],
+        },
+      },
+    ])
+
+    const user = userEvent.setup()
+    renderWithProviders(<AiAssistant open={true} onClose={() => {}} />)
+
+    await user.type(screen.getByPlaceholderText('Type a message...'), 'faz um pitch')
+    await user.click(screen.getByLabelText('Send message'))
+
+    await waitFor(() => {
+      expect(screen.getByText('Needs from you')).toBeInTheDocument()
+    })
+
+    // Approve button should be disabled while the required field is empty.
+    const approveBtn = screen.getByRole('button', { name: /approve & run/i })
+    expect(approveBtn).toBeDisabled()
+    expect(screen.getByText(/1 required field needed/i)).toBeInTheDocument()
+
+    // Fill in the required field.
+    const objectiveInput = screen.getByPlaceholderText('').parentElement
+    const objectiveField = screen.getAllByRole('textbox').find((el) =>
+      el.closest('label, div')?.textContent?.includes('objetivo'),
+    ) || screen.getAllByRole('textbox')[1] // fallback
+    // Use fireEvent for deterministic state change
+    fireEvent.change(objectiveField, { target: { value: 'pitch para investidor seed' } })
+
+    // Arm the executor session for approve click
+    scriptSession([
+      { type: 'run.started', run_id: 'run-req' },
+      { type: 'step.started', step_id: 1 },
+      { type: 'step.text', step_id: 1, value: 'Done' },
+      { type: 'step.done', step_id: 1, duration_ms: 100 },
+      { type: 'run.done', run_id: 'run-req', duration_ms: 200 },
+    ])
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /approve & run/i })).not.toBeDisabled()
+    })
+    await user.click(screen.getByRole('button', { name: /approve & run/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Plan completed')).toBeInTheDocument()
+    })
+
+    // The execute call should have received step_answers with the filled value.
+    const executeCall = orchestrationMock.startSession.mock.calls[1][0]
+    expect(executeCall.mode).toBe('execute')
+    expect(executeCall.stepAnswers).toBeTruthy()
+    expect(executeCall.stepAnswers[1]).toBeTruthy()
+    expect(executeCall.stepAnswers[1].objective).toBe('pitch para investidor seed')
+    // Suggested default should be preserved for the non-required field
+    expect(executeCall.stepAnswers[1].slides).toBe('10')
+  })
+
   it('executes the plan end-to-end when the user approves', async () => {
     scriptSession([
       {

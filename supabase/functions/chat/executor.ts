@@ -334,22 +334,6 @@ async function createGoogleSlides(
   },
   ctx: ToolContext,
 ): Promise<ToolResult> {
-  const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
-  if (!saJson) {
-    return {
-      ok: false,
-      error:
-        'GOOGLE_SERVICE_ACCOUNT_JSON is not configured in Edge Function secrets.',
-    }
-  }
-
-  let sa: any
-  try {
-    sa = JSON.parse(saJson)
-  } catch {
-    return { ok: false, error: 'Invalid GOOGLE_SERVICE_ACCOUNT_JSON format.' }
-  }
-
   const title = typeof input.title === 'string' ? input.title.trim() : ''
   if (!title) {
     return { ok: false, error: 'create_google_slides requires a non-empty `title`.' }

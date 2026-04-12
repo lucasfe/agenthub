@@ -708,6 +708,37 @@ export default function AiAssistant({ open, onClose }) {
             Powered by Claude via Supabase Edge Functions.
           </p>
         </form>
+        </div>
+        {/* End chat column */}
+
+        {/* Review panel column */}
+        {reviewPanelOpen && reviewMsg && (
+          <div
+            className={`flex flex-col min-w-0 ${
+              fullscreen ? 'w-[560px] shrink-0' : 'flex-1'
+            }`}
+          >
+            <PlanReviewPanel
+              plan={reviewMsg.plan}
+              status={reviewMsg.planStatus || 'proposed'}
+              refineError={reviewMsg.refineError}
+              stepStates={reviewMsg.stepStates}
+              activeStepId={reviewMsg.activeStepId}
+              runSummary={reviewMsg.runSummary}
+              runError={reviewMsg.runError}
+              failedStepId={reviewMsg.failedStepId}
+              stepAnswers={reviewMsg.stepAnswers}
+              availableTools={tools}
+              onRefine={(text) => handleRefinePlan(reviewPanelMsgIdx, text)}
+              onApprove={() => handleApprovePlan(reviewPanelMsgIdx)}
+              onCancel={() => handleCancelPlan(reviewPanelMsgIdx)}
+              onAnswerChange={(stepId, key, value) =>
+                handleAnswerChange(reviewPanelMsgIdx, stepId, key, value)
+              }
+              onClose={closeReviewPanel}
+            />
+          </div>
+        )}
       </aside>
     </>
   )

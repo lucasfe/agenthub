@@ -753,24 +753,37 @@ async function runStep(
   const consecutiveFailures = new Map<string, number>()
 
   for (let iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
-    const body: any = {
+    const reqBody: any = {
       model,
       max_tokens: MAX_STEP_TOKENS,
       system: systemPrompt,
       messages,
     }
-    if (anthropicTools.length > 0) body.tools = anthropicTools
+    if (anthropicTools.length > 0) reqBody.tools = anthropicTools
 
-    const res = await fetch(ANTHROPIC_API_URL, {
-      method: 'POST',
-      headers: {
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify(body),
-      signal,
-    })
+    // Fetch with a single retry on 429 (rate limit). Waits for the
+    // Retry-After header value or 10s, whichever is smaller.
+    let res: Response
+    const doFetch = () =>
+      fetch(ANTHROPIC_API_URL, {
+        method: 'POST',
+        headers: {
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify(reqBody),
+        signal,
+      })
+    res = await doFetch()
+    if (res.status === 429) {
+      const retryAfter = Math.min(
+        Number(res.headers.get('retry-after') || '10') * 1000,
+        15_000,
+      )
+      await new Promise((r) => setTimeout(r, retryAfter))
+      res = await doFetch()
+    }
 
     if (!res.ok) {
       const errText = await res.text().catch(() => 'unknown error')

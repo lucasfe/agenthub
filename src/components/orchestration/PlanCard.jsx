@@ -33,10 +33,12 @@ export default function PlanCard({
   runSummary,
   runError,
   failedStepId,
+  stepAnswers = {},
   availableTools,
   onRefine,
   onApprove,
   onCancel,
+  onAnswerChange,
 }) {
   const [refineText, setRefineText] = useState('')
   const isRefining = status === 'refining'

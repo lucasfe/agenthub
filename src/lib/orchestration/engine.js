@@ -104,6 +104,7 @@ export function startSession({
     refinement,
     plan,
     originalTask,
+    stepAnswers,
     signal: session.signal,
     onEvent: (evt) => {
       // Ensure every event carries the session_id the caller expects.

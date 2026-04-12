@@ -431,6 +431,16 @@ function ToolCallBadge({ call, availableTools }) {
   else if (isError) statusIcon = <Icons.AlertCircle size={10} className="text-rose-400" />
   else statusIcon = <Icons.Check size={10} className="text-emerald-400" />
 
+  const artifact = call.artifact
+  const artifactFilename =
+    artifact && typeof artifact.content === 'string'
+      ? `${safeFilename(artifact.name || 'artifact')}.${artifact.format || 'md'}`
+      : null
+  const handleDownloadArtifact = () => {
+    if (!artifact || typeof artifact.content !== 'string') return
+    downloadText(artifact.content, artifactFilename)
+  }
+
   return (
     <div className="flex items-start gap-2 text-[11px] bg-black/20 border border-white/5 rounded-md px-2 py-1.5">
       <ToolIcon size={11} className="text-text-muted shrink-0 mt-0.5" />
@@ -450,12 +460,17 @@ function ToolCallBadge({ call, availableTools }) {
         {call.error && (
           <div className="text-[10px] text-rose-300 mt-0.5">{call.error}</div>
         )}
-        {call.artifact && (
-          <div className="text-[10px] text-text-muted mt-0.5 flex items-center gap-1">
-            <Icons.FileText size={9} />
-            {call.artifact.name || 'artifact'}
-            {call.artifact.format ? `.${call.artifact.format}` : ''}
-          </div>
+        {artifact && (
+          <button
+            type="button"
+            onClick={handleDownloadArtifact}
+            disabled={typeof artifact.content !== 'string'}
+            className="mt-1 inline-flex items-center gap-1 text-[10px] text-emerald-300 hover:text-emerald-200 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded px-1.5 py-0.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label={`Download ${artifactFilename || 'artifact'}`}
+          >
+            <Icons.Download size={9} />
+            {artifactFilename || 'artifact'}
+          </button>
         )}
       </div>
     </div>

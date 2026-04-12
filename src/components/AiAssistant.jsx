@@ -586,11 +586,13 @@ export default function AiAssistant({ open, onClose }) {
                   runSummary={msg.runSummary}
                   runError={msg.runError}
                   failedStepId={msg.failedStepId}
+                  stepAnswers={msg.stepAnswers}
                   availableTools={tools}
                   availableAgents={agents}
                   onRefinePlan={(text) => handleRefinePlan(i, text)}
                   onApprovePlan={() => handleApprovePlan(i)}
                   onCancelPlan={() => handleCancelPlan(i)}
+                  onAnswerChange={(stepId, key, value) => handleAnswerChange(i, stepId, key, value)}
                 />
               )
             })}

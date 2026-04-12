@@ -3,17 +3,20 @@ import { BrowserRouter } from 'react-router'
 import { ThemeProvider } from '../context/ThemeContext'
 import { StackProvider } from '../context/StackContext'
 import { DataProvider } from '../context/DataContext'
+import { AuthProvider } from '../context/AuthContext'
 
 export function renderWithProviders(component, options = {}) {
   return render(
     <BrowserRouter>
-      <DataProvider>
-        <ThemeProvider>
-          <StackProvider>
-            {component}
-          </StackProvider>
-        </ThemeProvider>
-      </DataProvider>
+      <AuthProvider>
+        <DataProvider>
+          <ThemeProvider>
+            <StackProvider>
+              {component}
+            </StackProvider>
+          </ThemeProvider>
+        </DataProvider>
+      </AuthProvider>
     </BrowserRouter>,
     options
   )

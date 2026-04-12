@@ -454,6 +454,11 @@ export default function AiAssistant({ open, onClose }) {
     // reflects this via a disabled button, but defend against calls.
     if (countMissingRequired(target.plan, target.stepAnswers || {}) > 0) return
 
+    // If the review panel was open for this message, close it now so the
+    // user can watch execution in the chat card. They can re-open it via
+    // the "Open live view" button.
+    if (reviewPanelMsgIdx === messageIdx) setReviewPanelMsgIdx(null)
+
     patchMessageAt(messageIdx, {
       planStatus: 'executing',
       stepStates: {},

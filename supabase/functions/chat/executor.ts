@@ -335,6 +335,7 @@ async function runStep(
   agentsContext: any[],
   toolsContext: any[],
   stepContext: string,
+  stepAnswers: Record<string, string>,
   emit: EmitFn,
   apiKey: string,
   signal: AbortSignal,

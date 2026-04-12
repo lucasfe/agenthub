@@ -508,6 +508,7 @@ describe('AiAssistant', () => {
     await waitFor(() => {
       expect(screen.getByText('Plan failed')).toBeInTheDocument()
     })
-    expect(screen.getByText(/Sub-agent exploded/)).toBeInTheDocument()
+    expect(screen.getAllByText(/Sub-agent exploded/).length).toBeGreaterThan(0)
+    expect(screen.getByText(/Failed at step 1/i)).toBeInTheDocument()
   })
 })

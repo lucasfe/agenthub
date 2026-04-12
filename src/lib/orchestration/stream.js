@@ -29,6 +29,8 @@ export async function streamOrchestration({
   sessionId,
   messages,
   agents,
+  tools,
+  refinement,
   signal,
   onEvent,
 }) {
@@ -56,8 +58,21 @@ export async function streamOrchestration({
               category: a.category,
               description: a.description,
               tags: a.tags,
+              model: a.model,
+              tools: a.tools,
+              capabilities: a.capabilities,
             }))
           : undefined,
+        tools_context: Array.isArray(tools)
+          ? tools.map((t) => ({
+              id: t.id,
+              name: t.name,
+              description: t.description,
+              category: t.category,
+              requires_approval: t.requires_approval,
+            }))
+          : undefined,
+        refinement: refinement || undefined,
       }),
       signal,
     })

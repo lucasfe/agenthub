@@ -88,6 +88,7 @@ export function startSession({
   refinement,
   plan,
   originalTask,
+  stepAnswers,
 }) {
   const session = new Session({ mode })
   session.status = SESSION_STATUS.STREAMING

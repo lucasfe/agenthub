@@ -336,13 +336,30 @@ export default function AiAssistant({ open, onClose }) {
           unsubscribe()
           break
         case 'run.error':
-          patchMessageAt(messageIdx, (msg) => ({
-            ...msg,
-            planStatus: 'error',
-            activeStepId: null,
-            runError: event.error,
-            failedStepId: event.failed_step_id,
-          }))
+          patchMessageAt(messageIdx, (msg) => {
+            // Cascade the error to any step that was still in a running
+            // state — the server should also emit step.error, but we do it
+            // here as defense-in-depth so the UI never shows a step
+            // perpetually "running" after a run failure.
+            const nextStepStates = { ...(msg.stepStates || {}) }
+            for (const [stepId, state] of Object.entries(nextStepStates)) {
+              if (state?.status === 'running') {
+                nextStepStates[stepId] = {
+                  ...state,
+                  status: 'error',
+                  error: state.error || event.error || 'run aborted',
+                }
+              }
+            }
+            return {
+              ...msg,
+              planStatus: 'error',
+              activeStepId: null,
+              stepStates: nextStepStates,
+              runError: event.error,
+              failedStepId: event.failed_step_id,
+            }
+          })
           setIsStreaming(false)
           sessionRef.current = null
           unsubscribe()

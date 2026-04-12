@@ -706,19 +706,16 @@ function MessageBubble({
   plan,
   planStatus,
   planFallback,
-  refineError,
   stepStates,
   activeStepId,
   runSummary,
   runError,
   failedStepId,
   stepAnswers,
-  availableTools,
   availableAgents,
-  onRefinePlan,
+  onOpenReview,
   onApprovePlan,
   onCancelPlan,
-  onAnswerChange,
 }) {
   const isUser = role === 'user'
   const hasPlan = Boolean(plan || planFallback || planStatus === 'proposing')

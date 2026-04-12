@@ -172,13 +172,23 @@ export default function PlanCard({
       {isDone && runSummary && (
         <div className="mx-4 mb-3 px-3 py-2 rounded-lg bg-emerald-500/5 border border-emerald-500/20 flex items-center gap-2">
           <Icons.Sparkles size={13} className="text-emerald-300 shrink-0" />
-          <p className="text-[11px] text-emerald-200/90">
+          <p className="text-[11px] text-emerald-200/90 flex-1">
             All steps completed
             {runSummary.duration_ms ? ` in ${formatDuration(runSummary.duration_ms)}` : ''}
             {runSummary.tokens_in || runSummary.tokens_out
               ? ` · ${(runSummary.tokens_in || 0) + (runSummary.tokens_out || 0)} tokens`
               : ''}
           </p>
+          {downloadableSteps.length > 0 && (
+            <button
+              type="button"
+              onClick={handleDownloadAll}
+              className="flex items-center gap-1.5 text-[11px] text-emerald-300 hover:text-emerald-200 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-md px-2 py-1 transition-colors"
+            >
+              <Icons.Download size={11} />
+              Download all
+            </button>
+          )}
         </div>
       )}
 

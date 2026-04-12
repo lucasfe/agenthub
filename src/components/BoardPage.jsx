@@ -186,11 +186,20 @@ function TaskDetailPanel({ task, agents, tools, onUpdate, onDelete, onClose }) {
 
   const orch = useTaskOrchestration({ task, agents, tools, onTaskUpdate: onUpdate })
   const col = COLUMN_BY_ID[STATUS_TO_COLUMN[task.status]] || COLUMN_BY_ID.todo
+  const autoStartedRef = useRef(false)
 
   useEffect(() => {
     setTitle(task.title)
     setDescription(task.description)
   }, [task.id, task.title, task.description])
+
+  // Auto-start planning when the panel opens on a task that just moved to planning
+  useEffect(() => {
+    if (task.status === 'planning' && !task.plan && !autoStartedRef.current) {
+      autoStartedRef.current = true
+      orch.startPlanning()
+    }
+  }, [task.status, task.plan, orch.startPlanning])
 
   useEffect(() => {
     const handleKey = (e) => { if (e.key === 'Escape') onClose() }

@@ -8,6 +8,7 @@ export default function Sidebar() {
   const location = useLocation()
   const [collapsed, setCollapsed] = useState(false)
   const { agents, teams } = useData()
+  const { user, signOut } = useAuth()
 
   const browseItems = [
     { icon: Bot, label: 'Agents', count: agents.length, path: '/' },

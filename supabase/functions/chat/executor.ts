@@ -316,7 +316,7 @@ async function getGoogleAccessToken(sa: any): Promise<string> {
   const claims = {
     iss: sa.client_email,
     scope:
-      'https://www.googleapis.com/auth/presentations https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive',
+      'https://www.googleapis.com/auth/presentations https://www.googleapis.com/auth/drive',
     aud: sa.token_uri || 'https://oauth2.googleapis.com/token',
     iat: now,
     exp: now + 3600,

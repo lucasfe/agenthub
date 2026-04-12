@@ -403,7 +403,7 @@ async function createGoogleSlides(
 
   try {
     // 1. Authenticate via OAuth2 refresh token
-    const token = await getGoogleAccessToken()
+    const token = await getGoogleAccessToken(ctx.userId)
 
     // 2. Create empty presentation
     const createRes = await fetch(

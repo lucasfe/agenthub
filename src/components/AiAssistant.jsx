@@ -798,7 +798,7 @@ function MessageBubble({
             ? 'bg-gradient-to-br from-purple-500 to-blue-500 text-white rounded-br-sm whitespace-pre-wrap'
             : error
               ? 'bg-rose-500/10 border border-rose-500/30 text-rose-300 rounded-bl-sm whitespace-pre-wrap'
-              : 'bg-bg-card border border-border-subtle text-text-primary rounded-bl-sm'
+              : 'bg-bg-card border border-border-subtle text-text-primary rounded-bl-sm overflow-hidden'
         }`}
       >
         {content && (

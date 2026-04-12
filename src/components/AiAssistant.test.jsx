@@ -267,7 +267,7 @@ describe('AiAssistant', () => {
     expect(screen.getByText(/Hi! I'm your AI assistant/)).toBeInTheDocument()
   })
 
-  it('renders a PlanCard when the session emits plan.proposed', async () => {
+  it('renders a compact PlanCard when the session emits plan.proposed', async () => {
     scriptSession([
       { type: 'router.classified', mode: 'task' },
       { type: 'plan.proposing' },
@@ -298,11 +298,23 @@ describe('AiAssistant', () => {
     await user.click(screen.getByLabelText('Send message'))
 
     await waitFor(() => {
-      expect(screen.getByText('Proposed plan')).toBeInTheDocument()
+      expect(screen.getByText('Plan proposed')).toBeInTheDocument()
     })
     expect(screen.getByText(/1 step/)).toBeInTheDocument()
-    expect(screen.getByText('Research React trends')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /approve/i })).toBeInTheDocument()
+    // Compact card exposes a Review & approve button that opens the side panel.
+    expect(
+      screen.getByRole('button', { name: /review & approve/i }),
+    ).toBeInTheDocument()
+    // No required fields → quick approve available.
+    expect(screen.getByRole('button', { name: /quick approve/i })).toBeInTheDocument()
+
+    // The step task description is NOT in the compact summary; it only
+    // appears in the review panel. Open the panel to confirm.
+    expect(screen.queryByText('Research React trends')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /review & approve/i }))
+    await waitFor(() => {
+      expect(screen.getByText('Research React trends')).toBeInTheDocument()
+    })
   })
 
   it('renders a PlanFallbackCard when the session emits plan.fallback', async () => {

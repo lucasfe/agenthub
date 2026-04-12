@@ -20,11 +20,19 @@
 //     onEvent: (evt) => { ... },
 //   })
 
+import { supabase } from '../supabase'
+
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 export function isOrchestrationConfigured() {
   return Boolean(SUPABASE_URL && SUPABASE_ANON_KEY)
+}
+
+async function getAuthToken() {
+  if (!supabase) return SUPABASE_ANON_KEY
+  const { data } = await supabase.auth.getSession()
+  return data?.session?.access_token || SUPABASE_ANON_KEY
 }
 
 export async function streamOrchestration({
@@ -44,13 +52,15 @@ export async function streamOrchestration({
     throw new Error('Orchestration is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.')
   }
 
+  const token = await getAuthToken()
+
   let response
   try {
     response = await fetch(`${SUPABASE_URL}/functions/v1/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        Authorization: `Bearer ${token}`,
         apikey: SUPABASE_ANON_KEY,
       },
       body: JSON.stringify({

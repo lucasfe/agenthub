@@ -22,6 +22,12 @@ const ROUTER_MODEL = Deno.env.get('ROUTER_MODEL') || 'claude-haiku-4-5-20251001'
 const MAX_TOKENS = 2048
 const PLANNER_MAX_TOKENS = 4096
 const MAX_PLAN_STEPS = 5
+// Wall-clock cap for an entire execute run. A single step producing a long
+// markdown artifact can take 60-120s (Sonnet @ ~50 tok/s, up to 8192 tokens),
+// so 90s is too tight. 240s leaves headroom without getting near Supabase's
+// edge-function hard limit (~400s).
+const RUN_TIMEOUT_MS =
+  Number(Deno.env.get('RUN_TIMEOUT_MS')) || 240_000
 
 const BASE_SYSTEM_PROMPT = `You are the AI assistant for Lucas AI Hub, an internal web app for browsing, creating, and managing AI agent templates.
 

@@ -176,6 +176,169 @@ export default function AiAssistant({ open, onClose }) {
           sessionRef.current = null
           unsubscribe()
           break
+        // ── Executor branch (Phase 4) ───────────────────
+        case 'run.started':
+          patchMessageAt(messageIdx, (msg) => ({
+            ...msg,
+            planStatus: 'executing',
+            runId: event.run_id,
+            stepStates: {},
+            activeStepId: null,
+          }))
+          break
+        case 'step.started':
+          patchMessageAt(messageIdx, (msg) => ({
+            ...msg,
+            activeStepId: event.step_id,
+            stepStates: {
+              ...(msg.stepStates || {}),
+              [event.step_id]: {
+                status: 'running',
+                text: '',
+                toolCalls: [],
+                startTime: Date.now(),
+              },
+            },
+          }))
+          break
+        case 'step.text':
+          patchMessageAt(messageIdx, (msg) => {
+            const prev = msg.stepStates?.[event.step_id] || {
+              status: 'running',
+              text: '',
+              toolCalls: [],
+            }
+            return {
+              ...msg,
+              stepStates: {
+                ...(msg.stepStates || {}),
+                [event.step_id]: {
+                  ...prev,
+                  text: (prev.text || '') + event.value,
+                },
+              },
+            }
+          })
+          break
+        case 'step.tool_call_start':
+          patchMessageAt(messageIdx, (msg) => {
+            const prev = msg.stepStates?.[event.step_id] || {
+              status: 'running',
+              text: '',
+              toolCalls: [],
+            }
+            return {
+              ...msg,
+              stepStates: {
+                ...(msg.stepStates || {}),
+                [event.step_id]: {
+                  ...prev,
+                  toolCalls: [
+                    ...(prev.toolCalls || []),
+                    {
+                      id: event.tool_call_id,
+                      name: event.name,
+                      input: event.input,
+                      status: 'running',
+                    },
+                  ],
+                },
+              },
+            }
+          })
+          break
+        case 'step.tool_call_done':
+          patchMessageAt(messageIdx, (msg) => {
+            const prev = msg.stepStates?.[event.step_id]
+            if (!prev) return msg
+            const toolCalls = (prev.toolCalls || []).map((tc) =>
+              tc.id === event.tool_call_id
+                ? {
+                    ...tc,
+                    status: event.status || 'done',
+                    summary: event.summary,
+                    error: event.error,
+                    artifact: event.artifact,
+                    duration_ms: event.duration_ms,
+                  }
+                : tc,
+            )
+            return {
+              ...msg,
+              stepStates: {
+                ...(msg.stepStates || {}),
+                [event.step_id]: { ...prev, toolCalls },
+              },
+            }
+          })
+          break
+        case 'step.done':
+          patchMessageAt(messageIdx, (msg) => {
+            const prev = msg.stepStates?.[event.step_id] || {
+              text: '',
+              toolCalls: [],
+            }
+            return {
+              ...msg,
+              stepStates: {
+                ...(msg.stepStates || {}),
+                [event.step_id]: {
+                  ...prev,
+                  status: 'done',
+                  duration_ms: event.duration_ms,
+                  tokens_in: event.tokens_in,
+                  tokens_out: event.tokens_out,
+                },
+              },
+            }
+          })
+          break
+        case 'step.error':
+          patchMessageAt(messageIdx, (msg) => {
+            const prev = msg.stepStates?.[event.step_id] || {
+              text: '',
+              toolCalls: [],
+            }
+            return {
+              ...msg,
+              stepStates: {
+                ...(msg.stepStates || {}),
+                [event.step_id]: {
+                  ...prev,
+                  status: 'error',
+                  error: event.error,
+                },
+              },
+            }
+          })
+          break
+        case 'run.done':
+          patchMessageAt(messageIdx, (msg) => ({
+            ...msg,
+            planStatus: 'done',
+            activeStepId: null,
+            runSummary: {
+              duration_ms: event.duration_ms,
+              tokens_in: event.total_tokens_in,
+              tokens_out: event.total_tokens_out,
+            },
+          }))
+          setIsStreaming(false)
+          sessionRef.current = null
+          unsubscribe()
+          break
+        case 'run.error':
+          patchMessageAt(messageIdx, (msg) => ({
+            ...msg,
+            planStatus: 'error',
+            activeStepId: null,
+            runError: event.error,
+            failedStepId: event.failed_step_id,
+          }))
+          setIsStreaming(false)
+          sessionRef.current = null
+          unsubscribe()
+          break
         case 'run.cancelled':
           setIsStreaming(false)
           sessionRef.current = null

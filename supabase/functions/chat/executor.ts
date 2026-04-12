@@ -567,6 +567,220 @@ async function insertRunLog(run: Record<string, unknown>): Promise<void> {
   }
 }
 
+// ─── Requirements analyzer ──────────────────────────────────────────────────
+//
+// Runs AFTER the planner has produced a validated plan, BEFORE the user sees
+// it. For each step in the plan, reads the chosen agent's system prompt and
+// extracts the questions it would ask the user ("pergunte antes de começar..."
+// / "ask the user about..."). Skips questions whose answers are already
+// derivable from the original task or the step task. Always inlines a
+// `suggested` default. Returns the plan with a `requirements` array attached
+// to each step (empty array when nothing is needed).
+
+const REQUIREMENTS_ANALYZER_SYSTEM_PROMPT = `You are a requirements analyst for Lucas AI Hub. A plan has been generated to execute a user task. For each step, identify the questions the step's agent would ask the user BEFORE starting — but ONLY when the agent's system prompt explicitly instructs it to ask.
+
+## Rules
+
+1. **Be rigorous.** Only include a question if the agent's system prompt contains an explicit instruction to ask (phrases like "ask the user", "pergunte", "confirme antes", "clarify", "solicite"). If the prompt doesn't ask for information, return an empty \`requirements\` array for that step — do NOT invent questions.
+2. **Skip already-answered questions.** If the user's original task or the step task already tells the agent the answer (even implicitly), skip it.
+3. **Always pre-fill \`suggested\`.** Infer the most likely answer from the original task and step context. Even a best-guess default is more useful than a blank.
+4. **Max ${MAX_REQUIREMENTS_PER_STEP} questions per step.** Prioritize the ones the agent prompt calls out most directly.
+5. **Short, concrete questions.** Avoid open-ended philosophical framing. Use the same language as the user's original task (Portuguese in, Portuguese out).
+6. **\`required: true\`** only if the agent cannot reasonably produce output without the answer. Default to false for nice-to-have details.
+
+## Response
+
+Call \`submit_requirements\` exactly once with the list. Include every step from the plan, using an empty \`requirements\` array for steps that need nothing. Do not emit any text outside the tool call.`
+
+const SUBMIT_REQUIREMENTS_TOOL = {
+  name: 'submit_requirements',
+  description:
+    'Submit the list of user-facing questions per step that must be answered before execution can start.',
+  input_schema: {
+    type: 'object',
+    required: ['steps'],
+    properties: {
+      steps: {
+        type: 'array',
+        description: 'One entry per step in the plan, in the same order. Always include every step.',
+        items: {
+          type: 'object',
+          required: ['step_id', 'requirements'],
+          properties: {
+            step_id: {
+              type: 'integer',
+              description: 'Matches the id of the step in the plan.',
+            },
+            requirements: {
+              type: 'array',
+              maxItems: MAX_REQUIREMENTS_PER_STEP,
+              items: {
+                type: 'object',
+                required: ['key', 'question'],
+                properties: {
+                  key: {
+                    type: 'string',
+                    description: 'Short snake_case identifier, unique within the step. Becomes the field name used by the executor.',
+                  },
+                  question: {
+                    type: 'string',
+                    description: 'The question to show the user.',
+                  },
+                  hint: {
+                    type: 'string',
+                    description: 'Optional short example or guidance shown under the input.',
+                  },
+                  required: {
+                    type: 'boolean',
+                    description: "Whether the user MUST answer before 'Approve & run' unlocks.",
+                  },
+                  suggested: {
+                    type: 'string',
+                    description: 'Inferred default value to pre-fill the input with.',
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+}
+
+function buildAnalyzerUserMessage(
+  plan: any,
+  agentsContext: any[],
+  originalTask: string,
+): string {
+  const parts: string[] = []
+  parts.push(`# Original user task\n\n${originalTask}`)
+
+  const lightPlan = {
+    steps: plan.steps.map((s: any) => ({
+      id: s.id,
+      agent_id: s.agent_id,
+      agent_name: s.agent_name,
+      task: s.task,
+      inputs: s.inputs,
+      tools_used: s.tools_used,
+    })),
+  }
+  parts.push(`# Plan\n\n\`\`\`json\n${JSON.stringify(lightPlan, null, 2)}\n\`\`\``)
+
+  parts.push(`# Agent system prompts for the chosen steps\n`)
+  const agentById = new Map<string, any>()
+  for (const a of agentsContext) {
+    if (a && typeof a.id === 'string') agentById.set(a.id, a)
+  }
+  for (const step of plan.steps) {
+    const agent = agentById.get(step.agent_id)
+    const content =
+      typeof agent?.content === 'string' && agent.content.trim()
+        ? agent.content
+        : '(no system prompt)'
+    parts.push(`## Step ${step.id} · ${agent?.name || step.agent_id}\n\n${content}`)
+  }
+
+  return parts.join('\n\n')
+}
+
+function sanitizeRequirement(raw: any): any | null {
+  if (!raw || typeof raw !== 'object') return null
+  const key = typeof raw.key === 'string' ? raw.key.trim() : ''
+  const question = typeof raw.question === 'string' ? raw.question.trim() : ''
+  if (!key || !question) return null
+  const req = {
+    key: key.replace(/[^a-z0-9_]/gi, '_').toLowerCase().slice(0, 40),
+    question,
+    required: typeof raw.required === 'boolean' ? raw.required : false,
+  } as any
+  if (typeof raw.hint === 'string' && raw.hint.trim()) req.hint = raw.hint.trim()
+  if (typeof raw.suggested === 'string' && raw.suggested.trim())
+    req.suggested = raw.suggested.trim()
+  return req
+}
+
+export async function analyzeRequirements(
+  plan: any,
+  agentsContext: any[],
+  originalTask: string,
+  apiKey: string,
+  signal?: AbortSignal,
+): Promise<any> {
+  try {
+    const res = await fetch(ANTHROPIC_API_URL, {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: ANALYZER_MODEL,
+        max_tokens: ANALYZER_MAX_TOKENS,
+        system: REQUIREMENTS_ANALYZER_SYSTEM_PROMPT,
+        messages: [
+          {
+            role: 'user',
+            content: buildAnalyzerUserMessage(plan, agentsContext, originalTask),
+          },
+        ],
+        tools: [SUBMIT_REQUIREMENTS_TOOL],
+        tool_choice: { type: 'tool', name: 'submit_requirements' },
+      }),
+      signal,
+    })
+
+    if (!res.ok) {
+      const body = await res.text().catch(() => '')
+      console.warn(`[analyzer] API error ${res.status}: ${body.slice(0, 200)}`)
+      return attachEmptyRequirements(plan)
+    }
+
+    const data = await res.json()
+    const blocks: any[] = Array.isArray(data?.content) ? data.content : []
+    const toolUse = blocks.find(
+      (b: any) => b?.type === 'tool_use' && b?.name === 'submit_requirements',
+    )
+
+    if (!toolUse || !Array.isArray(toolUse.input?.steps)) {
+      console.warn('[analyzer] no submit_requirements tool call in response')
+      return attachEmptyRequirements(plan)
+    }
+
+    const reqByStepId = new Map<number, any[]>()
+    for (const s of toolUse.input.steps) {
+      if (typeof s?.step_id !== 'number') continue
+      const sanitized = Array.isArray(s.requirements)
+        ? s.requirements
+            .map(sanitizeRequirement)
+            .filter((r: any) => r !== null)
+            .slice(0, MAX_REQUIREMENTS_PER_STEP)
+        : []
+      reqByStepId.set(s.step_id, sanitized)
+    }
+
+    return {
+      ...plan,
+      steps: plan.steps.map((step: any) => ({
+        ...step,
+        requirements: reqByStepId.get(step.id) || [],
+      })),
+    }
+  } catch (err) {
+    console.warn('[analyzer] unexpected error', (err as Error).message)
+    return attachEmptyRequirements(plan)
+  }
+}
+
+function attachEmptyRequirements(plan: any): any {
+  return {
+    ...plan,
+    steps: plan.steps.map((s: any) => ({ ...s, requirements: [] })),
+  }
+}
+
 // ─── Executor branch entry point ────────────────────────────────────────────
 
 export async function runExecutorBranch(

@@ -702,6 +702,22 @@ Deno.serve(async (req: Request) => {
     })
   }
 
+  // Extract user ID from JWT if present (optional auth).
+  let userId: string | undefined
+  const authHeader = req.headers.get('Authorization')
+  if (authHeader?.startsWith('Bearer ')) {
+    try {
+      const token = authHeader.slice(7)
+      const payloadB64 = token.split('.')[1]
+      if (payloadB64) {
+        const payload = JSON.parse(atob(payloadB64))
+        if (typeof payload.sub === 'string') userId = payload.sub
+      }
+    } catch {
+      // JWT parse failure is non-fatal — proceed without userId
+    }
+  }
+
   const mode = typeof body.mode === 'string' ? body.mode : 'chat'
   const sessionId =
     typeof body.session_id === 'string' && body.session_id

@@ -1,13 +1,27 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Search, GitBranch, Moon, Sun, Sparkles } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { Search, Moon, Sun, Sparkles, LogOut, Settings, ChevronDown } from 'lucide-react'
+import { Link } from 'react-router'
 import { useTheme } from '../context/ThemeContext'
+import { useAuth } from '../context/AuthContext'
 import CommandPalette from './CommandPalette'
 import AiAssistant from './AiAssistant'
 
 export default function Header() {
   const { theme, toggleTheme } = useTheme()
+  const { user, signOut } = useAuth()
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [assistantOpen, setAssistantOpen] = useState(false)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const menuRef = useRef(null)
+
+  useEffect(() => {
+    if (!userMenuOpen) return
+    const handleClick = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setUserMenuOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [userMenuOpen])
 
   const closePalette = useCallback(() => setPaletteOpen(false), [])
   const closeAssistant = useCallback(() => setAssistantOpen(false), [])

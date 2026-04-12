@@ -80,7 +80,13 @@ export class Session {
 
 // Kick off a session and start streaming. Returns the Session synchronously so
 // callers can subscribe immediately, even if the network request hasn't left.
-export function startSession({ mode = 'chat', messages, agents }) {
+export function startSession({
+  mode = 'chat',
+  messages,
+  agents,
+  tools,
+  refinement,
+}) {
   const session = new Session({ mode })
   session.status = SESSION_STATUS.STREAMING
 
@@ -91,6 +97,8 @@ export function startSession({ mode = 'chat', messages, agents }) {
     sessionId: session.id,
     messages,
     agents,
+    tools,
+    refinement,
     signal: session.signal,
     onEvent: (evt) => {
       // Ensure every event carries the session_id the caller expects.
@@ -102,6 +110,9 @@ export function startSession({ mode = 'chat', messages, agents }) {
       // stream end as done.
       if (session.status === SESSION_STATUS.STREAMING) {
         session.status = SESSION_STATUS.DONE
+        // Terminal event type depends on which branch ran. For safety, emit
+        // a generic chat.done — subscribers that only care about plan events
+        // just ignore it.
         session._emit({
           type: 'chat.done',
           session_id: session.id,

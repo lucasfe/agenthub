@@ -439,9 +439,9 @@ async function createGoogleSlides(
 
     for (let i = 0; i < slides.length; i++) {
       const slide = slides[i]
-      const slideId = `s${i}`
-      const titlePh = `${slideId}_t`
-      const bodyPh = `${slideId}_b`
+      const slideId = `slide_${i}`
+      const titlePh = `slide_${i}_title`
+      const bodyPh = `slide_${i}_body`
       const layout = slide.layout || 'TITLE_AND_BODY'
 
       const mappings: any[] = [

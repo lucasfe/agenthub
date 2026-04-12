@@ -488,6 +488,28 @@ export default function AiAssistant({ open, onClose }) {
     }))
   }
 
+  const openReviewPanel = (messageIdx) => setReviewPanelMsgIdx(messageIdx)
+  const closeReviewPanel = () => setReviewPanelMsgIdx(null)
+
+  // Auto-open the review panel in fullscreen when a plan is proposed and it
+  // has required requirements waiting for answers. Compact mode preserves
+  // the chat flow and requires an explicit click.
+  useEffect(() => {
+    if (!fullscreen) return
+    const lastIdx = messages.length - 1
+    if (lastIdx < 0) return
+    const last = messages[lastIdx]
+    if (!last || last.role !== 'assistant') return
+    if (last.planStatus !== 'proposed' || !last.plan) return
+    // Already open for this message
+    if (reviewPanelMsgIdx === lastIdx) return
+    // Only auto-open if there are required fields to fill
+    const required = countMissingRequired(last.plan, last.stepAnswers || {})
+    if (required > 0) {
+      setReviewPanelMsgIdx(lastIdx)
+    }
+  }, [messages, fullscreen, reviewPanelMsgIdx])
+
   const handleCancelPlan = (messageIdx) => {
     const target = messages[messageIdx]
     if (target?.planStatus === 'executing') {

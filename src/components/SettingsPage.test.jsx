@@ -14,14 +14,9 @@ describe('SettingsPage', () => {
     expect(screen.getByText('Integrations')).toBeInTheDocument()
   })
 
-  it('renders Google Slides integration card', () => {
+  it('renders the manage description', () => {
     renderWithProviders(<SettingsPage />)
-    expect(screen.getByText('Google Slides')).toBeInTheDocument()
-  })
-
-  it('shows Connect button when not connected', () => {
-    renderWithProviders(<SettingsPage />)
-    expect(screen.getByText('Connect')).toBeInTheDocument()
+    expect(screen.getByText('Manage your account and integrations')).toBeInTheDocument()
   })
 
   it('does not show Account section when not logged in', () => {

@@ -758,6 +758,7 @@ Deno.serve(async (req: Request) => {
               originalTask,
               agentsContext: agentsContextRaw,
               toolsContext: toolsContextRaw,
+              stepAnswers: body.step_answers,
               apiKey,
               signal: timeoutController.signal,
             })

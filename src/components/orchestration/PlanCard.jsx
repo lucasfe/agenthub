@@ -325,7 +325,20 @@ function StepRow({ step, state, isActive, availableTools }) {
             {hasSensitive && (
               <Icons.ShieldAlert size={11} className="text-amber-400 shrink-0" title="Uses a tool that requires approval" />
             )}
-            <span className="ml-auto">{statusBadge}</span>
+            <span className="ml-auto flex items-center gap-1.5">
+              {statusBadge}
+              {hasDownloadableText && (
+                <button
+                  type="button"
+                  onClick={handleDownloadStep}
+                  aria-label={`Download step ${step.id} output`}
+                  className="p-1 rounded-md text-text-muted hover:text-text-primary hover:bg-white/10 transition-colors"
+                  title="Download this step's output"
+                >
+                  <Icons.Download size={11} />
+                </button>
+              )}
+            </span>
           </div>
           <p className="text-xs text-text-secondary mt-1 leading-snug">{step.task}</p>
 

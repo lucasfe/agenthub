@@ -15,6 +15,7 @@
 //     refinement,     // optional: { previous_plan, instructions }
 //     plan,           // optional: approved plan (mode='execute')
 //     originalTask,   // optional: original user task (mode='execute')
+//     stepAnswers,    // optional: { [stepId]: { key: value } } — user answers to requirements
 //     signal,
 //     onEvent: (evt) => { ... },
 //   })

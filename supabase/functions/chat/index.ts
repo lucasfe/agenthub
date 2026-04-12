@@ -755,9 +755,12 @@ Deno.serve(async (req: Request) => {
               ? body.original_task
               : lastUser?.content || ''
           emit('router.classified', { mode: 'execute' })
-          // Enforce Decision 10: 90s wall clock cap for the whole run.
+          // Wall-clock cap for the whole run (configurable via RUN_TIMEOUT_MS).
           const timeoutController = new AbortController()
-          const timeoutId = setTimeout(() => timeoutController.abort(), 90_000)
+          const timeoutId = setTimeout(
+            () => timeoutController.abort(),
+            RUN_TIMEOUT_MS,
+          )
           try {
             await runExecutorBranch(emit, {
               plan,

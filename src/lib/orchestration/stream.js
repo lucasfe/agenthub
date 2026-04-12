@@ -33,6 +33,8 @@ export async function streamOrchestration({
   agents,
   tools,
   refinement,
+  plan,
+  originalTask,
   signal,
   onEvent,
 }) {

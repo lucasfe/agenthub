@@ -513,7 +513,7 @@ describe('AiAssistant', () => {
     expect(executeCall.stepAnswers[1].slides).toBe('10')
   })
 
-  it('executes the plan end-to-end when the user approves', async () => {
+  it('executes the plan end-to-end when the user clicks Quick approve', async () => {
     scriptSession([
       {
         type: 'plan.proposed',
@@ -541,7 +541,7 @@ describe('AiAssistant', () => {
     await user.click(screen.getByLabelText('Send message'))
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /approve & run/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /quick approve/i })).toBeInTheDocument()
     })
 
     // Arm the executor session events BEFORE the user clicks approve.

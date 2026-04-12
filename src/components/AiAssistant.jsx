@@ -560,6 +560,11 @@ export default function AiAssistant({ open, onClose }) {
                   planStatus={msg.planStatus}
                   planFallback={msg.planFallback}
                   refineError={msg.refineError}
+                  stepStates={msg.stepStates}
+                  activeStepId={msg.activeStepId}
+                  runSummary={msg.runSummary}
+                  runError={msg.runError}
+                  failedStepId={msg.failedStepId}
                   availableTools={tools}
                   availableAgents={agents}
                   onRefinePlan={(text) => handleRefinePlan(i, text)}

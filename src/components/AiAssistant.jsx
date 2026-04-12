@@ -611,19 +611,16 @@ export default function AiAssistant({ open, onClose }) {
                   plan={msg.plan}
                   planStatus={msg.planStatus}
                   planFallback={msg.planFallback}
-                  refineError={msg.refineError}
                   stepStates={msg.stepStates}
                   activeStepId={msg.activeStepId}
                   runSummary={msg.runSummary}
                   runError={msg.runError}
                   failedStepId={msg.failedStepId}
                   stepAnswers={msg.stepAnswers}
-                  availableTools={tools}
                   availableAgents={agents}
-                  onRefinePlan={(text) => handleRefinePlan(i, text)}
+                  onOpenReview={() => openReviewPanel(i)}
                   onApprovePlan={() => handleApprovePlan(i)}
                   onCancelPlan={() => handleCancelPlan(i)}
-                  onAnswerChange={(stepId, key, value) => handleAnswerChange(i, stepId, key, value)}
                 />
               )
             })}

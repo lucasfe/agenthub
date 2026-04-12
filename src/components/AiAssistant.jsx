@@ -1,9 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Sparkles, X, Send, Loader2, Maximize2, Minimize2 } from 'lucide-react'
 import { startSession, isOrchestrationConfigured } from '../lib/orchestration'
 import Markdown from '../lib/markdown'
 import AgentDraftCard from './AgentDraftCard'
 import AgentEditCard from './AgentEditCard'
+import PlanCard from './orchestration/PlanCard'
+import PlanFallbackCard from './orchestration/PlanFallbackCard'
 import { useData } from '../context/DataContext'
 
 const WELCOME_MESSAGE = {
@@ -15,13 +17,14 @@ const WELCOME_MESSAGE = {
 const INITIAL_MESSAGES = [WELCOME_MESSAGE]
 
 export default function AiAssistant({ open, onClose }) {
-  const { agents } = useData()
+  const { agents, tools } = useData()
   const [messages, setMessages] = useState(INITIAL_MESSAGES)
   const [input, setInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
   const inputRef = useRef(null)
   const listRef = useRef(null)
+  // Tracks the currently running session and which message index it writes to.
   const sessionRef = useRef(null)
 
   // Focus the input when the panel opens
@@ -50,51 +53,153 @@ export default function AiAssistant({ open, onClose }) {
 
   // Cancel the active session on unmount
   useEffect(() => {
-    return () => sessionRef.current?.cancel('unmount')
+    return () => sessionRef.current?.session?.cancel('unmount')
   }, [])
 
-  const appendDelta = (delta) => {
+  // Patches the assistant message at a specific index. Used for stream-in
+  // updates (text deltas, plan events). If the index is out of range or the
+  // target isn't an assistant message, it's a no-op.
+  const patchMessageAt = (index, patch) => {
     setMessages((prev) => {
-      const copy = [...prev]
-      const last = copy[copy.length - 1]
-      if (last && last.role === 'assistant') {
-        copy[copy.length - 1] = { ...last, content: last.content + delta }
-      }
-      return copy
+      if (index < 0 || index >= prev.length) return prev
+      const target = prev[index]
+      if (!target || target.role !== 'assistant') return prev
+      const next = [...prev]
+      const patched = typeof patch === 'function' ? patch(target) : { ...target, ...patch }
+      next[index] = patched
+      return next
     })
   }
 
-  const attachToolCall = ({ name, input: toolInput }) => {
-    setMessages((prev) => {
-      const copy = [...prev]
-      const last = copy[copy.length - 1]
-      if (last && last.role === 'assistant') {
-        copy[copy.length - 1] = { ...last, toolCall: { name, input: toolInput } }
-      }
-      return copy
-    })
+  const appendDelta = (index, delta) => {
+    patchMessageAt(index, (msg) => ({ ...msg, content: (msg.content || '') + delta }))
   }
 
-  const showError = (message) => {
+  const showErrorAt = (index, message) => {
     setMessages((prev) => {
-      const copy = [...prev]
-      const last = copy[copy.length - 1]
-      if (last && last.role === 'assistant' && last.content === '') {
-        copy[copy.length - 1] = {
-          role: 'assistant',
-          content: `⚠️ ${message}`,
-          error: true,
-        }
+      if (index < 0 || index >= prev.length) return prev
+      const target = prev[index]
+      if (!target || target.role !== 'assistant') return prev
+      const next = [...prev]
+      if (!target.content) {
+        next[index] = { role: 'assistant', content: `⚠️ ${message}`, error: true }
       } else {
-        copy.push({
-          role: 'assistant',
-          content: `⚠️ ${message}`,
-          error: true,
-        })
+        next[index] = { ...target }
+        next.push({ role: 'assistant', content: `⚠️ ${message}`, error: true })
       }
-      return copy
+      return next
     })
   }
+
+  // Generic event dispatcher bound to a specific message slot. Returns an
+  // unsubscribe-friendly handler that closes itself when a terminal event
+  // arrives (done / error / cancelled).
+  const subscribeSession = useCallback((session, messageIdx) => {
+    const unsubscribe = session.subscribe((event) => {
+      switch (event.type) {
+        case 'router.classified':
+          break
+        // ── Chat branch ─────────────────────────────────
+        case 'chat.text':
+          appendDelta(messageIdx, event.value)
+          break
+        case 'chat.tool_call':
+          patchMessageAt(messageIdx, {
+            toolCall: { name: event.name, input: event.input },
+          })
+          break
+        case 'chat.done':
+          setIsStreaming(false)
+          sessionRef.current = null
+          unsubscribe()
+          break
+        case 'chat.error':
+          showErrorAt(messageIdx, event.error || 'stream error')
+          setIsStreaming(false)
+          sessionRef.current = null
+          unsubscribe()
+          break
+        // ── Planner branch ──────────────────────────────
+        case 'plan.proposing':
+          patchMessageAt(messageIdx, { planStatus: 'proposing' })
+          break
+        case 'plan.proposed':
+          patchMessageAt(messageIdx, (msg) => ({
+            ...msg,
+            plan: event.plan,
+            planStatus: 'proposed',
+            planFallback: null,
+            refineError: null,
+          }))
+          setIsStreaming(false)
+          sessionRef.current = null
+          unsubscribe()
+          break
+        case 'plan.fallback':
+          patchMessageAt(messageIdx, (msg) => ({
+            ...msg,
+            plan: null,
+            planStatus: 'fallback',
+            planFallback: {
+              reason: event.reason,
+              suggested_agent_type: event.suggested_agent_type,
+              suggested_fallback_agent_id: event.suggested_fallback_agent_id,
+            },
+            refineError: null,
+          }))
+          setIsStreaming(false)
+          sessionRef.current = null
+          unsubscribe()
+          break
+        case 'plan.error':
+          // Surface as a refine error if we had a previous plan, otherwise
+          // turn the message into a generic error bubble.
+          setMessages((prev) => {
+            if (messageIdx < 0 || messageIdx >= prev.length) return prev
+            const target = prev[messageIdx]
+            if (!target) return prev
+            if (target.plan) {
+              const next = [...prev]
+              next[messageIdx] = {
+                ...target,
+                planStatus: 'proposed',
+                refineError: event.error,
+              }
+              return next
+            }
+            return prev
+          })
+          if (!messages[messageIdx]?.plan) {
+            showErrorAt(messageIdx, event.error || 'planner error')
+          }
+          setIsStreaming(false)
+          sessionRef.current = null
+          unsubscribe()
+          break
+        case 'run.cancelled':
+          setIsStreaming(false)
+          sessionRef.current = null
+          unsubscribe()
+          break
+        default:
+          break
+      }
+    })
+    return unsubscribe
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const buildOutgoing = (allMessages) =>
+    allMessages
+      .filter((m) => !m.error && m !== WELCOME_MESSAGE)
+      .map((m) => {
+        if (m.role === 'assistant' && m.toolCall) {
+          const summary = serializeToolCall(m.toolCall)
+          return { role: m.role, content: (m.content || '') + summary }
+        }
+        return { role: m.role, content: m.content }
+      })
+      .filter((m) => m.content && m.content.trim())
 
   const handleSend = (e) => {
     e.preventDefault()
@@ -116,25 +221,20 @@ export default function AiAssistant({ open, onClose }) {
       return
     }
 
-    // Build the outgoing history: strip the welcome message and any error
-    // bubbles so we don't feed them back to the model. For assistant messages
-    // that had a previous toolCall, serialize it as text so Claude has
-    // context for iteration without needing to re-send tool_use blocks.
     const userMessage = { role: 'user', content: text }
     const nextMessages = [...messages, userMessage]
-    const outgoing = nextMessages
-      .filter((m) => !m.error && m !== WELCOME_MESSAGE)
-      .map((m) => {
-        if (m.role === 'assistant' && m.toolCall) {
-          const summary = serializeToolCall(m.toolCall)
-          return { role: m.role, content: (m.content || '') + summary }
-        }
-        return { role: m.role, content: m.content }
-      })
-      .filter((m) => m.content && m.content.trim())
+    const outgoing = buildOutgoing(nextMessages)
 
-    // Add the user message plus an empty assistant placeholder to stream into
-    setMessages([...nextMessages, { role: 'assistant', content: '' }])
+    const assistantMessage = {
+      role: 'assistant',
+      content: '',
+      originalTask: text,
+      outgoingSnapshot: outgoing,
+    }
+    const withAssistant = [...nextMessages, assistantMessage]
+    const assistantIdx = withAssistant.length - 1
+
+    setMessages(withAssistant)
     setInput('')
     setIsStreaming(true)
 
@@ -142,44 +242,49 @@ export default function AiAssistant({ open, onClose }) {
       mode: 'chat',
       messages: outgoing,
       agents,
+      tools,
     })
-    sessionRef.current = session
+    sessionRef.current = { session, messageIdx: assistantIdx }
+    subscribeSession(session, assistantIdx)
+  }
 
-    const unsubscribe = session.subscribe((event) => {
-      switch (event.type) {
-        case 'router.classified':
-          // Phase 2: observe only. Phase 3 will route `task` to the planner.
-          break
-        case 'chat.text':
-          appendDelta(event.value)
-          break
-        case 'chat.tool_call':
-          attachToolCall({ name: event.name, input: event.input })
-          break
-        case 'chat.done':
-          setIsStreaming(false)
-          sessionRef.current = null
-          unsubscribe()
-          break
-        case 'chat.error':
-          showError(event.error || 'stream error')
-          setIsStreaming(false)
-          sessionRef.current = null
-          unsubscribe()
-          break
-        case 'run.cancelled':
-          setIsStreaming(false)
-          sessionRef.current = null
-          unsubscribe()
-          break
-        default:
-          break
-      }
+  const handleRefinePlan = (messageIdx, instructions) => {
+    if (isStreaming) return
+    const target = messages[messageIdx]
+    if (!target || !target.plan) return
+
+    const outgoing = target.outgoingSnapshot || buildOutgoing(messages.slice(0, messageIdx))
+
+    patchMessageAt(messageIdx, {
+      planStatus: 'refining',
+      refineError: null,
     })
+    setIsStreaming(true)
+
+    const session = startSession({
+      mode: 'planned',
+      messages: outgoing,
+      agents,
+      tools,
+      refinement: {
+        previous_plan: target.plan,
+        instructions,
+      },
+    })
+    sessionRef.current = { session, messageIdx }
+    subscribeSession(session, messageIdx)
+  }
+
+  const handleApprovePlan = (messageIdx) => {
+    patchMessageAt(messageIdx, { planStatus: 'approved' })
+  }
+
+  const handleCancelPlan = (messageIdx) => {
+    patchMessageAt(messageIdx, { planStatus: 'cancelled' })
   }
 
   const handleClear = () => {
-    sessionRef.current?.cancel('clear')
+    sessionRef.current?.session?.cancel('clear')
     sessionRef.current = null
     setIsStreaming(false)
     setMessages(INITIAL_MESSAGES)
@@ -263,16 +368,34 @@ export default function AiAssistant({ open, onClose }) {
                   error={msg.error}
                   showCursor={showCursor}
                   toolCall={msg.toolCall}
+                  plan={msg.plan}
+                  planStatus={msg.planStatus}
+                  planFallback={msg.planFallback}
+                  refineError={msg.refineError}
+                  availableTools={tools}
+                  availableAgents={agents}
+                  onRefinePlan={(text) => handleRefinePlan(i, text)}
+                  onApprovePlan={() => handleApprovePlan(i)}
+                  onCancelPlan={() => handleCancelPlan(i)}
                 />
               )
             })}
             {isStreaming &&
               messages[messages.length - 1]?.role === 'assistant' &&
               messages[messages.length - 1]?.content === '' &&
-              !messages[messages.length - 1]?.toolCall && (
+              !messages[messages.length - 1]?.toolCall &&
+              !messages[messages.length - 1]?.plan &&
+              messages[messages.length - 1]?.planStatus !== 'proposing' && (
                 <div className="flex items-center gap-2 text-text-muted text-sm">
                   <Loader2 size={14} className="animate-spin" />
                   <span>Thinking…</span>
+                </div>
+              )}
+            {isStreaming &&
+              messages[messages.length - 1]?.planStatus === 'proposing' && (
+                <div className="flex items-center gap-2 text-text-muted text-sm">
+                  <Loader2 size={14} className="animate-spin" />
+                  <span>Planning…</span>
                 </div>
               )}
           </div>
@@ -323,14 +446,30 @@ export default function AiAssistant({ open, onClose }) {
   )
 }
 
-function MessageBubble({ role, content, error, showCursor, toolCall }) {
+function MessageBubble({
+  role,
+  content,
+  error,
+  showCursor,
+  toolCall,
+  plan,
+  planStatus,
+  planFallback,
+  refineError,
+  availableTools,
+  availableAgents,
+  onRefinePlan,
+  onApprovePlan,
+  onCancelPlan,
+}) {
   const isUser = role === 'user'
-  if (!content && !showCursor && !toolCall) return null
+  const hasPlan = Boolean(plan || planFallback || planStatus === 'proposing')
+  if (!content && !showCursor && !toolCall && !hasPlan) return null
 
   // Render markdown for assistant (non-error) messages; everything else is plain text.
   const renderAsMarkdown = role === 'assistant' && !error
-  // When a toolCall is present, let the bubble grow wider so the card has room.
-  const widthClass = toolCall ? 'max-w-[95%] w-full' : 'max-w-[85%]'
+  // Wider bubble when it contains a card.
+  const widthClass = toolCall || hasPlan ? 'max-w-[95%] w-full' : 'max-w-[85%]'
 
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
@@ -360,6 +499,25 @@ function MessageBubble({ role, content, error, showCursor, toolCall }) {
           <AgentEditCard
             targetId={toolCall.input?.id}
             updates={toolCall.input?.updates}
+          />
+        )}
+        {plan && (
+          <PlanCard
+            plan={plan}
+            status={planStatus || 'proposed'}
+            refineError={refineError}
+            availableTools={availableTools}
+            onRefine={onRefinePlan}
+            onApprove={onApprovePlan}
+            onCancel={onCancelPlan}
+          />
+        )}
+        {planFallback && !plan && (
+          <PlanFallbackCard
+            reason={planFallback.reason}
+            suggestedAgentType={planFallback.suggested_agent_type}
+            suggestedFallbackAgentId={planFallback.suggested_fallback_agent_id}
+            availableAgents={availableAgents}
           />
         )}
       </div>

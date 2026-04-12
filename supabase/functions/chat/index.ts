@@ -685,6 +685,7 @@ Deno.serve(async (req: Request) => {
     refinement?: { previous_plan?: unknown; instructions?: string }
     plan?: { steps?: unknown[] }
     original_task?: string
+    step_answers?: Record<string, Record<string, string>>
   }
   try {
     body = await req.json()

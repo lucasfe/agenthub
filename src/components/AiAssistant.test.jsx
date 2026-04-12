@@ -341,7 +341,7 @@ describe('AiAssistant', () => {
     expect(screen.getByRole('link', { name: /create agent/i })).toBeInTheDocument()
   })
 
-  it('triggers a refinement session when the user submits refine text', async () => {
+  it('triggers a refinement session when the user submits refine text in the panel', async () => {
     scriptSession([
       { type: 'router.classified', mode: 'task' },
       { type: 'plan.proposing' },
@@ -371,7 +371,12 @@ describe('AiAssistant', () => {
     await user.click(screen.getByLabelText('Send message'))
 
     await waitFor(() => {
-      expect(screen.getByText('Proposed plan')).toBeInTheDocument()
+      expect(screen.getByText('Plan proposed')).toBeInTheDocument()
+    })
+    // Open the review panel to access the refine input.
+    await user.click(screen.getByRole('button', { name: /review & approve/i }))
+    await waitFor(() => {
+      expect(screen.getByText('Sketch something')).toBeInTheDocument()
     })
 
     // Arm the NEXT session call (the one triggered by refine)

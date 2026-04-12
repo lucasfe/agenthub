@@ -499,6 +499,38 @@ function StepRow({
   )
 }
 
+function RequirementInput({ req, value, onChange }) {
+  const isRequired = req?.required === true
+  const hasValue = typeof value === 'string' && value.trim().length > 0
+  const missing = isRequired && !hasValue
+
+  return (
+    <div>
+      <label className="block text-[11px] text-text-secondary mb-1">
+        {req.question}
+        {isRequired && <span className="text-amber-300 ml-1">*</span>}
+      </label>
+      <input
+        type="text"
+        value={value || ''}
+        onChange={(e) => onChange?.(e.target.value)}
+        placeholder={req.suggested || req.hint || ''}
+        className={`w-full bg-bg-input border rounded-md px-2 py-1.5 text-[11px] text-text-primary placeholder:text-text-muted/70 outline-none transition-colors ${
+          missing
+            ? 'border-amber-500/40 focus:border-amber-500/70'
+            : 'border-border-subtle focus:border-border-hover'
+        }`}
+      />
+      {req.hint && !missing && (
+        <p className="text-[10px] text-text-muted/80 mt-0.5">{req.hint}</p>
+      )}
+      {missing && (
+        <p className="text-[10px] text-amber-300/80 mt-0.5">Required</p>
+      )}
+    </div>
+  )
+}
+
 function ToolCallBadge({ call, availableTools }) {
   const meta = availableTools?.find((t) => t.id === call.name)
   const ToolIcon = Icons[meta?.icon] || Icons.Wrench

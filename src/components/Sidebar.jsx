@@ -11,9 +11,9 @@ export default function Sidebar() {
   const { user, signOut } = useAuth()
 
   const browseItems = [
+    { icon: Columns3, label: 'Board', path: '/board' },
     { icon: Bot, label: 'Agents', count: agents.length, path: '/' },
     { icon: Users, label: 'Teams', count: teams.length, path: '/teams' },
-    { icon: Columns3, label: 'Board', path: '/board' },
   ]
 
   return (

@@ -704,6 +704,11 @@ function MessageBubble({
             plan={plan}
             status={planStatus || 'proposed'}
             refineError={refineError}
+            stepStates={stepStates}
+            activeStepId={activeStepId}
+            runSummary={runSummary}
+            runError={runError}
+            failedStepId={failedStepId}
             availableTools={availableTools}
             onRefine={onRefinePlan}
             onApprove={onApprovePlan}

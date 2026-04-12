@@ -518,8 +518,12 @@ async function createGoogleSlides(
       }
     }
 
-    // 5. Share with user (optional)
-    const shareEmail = Deno.env.get('GOOGLE_SLIDES_SHARE_EMAIL')
+    // 5. Share with user — prefer the email passed by the agent, fall back
+    //    to the env var only as a last resort (for dev/testing convenience).
+    const shareEmail =
+      (typeof input.share_with_email === 'string' && input.share_with_email.trim()
+        ? input.share_with_email.trim()
+        : null) || Deno.env.get('GOOGLE_SLIDES_SHARE_EMAIL')
     if (shareEmail) {
       const shareRes = await fetch(
         `https://www.googleapis.com/drive/v3/files/${presentationId}/permissions`,

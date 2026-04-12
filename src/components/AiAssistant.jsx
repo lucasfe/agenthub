@@ -5,6 +5,7 @@ import Markdown from '../lib/markdown'
 import AgentDraftCard from './AgentDraftCard'
 import AgentEditCard from './AgentEditCard'
 import PlanCard from './orchestration/PlanCard'
+import PlanReviewPanel from './orchestration/PlanReviewPanel'
 import PlanFallbackCard from './orchestration/PlanFallbackCard'
 import { useData } from '../context/DataContext'
 

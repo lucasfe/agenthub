@@ -1205,6 +1205,7 @@ export async function runExecutorBranch(
         emit,
         options.apiKey,
         options.signal,
+        options.userId,
       )
       const stepDuration = Date.now() - stepStart
       totalIn += result.tokens_in

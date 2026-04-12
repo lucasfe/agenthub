@@ -439,10 +439,35 @@ export default function AiAssistant({ open, onClose }) {
   }
 
   const handleApprovePlan = (messageIdx) => {
-    patchMessageAt(messageIdx, { planStatus: 'approved' })
+    if (isStreaming) return
+    const target = messages[messageIdx]
+    if (!target || !target.plan) return
+
+    patchMessageAt(messageIdx, {
+      planStatus: 'executing',
+      stepStates: {},
+      activeStepId: null,
+      runError: null,
+    })
+    setIsStreaming(true)
+
+    const session = startSession({
+      mode: 'execute',
+      messages: target.outgoingSnapshot || [],
+      agents,
+      tools,
+      plan: target.plan,
+      originalTask: target.originalTask || '',
+    })
+    sessionRef.current = { session, messageIdx }
+    subscribeSession(session, messageIdx)
   }
 
   const handleCancelPlan = (messageIdx) => {
+    const target = messages[messageIdx]
+    if (target?.planStatus === 'executing') {
+      sessionRef.current?.session?.cancel('user')
+    }
     patchMessageAt(messageIdx, { planStatus: 'cancelled' })
   }
 

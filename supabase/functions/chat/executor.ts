@@ -736,7 +736,7 @@ async function runStep(
   // no human on the other side. If the agent's system prompt says to "ask the
   // user first", this preamble overrides it: make assumptions, state them,
   // produce output.
-  const autonomousPreamble = `\n\n## Autonomous mode\n\nYou are running in autonomous mode. There is NO user available to answer questions mid-step. All the information you need is above (original request, prior step outputs, user-provided answers). Do NOT ask questions, do NOT request clarification, do NOT output "please tell me X". If something is ambiguous, make a reasonable assumption and STATE it explicitly in your output. Proceed directly to producing the deliverable.`
+  const autonomousPreamble = `\n\n## Autonomous mode\n\nYou are running in autonomous mode. There is NO user available to answer questions mid-step. All the information you need is above (original request, prior step outputs, user-provided answers). Do NOT ask questions, do NOT request clarification, do NOT output "please tell me X". If something is ambiguous, make a reasonable assumption and STATE it explicitly in your output. Proceed directly to producing the deliverable.\n\n**Tool usage limits:** If you use \`web_search\`, make 1–2 focused searches (not 5+). Combine related queries into one broad search. Each tool call adds latency and cost — be surgical.`
 
   const messages: any[] = [
     {

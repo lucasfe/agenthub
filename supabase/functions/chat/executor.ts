@@ -300,58 +300,20 @@ async function saveArtifact(
 
 // ─── Google Slides tool ─────────────────────────────────────────────────────
 
-function base64url(input: string | ArrayBuffer): string {
-  let b64: string
-  if (typeof input === 'string') {
-    b64 = btoa(input)
-  } else {
-    b64 = btoa(String.fromCharCode(...new Uint8Array(input)))
+async function getGoogleAccessToken(): Promise<string> {
+  const clientId = Deno.env.get('GOOGLE_CLIENT_ID')
+  const clientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET')
+  const refreshToken = Deno.env.get('GOOGLE_REFRESH_TOKEN')
+  if (!clientId || !clientSecret || !refreshToken) {
+    throw new Error(
+      'Google OAuth2 not configured. Set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_REFRESH_TOKEN in Edge Function secrets.',
+    )
   }
-  return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-}
-
-async function getGoogleAccessToken(sa: any): Promise<string> {
-  const now = Math.floor(Date.now() / 1000)
-  const header = { alg: 'RS256', typ: 'JWT' }
-  const claims = {
-    iss: sa.client_email,
-    scope:
-      'https://www.googleapis.com/auth/presentations https://www.googleapis.com/auth/drive',
-    aud: sa.token_uri || 'https://oauth2.googleapis.com/token',
-    iat: now,
-    exp: now + 3600,
-  }
-
-  const encodedHeader = base64url(JSON.stringify(header))
-  const encodedClaims = base64url(JSON.stringify(claims))
-  const signingInput = `${encodedHeader}.${encodedClaims}`
-
-  const pemContents = sa.private_key
-    .replace('-----BEGIN PRIVATE KEY-----', '')
-    .replace('-----END PRIVATE KEY-----', '')
-    .replace(/\n/g, '')
-  const binaryDer = Uint8Array.from(atob(pemContents), (c) => c.charCodeAt(0))
-
-  const key = await crypto.subtle.importKey(
-    'pkcs8',
-    binaryDer,
-    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
-    false,
-    ['sign'],
-  )
-
-  const signature = await crypto.subtle.sign(
-    'RSASSA-PKCS1-v1_5',
-    key,
-    new TextEncoder().encode(signingInput),
-  )
-
-  const jwt = `${signingInput}.${base64url(signature)}`
 
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`,
+    body: `grant_type=refresh_token&client_id=${encodeURIComponent(clientId)}&client_secret=${encodeURIComponent(clientSecret)}&refresh_token=${encodeURIComponent(refreshToken)}`,
   })
   const data = await res.json()
   if (!data.access_token) {

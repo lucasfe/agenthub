@@ -300,13 +300,52 @@ async function saveArtifact(
 
 // ─── Google Slides tool ─────────────────────────────────────────────────────
 
-async function getGoogleAccessToken(): Promise<string> {
+async function getGoogleAccessToken(userId?: string): Promise<string> {
   const clientId = Deno.env.get('GOOGLE_CLIENT_ID')
   const clientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET')
-  const refreshToken = Deno.env.get('GOOGLE_REFRESH_TOKEN')
-  if (!clientId || !clientSecret || !refreshToken) {
+  if (!clientId || !clientSecret) {
     throw new Error(
-      'Google OAuth2 not configured. Set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_REFRESH_TOKEN in Edge Function secrets.',
+      'Google OAuth2 not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in Edge Function secrets.',
+    )
+  }
+
+  let refreshToken: string | undefined
+
+  // Try to load the user's personal refresh token from the database.
+  if (userId) {
+    const url = Deno.env.get('SUPABASE_URL')
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    if (url && serviceKey) {
+      try {
+        const res = await fetch(
+          `${url}/rest/v1/user_integrations?select=refresh_token&user_id=eq.${userId}&provider=eq.google_slides&limit=1`,
+          {
+            headers: {
+              apikey: serviceKey,
+              Authorization: `Bearer ${serviceKey}`,
+            },
+          },
+        )
+        if (res.ok) {
+          const rows = await res.json()
+          if (rows.length > 0 && rows[0].refresh_token) {
+            refreshToken = rows[0].refresh_token
+          }
+        }
+      } catch (err) {
+        console.warn('[google-slides] failed to load user token', (err as Error).message)
+      }
+    }
+  }
+
+  // Fall back to the global env var (for dev/testing).
+  if (!refreshToken) {
+    refreshToken = Deno.env.get('GOOGLE_REFRESH_TOKEN')
+  }
+
+  if (!refreshToken) {
+    throw new Error(
+      'Google Slides not connected. Go to Settings → Integrations and connect your Google account.',
     )
   }
 

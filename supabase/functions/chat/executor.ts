@@ -896,6 +896,10 @@ export async function runExecutorBranch(
   let status: 'done' | 'error' | 'timeout' = 'done'
   let errorMessage: string | undefined
   let failedStepId: number | undefined
+  // Tracks which step is currently in-flight so we can surface step.error
+  // if an exception (e.g. AbortError from the wall-clock timeout) bubbles
+  // up from runStep.
+  let currentStepId: number | null = null
 
   try {
     for (const step of options.plan.steps) {
@@ -915,6 +919,7 @@ export async function runExecutorBranch(
         agent_icon: step.agent_icon,
         model: step.model,
       })
+      currentStepId = step.id
 
       const stepStart = Date.now()
       const answersForStep =

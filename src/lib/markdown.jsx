@@ -129,7 +129,7 @@ function renderMarkdown(text, variant) {
 
 function renderInline(text, variant) {
   const parts = []
-  const regex = /(\*\*(.+?)\*\*)|(`(.+?)`)/g
+  const regex = /(\*\*(.+?)\*\*)|(`(.+?)`)|(\[([^\]]+)\]\(([^)]+)\))|(https?:\/\/[^\s)]+)/g
   let lastIndex = 0
   let match
   const cls = classes(variant)
@@ -149,6 +149,18 @@ function renderInline(text, variant) {
         <code key={match.index} className={cls.codeInline}>
           {match[4]}
         </code>,
+      )
+    } else if (match[6] && match[7]) {
+      parts.push(
+        <a key={match.index} href={match[7]} target="_blank" rel="noopener noreferrer" className={cls.link}>
+          {match[6]}
+        </a>,
+      )
+    } else if (match[8]) {
+      parts.push(
+        <a key={match.index} href={match[8]} target="_blank" rel="noopener noreferrer" className={cls.link}>
+          {match[8]}
+        </a>,
       )
     }
     lastIndex = match.index + match[0].length

@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import * as Icons from 'lucide-react'
+import { downloadText, safeFilename } from '../../lib/download'
 
 const colorMap = {
   blue:   { bg: 'from-blue-500/15 to-blue-600/5',     border: 'border-blue-500/30',    icon: 'text-blue-400',    btn: 'bg-blue-500 hover:bg-blue-600',    ring: 'ring-blue-500/40' },

@@ -479,6 +479,9 @@ async function runStep(
   let totalIn = 0
   let totalOut = 0
   let finalText = ''
+  // Tracks repeated tool failures: if the same tool fails twice in a row,
+  // abort the step rather than burning iterations on a broken loop.
+  const consecutiveFailures = new Map<string, number>()
 
   for (let iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
     const body: any = {

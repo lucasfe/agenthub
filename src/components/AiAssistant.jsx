@@ -760,18 +760,15 @@ function MessageBubble({
           <PlanCard
             plan={plan}
             status={planStatus || 'proposed'}
-            refineError={refineError}
             stepStates={stepStates}
             activeStepId={activeStepId}
             runSummary={runSummary}
             runError={runError}
             failedStepId={failedStepId}
             stepAnswers={stepAnswers}
-            availableTools={availableTools}
-            onRefine={onRefinePlan}
+            onOpenReview={onOpenReview}
             onApprove={onApprovePlan}
             onCancel={onCancelPlan}
-            onAnswerChange={onAnswerChange}
           />
         )}
         {planFallback && !plan && (

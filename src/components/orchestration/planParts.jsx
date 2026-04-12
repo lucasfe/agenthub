@@ -503,7 +503,3 @@ export function RefineInput({ isRefining, onSubmit }) {
     </form>
   )
 }
-// Re-export React for the one JSX helper that uses useState. (Not ideal, but
-// keeps all shared UI in one file without a second import in each consumer.)
-// eslint-disable-next-line no-unused-vars
-import React from 'react'

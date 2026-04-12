@@ -732,6 +732,49 @@ function MessageBubble({
   )
 }
 
+// Build an initial stepAnswers map for a newly-arrived plan.
+// - Pre-fills each requirement with its `suggested` default (if any)
+// - Preserves previous user answers by matching (stepId, key) — so refining
+//   a plan doesn't wipe values the user already typed
+function seedStepAnswers(plan, prevStepAnswers = {}) {
+  const seeded = {}
+  if (!plan || !Array.isArray(plan.steps)) return seeded
+  for (const step of plan.steps) {
+    const reqs = Array.isArray(step.requirements) ? step.requirements : []
+    if (reqs.length === 0) continue
+    const prev = prevStepAnswers?.[step.id] || {}
+    const stepSeed = {}
+    for (const req of reqs) {
+      if (!req || typeof req.key !== 'string') continue
+      if (prev[req.key] != null && prev[req.key] !== '') {
+        stepSeed[req.key] = prev[req.key]
+      } else if (typeof req.suggested === 'string' && req.suggested) {
+        stepSeed[req.key] = req.suggested
+      } else {
+        stepSeed[req.key] = ''
+      }
+    }
+    seeded[step.id] = stepSeed
+  }
+  return seeded
+}
+
+// Count required requirements that don't yet have a non-empty answer.
+function countMissingRequired(plan, stepAnswers) {
+  if (!plan || !Array.isArray(plan.steps)) return 0
+  let count = 0
+  for (const step of plan.steps) {
+    const reqs = Array.isArray(step.requirements) ? step.requirements : []
+    const answers = stepAnswers?.[step.id] || {}
+    for (const req of reqs) {
+      if (!req || req.required !== true) continue
+      const val = answers[req.key]
+      if (typeof val !== 'string' || !val.trim()) count += 1
+    }
+  }
+  return count
+}
+
 // Serialize a previous assistant tool call as a short text summary, so the
 // next outgoing request gives Claude enough context to iterate without having
 // to re-send the full tool_use block (which would require tool_result).

@@ -179,6 +179,8 @@ export default function App() {
             <Route path="/teams/:teamId" element={<TeamDetailPage />} />
             <Route path="/teams/create" element={<CreateTeamPage />} />
             <Route path="/teams/:teamId/edit" element={<CreateTeamPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/login" element={<LoginPage />} />
           </Routes>
         </main>
         <StackButton />

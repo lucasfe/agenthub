@@ -586,6 +586,23 @@ async function runStep(
         duration_ms,
       })
 
+      // Track consecutive failures per tool; bail out if the same tool fails
+      // twice in a row (usually means the model is stuck on a malformed call).
+      if (result.ok) {
+        consecutiveFailures.set(toolUse.name, 0)
+      } else {
+        const prev = consecutiveFailures.get(toolUse.name) || 0
+        consecutiveFailures.set(toolUse.name, prev + 1)
+        if (prev + 1 >= 2) {
+          return {
+            text: finalText,
+            tokens_in: totalIn,
+            tokens_out: totalOut,
+            error: `Step aborted: tool '${toolUse.name}' failed twice in a row. Last error: ${result.error}`,
+          }
+        }
+      }
+
       toolResults.push({
         type: 'tool_result',
         tool_use_id: toolUse.id,

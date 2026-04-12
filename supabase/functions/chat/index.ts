@@ -4,13 +4,16 @@
 // message via a Haiku router, and routes to the appropriate branch. Emits the
 // namespaced SSE protocol (Decision 15) back to the browser.
 //
-// Phase 3 scope:
+// Phase 4 scope:
 // - Router (Haiku) classifies every message as chat/crud/task
 // - `task` → planner branch (Opus), returns a plan card or fallback
-// - `chat`/`crud` → chat branch (Sonnet), same as Phase 2
-// - Planner only plans, does not execute yet (execution is Phase 4)
+// - `chat`/`crud` → chat branch (Sonnet)
+// - `execute` mode runs an approved plan via the executor (sequential steps,
+//   sub-agent loops with tool use, runs table logging)
 
 // deno-lint-ignore-file no-explicit-any
+
+import { runExecutorBranch } from './executor.ts'
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages'
 const CHAT_MODEL = Deno.env.get('CHAT_MODEL') || 'claude-sonnet-4-6'

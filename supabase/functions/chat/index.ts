@@ -328,6 +328,317 @@ async function runChatBranch(
   }
 }
 
+// ─── Planner branch ─────────────────────────────────────────────────────────
+
+const PLANNER_SYSTEM_PROMPT = `You are the planning engine for Lucas AI Hub. A user has asked for a task to be executed. You will design a short execution plan using the available agents.
+
+## Rules
+
+1. **Pick agents ONLY from the "Available Agents" list below.** Never invent agent IDs.
+2. **Max ${MAX_PLAN_STEPS} steps.** Be concise — group related work into fewer steps.
+3. Each step has an \`agent_id\` (must match exactly), a short \`task\` (1-2 sentences of instructions for that agent), an \`inputs\` array declaring what it needs (\`original_task\` or prior \`step_N\`), and \`tools_used\` listing which of the agent's tools will be called.
+4. Only declare tools that exist in the agent's tool set.
+5. **If NO available agent is a good fit for any part of the task**, call \`reject_plan\` instead of inventing a bad plan. Err on the side of rejecting when you're unsure — the user can then create a new agent or override.
+6. When picking between similar agents, prefer the one whose \`capabilities\` or \`description\` explicitly mentions the task type.
+7. For refinement requests (when \`REFINEMENT\` section is present), revise the previous plan as requested, keeping the rest stable when possible.
+
+## Response
+
+You MUST call exactly ONE tool:
+- \`submit_plan\` — if the task is executable with the available agents
+- \`reject_plan\` — if no agent is suitable
+
+Do not emit any text outside of the tool call.`
+
+const SUBMIT_PLAN_TOOL = {
+  name: 'submit_plan',
+  description:
+    'Submit an execution plan for the user task. Use when at least one available agent can handle each required part of the task.',
+  input_schema: {
+    type: 'object',
+    required: ['steps'],
+    properties: {
+      steps: {
+        type: 'array',
+        minItems: 1,
+        maxItems: MAX_PLAN_STEPS,
+        description: 'Ordered list of execution steps. Each step runs on one agent.',
+        items: {
+          type: 'object',
+          required: ['id', 'agent_id', 'task', 'inputs', 'tools_used'],
+          properties: {
+            id: {
+              type: 'integer',
+              minimum: 1,
+              description: '1-based sequential step number',
+            },
+            agent_id: {
+              type: 'string',
+              description:
+                "ID of the agent executing this step. Must exactly match one from the 'Available Agents' list.",
+            },
+            task: {
+              type: 'string',
+              description:
+                'Short instruction for the agent (1-2 sentences). Describe what this step must produce.',
+            },
+            inputs: {
+              type: 'array',
+              items: { type: 'string' },
+              description:
+                "What this step consumes. Each entry is either 'original_task' or 'step_N' (referring to an earlier step).",
+            },
+            tools_used: {
+              type: 'array',
+              items: { type: 'string' },
+              description:
+                "Tool IDs this step plans to call. Must be a subset of the agent's declared tools.",
+            },
+          },
+        },
+      },
+      estimated_duration_ms: {
+        type: 'integer',
+        description: 'Rough wall-clock estimate of how long the whole plan will take, in ms.',
+      },
+    },
+  },
+}
+
+const REJECT_PLAN_TOOL = {
+  name: 'reject_plan',
+  description:
+    "Reject the user task when NO available agent is a good fit. Use this instead of inventing a bad plan. The user will be given the option to create a new agent or fall back to a suggestion.",
+  input_schema: {
+    type: 'object',
+    required: ['reason'],
+    properties: {
+      reason: {
+        type: 'string',
+        description:
+          "Brief explanation of what is missing (e.g. 'no agent specializes in legal contract analysis').",
+      },
+      suggested_agent_type: {
+        type: 'string',
+        description:
+          'Optional description of the kind of agent that would be needed (used to prefill a create-agent form).',
+      },
+      suggested_fallback_agent_id: {
+        type: 'string',
+        description:
+          'Optional: the ID of the closest-fit existing agent, which the user may choose to run anyway.',
+      },
+    },
+  },
+}
+
+function buildPlannerSystemPrompt(
+  agentsContext: unknown,
+  toolsContext: unknown,
+  refinement: { previous_plan?: unknown; instructions?: string } | undefined,
+): string {
+  const parts = [PLANNER_SYSTEM_PROMPT]
+
+  // Tools catalog
+  if (Array.isArray(toolsContext) && toolsContext.length > 0) {
+    const toolLines = toolsContext
+      .filter((t: any) => t && typeof t.id === 'string')
+      .map((t: any) => {
+        const cat = t.category ? ` [${t.category}]` : ''
+        const approval = t.requires_approval ? ' (requires approval)' : ''
+        return `- ${t.id}${cat}: ${t.description || t.name || ''}${approval}`
+      })
+    if (toolLines.length > 0) {
+      parts.push(`## Tools Catalog\n\n${toolLines.join('\n')}`)
+    }
+  }
+
+  // Available agents with full metadata
+  if (Array.isArray(agentsContext) && agentsContext.length > 0) {
+    const agentBlocks = agentsContext
+      .filter((a: any) => a && typeof a.id === 'string' && typeof a.name === 'string')
+      .map((a: any) => {
+        const desc = a.description ? `\n  Description: ${a.description}` : ''
+        const tags =
+          Array.isArray(a.tags) && a.tags.length > 0
+            ? `\n  Tags: [${a.tags.join(', ')}]`
+            : ''
+        const caps =
+          Array.isArray(a.capabilities) && a.capabilities.length > 0
+            ? `\n  Good for: ${a.capabilities.join(', ')}`
+            : ''
+        const model = a.model ? `\n  Model: ${a.model}` : ''
+        const tools =
+          Array.isArray(a.tools) && a.tools.length > 0
+            ? `\n  Tools: [${a.tools.join(', ')}]`
+            : '\n  Tools: (none)'
+        return `- ${a.id}: ${a.name}${desc}${tags}${caps}${model}${tools}`
+      })
+    if (agentBlocks.length > 0) {
+      parts.push(`## Available Agents\n\n${agentBlocks.join('\n\n')}`)
+    }
+  }
+
+  // Refinement context
+  if (refinement && (refinement.previous_plan || refinement.instructions)) {
+    const prev = refinement.previous_plan
+      ? JSON.stringify(refinement.previous_plan, null, 2)
+      : '(none)'
+    const instr = refinement.instructions || '(none)'
+    parts.push(
+      `## REFINEMENT\n\nThe user already saw a plan proposal and wants to refine it.\n\n### Previous plan\n\`\`\`json\n${prev}\n\`\`\`\n\n### User refinement instructions\n${instr}\n\nRegenerate the plan respecting the user's instructions. Keep the parts the user didn't touch.`,
+    )
+  }
+
+  return parts.join('\n\n')
+}
+
+// Validates that a submitted plan references only known agents and declared tools.
+// Returns the (possibly cleaned) plan object or null if the plan is unusable.
+function validateSubmittedPlan(
+  rawInput: any,
+  agentsContext: any[],
+): { steps: any[]; estimated_duration_ms?: number } | { error: string } {
+  if (!rawInput || !Array.isArray(rawInput.steps) || rawInput.steps.length === 0) {
+    return { error: 'plan has no steps' }
+  }
+  if (rawInput.steps.length > MAX_PLAN_STEPS) {
+    return { error: `plan exceeds max steps (${MAX_PLAN_STEPS})` }
+  }
+
+  const agentById = new Map<string, any>()
+  for (const a of agentsContext) {
+    if (a && typeof a.id === 'string') agentById.set(a.id, a)
+  }
+
+  const cleanSteps: any[] = []
+  for (let i = 0; i < rawInput.steps.length; i++) {
+    const step = rawInput.steps[i]
+    if (!step || typeof step !== 'object') {
+      return { error: `step ${i + 1} is not an object` }
+    }
+    const agent = agentById.get(step.agent_id)
+    if (!agent) {
+      return { error: `step ${i + 1} references unknown agent '${step.agent_id}'` }
+    }
+    const task = typeof step.task === 'string' ? step.task.trim() : ''
+    if (!task) {
+      return { error: `step ${i + 1} has empty task` }
+    }
+    const inputs = Array.isArray(step.inputs) ? step.inputs.map(String) : ['original_task']
+    const declaredTools = Array.isArray(agent.tools) ? agent.tools : []
+    const toolsUsed = Array.isArray(step.tools_used)
+      ? step.tools_used
+          .map(String)
+          .filter((t: string) => declaredTools.includes(t))
+      : []
+    cleanSteps.push({
+      id: i + 1,
+      agent_id: step.agent_id,
+      agent_name: agent.name,
+      agent_color: agent.color,
+      agent_icon: agent.icon,
+      model: agent.model,
+      task,
+      inputs,
+      tools_used: toolsUsed,
+    })
+  }
+
+  return {
+    steps: cleanSteps,
+    estimated_duration_ms:
+      typeof rawInput.estimated_duration_ms === 'number'
+        ? rawInput.estimated_duration_ms
+        : undefined,
+  }
+}
+
+// Planner branch: calls Opus with forced tool use (submit_plan OR reject_plan),
+// parses the result, validates, and emits one of:
+//   - plan.proposed (with a validated plan)
+//   - plan.fallback (when reject_plan is called or validation fails)
+//   - plan.error (on upstream failure)
+async function runPlannerBranch(
+  emit: (type: string, payload?: Record<string, unknown>) => void,
+  options: {
+    messages: Array<{ role: string; content: string }>
+    agentsContext: any[]
+    toolsContext: any[]
+    refinement?: { previous_plan?: unknown; instructions?: string }
+    apiKey: string
+  },
+) {
+  emit('plan.proposing', {})
+
+  const systemPrompt = buildPlannerSystemPrompt(
+    options.agentsContext,
+    options.toolsContext,
+    options.refinement,
+  )
+
+  const upstream = await fetch(ANTHROPIC_API_URL, {
+    method: 'POST',
+    headers: {
+      'x-api-key': options.apiKey,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: PLANNER_MODEL,
+      max_tokens: PLANNER_MAX_TOKENS,
+      system: systemPrompt,
+      messages: options.messages,
+      tools: [SUBMIT_PLAN_TOOL, REJECT_PLAN_TOOL],
+      tool_choice: { type: 'any' },
+    }),
+  })
+
+  if (!upstream.ok) {
+    const errText = await upstream.text().catch(() => 'unknown error')
+    emit('plan.error', {
+      error: `Planner API error: ${upstream.status} ${errText}`,
+    })
+    return
+  }
+
+  const data = await upstream.json()
+  const blocks: any[] = Array.isArray(data?.content) ? data.content : []
+  const toolUse = blocks.find((b) => b.type === 'tool_use')
+
+  if (!toolUse) {
+    emit('plan.error', {
+      error: 'Planner did not return a tool call (submit_plan or reject_plan).',
+    })
+    return
+  }
+
+  if (toolUse.name === 'reject_plan') {
+    emit('plan.fallback', {
+      reason: toolUse.input?.reason || 'No suitable agent available.',
+      suggested_agent_type: toolUse.input?.suggested_agent_type,
+      suggested_fallback_agent_id: toolUse.input?.suggested_fallback_agent_id,
+    })
+    return
+  }
+
+  if (toolUse.name === 'submit_plan') {
+    const validated = validateSubmittedPlan(toolUse.input, options.agentsContext)
+    if ('error' in validated) {
+      emit('plan.fallback', {
+        reason: `Planner produced an invalid plan: ${validated.error}`,
+      })
+      return
+    }
+    emit('plan.proposed', { plan: validated })
+    return
+  }
+
+  emit('plan.error', { error: `Unexpected tool call: ${toolUse.name}` })
+}
+
+// ─── Server ─────────────────────────────────────────────────────────────────
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })

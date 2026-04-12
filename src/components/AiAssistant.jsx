@@ -734,10 +734,12 @@ function MessageBubble({
             runSummary={runSummary}
             runError={runError}
             failedStepId={failedStepId}
+            stepAnswers={stepAnswers}
             availableTools={availableTools}
             onRefine={onRefinePlan}
             onApprove={onApprovePlan}
             onCancel={onCancelPlan}
+            onAnswerChange={onAnswerChange}
           />
         )}
         {planFallback && !plan && (

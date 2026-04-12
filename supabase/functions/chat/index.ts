@@ -635,7 +635,19 @@ async function runPlannerBranch(
       })
       return
     }
-    emit('plan.proposed', { plan: validated })
+
+    // Requirements analyzer: look at each agent's system prompt and extract
+    // questions that must be answered before execution can start. Falls back
+    // to empty requirements on any error.
+    emit('plan.analyzing_requirements', {})
+    const enriched = await analyzeRequirements(
+      validated,
+      options.agentsContext,
+      options.originalTask,
+      options.apiKey,
+    )
+
+    emit('plan.proposed', { plan: enriched })
     return
   }
 

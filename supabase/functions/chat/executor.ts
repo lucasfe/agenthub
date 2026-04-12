@@ -5,6 +5,8 @@
 // - the 6 tool handlers (registry at the bottom)
 // - the orchestrator that walks an approved plan step-by-step
 // - writing the final run summary into the `runs` table
+// - the post-planner requirements analyzer (looks at agent prompts and
+//   extracts per-step questions that must be answered before execution)
 //
 // Emits namespaced SSE events:
 //   run.started, run.done, run.error
@@ -15,9 +17,12 @@
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages'
 const DEFAULT_STEP_MODEL = 'claude-sonnet-4-6'
+const ANALYZER_MODEL = Deno.env.get('ANALYZER_MODEL') || 'claude-sonnet-4-6'
 const MAX_STEP_TOKENS = 2048
+const ANALYZER_MAX_TOKENS = 2048
 const MAX_TOOL_ITERATIONS = 5
 const TOOL_CALL_TIMEOUT_MS = 30_000
+const MAX_REQUIREMENTS_PER_STEP = 4
 
 // ─── Tool handler types ─────────────────────────────────────────────────────
 

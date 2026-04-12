@@ -845,11 +845,16 @@ export async function runExecutorBranch(
       })
 
       const stepStart = Date.now()
+      const answersForStep =
+        (options.stepAnswers &&
+          (options.stepAnswers[step.id] || options.stepAnswers[String(step.id)])) ||
+        {}
       const result = await runStep(
         step,
         options.agentsContext,
         options.toolsContext,
         stepContext,
+        answersForStep,
         emit,
         options.apiKey,
         options.signal,

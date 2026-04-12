@@ -431,6 +431,47 @@ function StepRow({
             </div>
           )}
 
+          {/* Needs from you — inline requirement inputs */}
+          {requirements.length > 0 && editable && (
+            <div className="mt-3 space-y-2">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-amber-300/80 flex items-center gap-1">
+                <Icons.HelpCircle size={10} />
+                Needs from you
+              </div>
+              {requirements.map((req) => (
+                <RequirementInput
+                  key={req.key}
+                  req={req}
+                  value={answers[req.key] ?? ''}
+                  onChange={(v) => onAnswerChange?.(req.key, v)}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Needs from you — read-only echo when the step is already running */}
+          {requirements.length > 0 && !editable && (
+            <div className="mt-3 space-y-1">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+                Inputs provided
+              </div>
+              {requirements.map((req) => {
+                const v = answers[req.key]
+                return (
+                  <div
+                    key={req.key}
+                    className="text-[10px] text-text-muted flex gap-1.5 items-baseline"
+                  >
+                    <span className="font-semibold text-text-secondary">{req.question}</span>
+                    <span className="text-text-primary truncate">
+                      {typeof v === 'string' && v ? v : '—'}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
           {/* Expanded area — live text + tool calls + error */}
           {showExpanded && (liveText || liveTools.length > 0 || state?.error) && (
             <div className="mt-3 pt-3 border-t border-white/5 space-y-2">

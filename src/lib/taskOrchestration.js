@@ -104,6 +104,7 @@ export function useTaskOrchestration({ task, agents, tools, onTaskUpdate }) {
         stepAnswers,
         signal: controller.signal,
         onEvent: (event) => {
+          console.log('[task-orch] event', event.type, event)
           switch (event.type) {
             case 'run.started':
               patch({ run_id: event.run_id })

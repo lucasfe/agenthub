@@ -485,7 +485,7 @@ function Column({ column, tasks, onAddTask, onDeleteTask, onDragStart, onDrop, o
 export default function BoardPage() {
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(true)
-  const [draggingId, setDraggingId] = useState(null)
+  const [, setDraggingId] = useState(null)
   const [selectedTaskId, setSelectedTaskId] = useState(null)
   const { agents, tools } = useData()
 

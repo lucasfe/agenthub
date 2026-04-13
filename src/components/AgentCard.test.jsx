@@ -7,6 +7,7 @@ import { renderWithProviders } from '../test/test-utils'
 vi.mock('../lib/api', () => ({
   fetchAgents: vi.fn().mockResolvedValue([]),
   fetchTeams: vi.fn().mockResolvedValue([]),
+  fetchTools: vi.fn().mockResolvedValue([]),
 }))
 
 const mockAgent = {

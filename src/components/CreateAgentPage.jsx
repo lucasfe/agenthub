@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router'
 import * as Icons from 'lucide-react'
 import { createAgent } from '../lib/api'
@@ -17,21 +17,38 @@ const colorOptions = [
 
 const categoryOptions = ['Development Team', 'AI Specialists']
 
-const toolOptions = ['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep']
+const DEFAULT_MODEL = 'claude-sonnet-4-6'
 
-const modelOptions = ['Claude Sonnet', 'Claude Opus', 'Claude Haiku']
+const modelOptions = [
+  {
+    id: 'claude-opus-4-6',
+    label: 'Claude Opus',
+    hint: 'Best for complex reasoning, planning, ambiguous tasks. ~5× cost.',
+  },
+  {
+    id: 'claude-sonnet-4-6',
+    label: 'Claude Sonnet',
+    hint: 'Balanced default — great for most writing, coding and analysis.',
+  },
+  {
+    id: 'claude-haiku-4-5-20251001',
+    label: 'Claude Haiku',
+    hint: 'Fastest and cheapest. Best for classification, rewriting, short replies.',
+  },
+]
 
 export default function CreateAgentPage() {
   const navigate = useNavigate()
-  const { refreshAgents } = useData()
+  const { refreshAgents, tools: availableTools } = useData()
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState('Development Team')
   const [icon, setIcon] = useState('Bot')
   const [color, setColor] = useState('blue')
   const [tags, setTags] = useState('')
-  const [tools, setTools] = useState(['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep'])
-  const [model, setModel] = useState('Claude Sonnet')
+  const [tools, setTools] = useState([])
+  const [model, setModel] = useState(DEFAULT_MODEL)
+  const [capabilities, setCapabilities] = useState('')
   const [content, setContent] = useState('')
   const [iconPickerOpen, setIconPickerOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -39,9 +56,19 @@ export default function CreateAgentPage() {
 
   const IconPreview = Icons[icon] || Icons.Bot
 
-  const toggleTool = (tool) => {
+  const toolsByCategory = useMemo(() => {
+    const groups = new Map()
+    for (const t of availableTools || []) {
+      const cat = t.category || 'other'
+      if (!groups.has(cat)) groups.set(cat, [])
+      groups.get(cat).push(t)
+    }
+    return Array.from(groups.entries())
+  }, [availableTools])
+
+  const toggleTool = (toolId) => {
     setTools((prev) =>
-      prev.includes(tool) ? prev.filter((t) => t !== tool) : [...prev, tool]
+      prev.includes(toolId) ? prev.filter((t) => t !== toolId) : [...prev, toolId]
     )
   }
 
@@ -67,6 +94,10 @@ export default function CreateAgentPage() {
         content,
         tools,
         model,
+        capabilities: capabilities
+          .split(',')
+          .map((c) => c.trim())
+          .filter(Boolean),
       })
       await refreshAgents()
       navigate(`/agent/${categorySlug}/${agentId}`)
@@ -218,45 +249,82 @@ export default function CreateAgentPage() {
             {/* Tools */}
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-2">Tools</label>
-              <div className="flex flex-wrap gap-2">
-                {toolOptions.map((tool) => (
-                  <button
-                    key={tool}
-                    type="button"
-                    onClick={() => toggleTool(tool)}
-                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium border transition-colors ${
-                      tools.includes(tool)
-                        ? 'bg-accent-blue/10 border-accent-blue/30 text-accent-blue'
-                        : 'bg-bg-input border-border-subtle text-text-muted hover:border-border-hover hover:text-text-secondary'
-                    }`}
-                  >
-                    <Icons.Wrench size={13} />
-                    {tool}
-                  </button>
-                ))}
-              </div>
+              <p className="text-xs text-text-muted mb-3">Select which tools this agent can call during orchestration runs.</p>
+              {toolsByCategory.length === 0 ? (
+                <p className="text-xs text-text-muted italic">No tools available yet.</p>
+              ) : (
+                <div className="space-y-4">
+                  {toolsByCategory.map(([cat, catTools]) => (
+                    <div key={cat}>
+                      <div className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-2">{cat}</div>
+                      <div className="flex flex-wrap gap-2">
+                        {catTools.map((tool) => {
+                          const ToolIcon = Icons[tool.icon] || Icons.Wrench
+                          const selected = tools.includes(tool.id)
+                          return (
+                            <button
+                              key={tool.id}
+                              type="button"
+                              onClick={() => toggleTool(tool.id)}
+                              title={tool.description}
+                              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium border transition-colors ${
+                                selected
+                                  ? 'bg-accent-blue/10 border-accent-blue/30 text-accent-blue'
+                                  : 'bg-bg-input border-border-subtle text-text-muted hover:border-border-hover hover:text-text-secondary'
+                              }`}
+                            >
+                              <ToolIcon size={13} />
+                              {tool.name}
+                              {tool.requires_approval && (
+                                <Icons.ShieldAlert size={11} className="text-amber-400" />
+                              )}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Model */}
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-2">Model</label>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {modelOptions.map((m) => (
                   <button
-                    key={m}
+                    key={m.id}
                     type="button"
-                    onClick={() => setModel(m)}
+                    onClick={() => setModel(m.id)}
+                    title={m.hint}
                     className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-colors ${
-                      model === m
+                      model === m.id
                         ? 'bg-accent-blue/10 border-accent-blue/30 text-accent-blue'
                         : 'bg-bg-input border-border-subtle text-text-secondary hover:border-border-hover'
                     }`}
                   >
                     <Icons.Cpu size={13} />
-                    {m}
+                    {m.label}
                   </button>
                 ))}
               </div>
+              <p className="text-xs text-text-muted mt-2">
+                {modelOptions.find((m) => m.id === model)?.hint}
+              </p>
+            </div>
+
+            {/* Capabilities */}
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-2">Good for</label>
+              <input
+                type="text"
+                value={capabilities}
+                onChange={(e) => setCapabilities(e.target.value)}
+                placeholder="market research, pitch writing, competitor analysis (comma-separated)"
+                className="w-full bg-bg-input border border-border-subtle rounded-xl px-4 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-blue/50 focus:ring-1 focus:ring-accent-blue/20"
+              />
+              <p className="text-xs text-text-muted mt-2">Short phrases describing the tasks this agent is best suited for. Used by the orchestrator to match tasks to agents.</p>
             </div>
           </section>
 

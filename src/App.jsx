@@ -10,6 +10,9 @@ import CreateAgentPage from './components/CreateAgentPage'
 import TeamCard from './components/TeamCard'
 import TeamDetailPage from './components/TeamDetailPage'
 import CreateTeamPage from './components/CreateTeamPage'
+import SettingsPage from './components/SettingsPage'
+import LoginPage from './components/LoginPage'
+import BoardPage from './components/BoardPage'
 import StackButton from './components/StackButton'
 import { StackProvider } from './context/StackContext'
 import { useData } from './context/DataContext'
@@ -177,6 +180,9 @@ export default function App() {
             <Route path="/teams/:teamId" element={<TeamDetailPage />} />
             <Route path="/teams/create" element={<CreateTeamPage />} />
             <Route path="/teams/:teamId/edit" element={<CreateTeamPage />} />
+            <Route path="/board" element={<BoardPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/login" element={<LoginPage />} />
           </Routes>
         </main>
         <StackButton />

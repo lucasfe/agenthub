@@ -129,7 +129,7 @@ function renderMarkdown(text, variant) {
 
 function renderInline(text, variant) {
   const parts = []
-  const regex = /(\*\*(.+?)\*\*)|(`(.+?)`)/g
+  const regex = /(\*\*(.+?)\*\*)|(`(.+?)`)|(\[([^\]]+)\]\(([^)]+)\))|(https?:\/\/[^\s)]+)/g
   let lastIndex = 0
   let match
   const cls = classes(variant)
@@ -149,6 +149,18 @@ function renderInline(text, variant) {
         <code key={match.index} className={cls.codeInline}>
           {match[4]}
         </code>,
+      )
+    } else if (match[6] && match[7]) {
+      parts.push(
+        <a key={match.index} href={match[7]} target="_blank" rel="noopener noreferrer" className={cls.link}>
+          {match[6]}
+        </a>,
+      )
+    } else if (match[8]) {
+      parts.push(
+        <a key={match.index} href={match[8]} target="_blank" rel="noopener noreferrer" className={cls.link}>
+          {match[8]}
+        </a>,
       )
     }
     lastIndex = match.index + match[0].length
@@ -174,9 +186,10 @@ function classes(variant) {
       ol: 'my-1.5 space-y-0.5 list-decimal list-outside pl-5',
       ul: 'my-1.5 space-y-0.5 list-disc list-outside pl-5',
       li: 'text-sm leading-relaxed',
-      p: 'text-sm leading-relaxed my-1.5 first:mt-0 last:mb-0',
+      p: 'text-sm leading-relaxed my-1.5 first:mt-0 last:mb-0 break-words',
       strong: 'font-semibold',
-      codeInline: 'text-[11px] bg-black/25 px-1.5 py-0.5 rounded font-mono',
+      codeInline: 'text-[11px] bg-black/25 px-1.5 py-0.5 rounded font-mono break-all',
+      link: 'text-blue-400 hover:text-blue-300 underline underline-offset-2 break-all',
     }
   }
 
@@ -192,8 +205,9 @@ function classes(variant) {
     ol: 'my-3 space-y-1.5 list-decimal list-inside',
     ul: 'my-3 space-y-1.5 list-disc list-inside',
     li: 'text-sm text-text-secondary leading-relaxed',
-    p: 'text-sm text-text-secondary leading-relaxed my-3',
+    p: 'text-sm text-text-secondary leading-relaxed my-3 break-words',
     strong: 'font-semibold text-text-primary',
     codeInline: 'text-xs bg-white/5 text-text-secondary px-1.5 py-0.5 rounded font-mono',
+    link: 'text-blue-400 hover:text-blue-300 underline underline-offset-2 break-all',
   }
 }

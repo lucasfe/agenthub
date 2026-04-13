@@ -14,12 +14,16 @@ const colorMap = {
   cyan: { bg: 'from-cyan-500/15 to-cyan-600/5', border: 'border-cyan-500/20', icon: 'text-cyan-400', tag: 'bg-cyan-500/10 text-cyan-300' },
 }
 
-const defaultTools = ['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep']
+const MODEL_LABELS = {
+  'claude-opus-4-6': 'Claude Opus',
+  'claude-sonnet-4-6': 'Claude Sonnet',
+  'claude-haiku-4-5-20251001': 'Claude Haiku',
+}
 
 export default function AgentDetailPage() {
   const { category, agentId } = useParams()
   const navigate = useNavigate()
-  const { refreshAgents } = useData()
+  const { refreshAgents, tools: availableTools } = useData()
   const [agent, setAgent] = useState(null)
   const [agentLoading, setAgentLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('description')
@@ -344,17 +348,47 @@ export default function AgentDetailPage() {
           {activeTab === 'tools' && (
             <div>
               <h2 className="text-base font-semibold text-text-primary mb-3">Available Tools</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {(agent.tools || defaultTools).map((tool) => (
-                  <div
-                    key={tool}
-                    className="flex items-center gap-2.5 px-4 py-3 bg-bg-card border border-border-subtle rounded-xl"
-                  >
-                    <Icons.Wrench size={14} className="text-text-muted" />
-                    <span className="text-sm text-text-secondary font-mono">{tool}</span>
+              {(agent.tools || []).length === 0 ? (
+                <p className="text-sm text-text-muted italic">This agent has no tools configured.</p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {(agent.tools || []).map((toolId) => {
+                    const meta = availableTools?.find((t) => t.id === toolId)
+                    const ToolIcon = Icons[meta?.icon] || Icons.Wrench
+                    return (
+                      <div
+                        key={toolId}
+                        className="flex items-start gap-3 px-4 py-3 bg-bg-card border border-border-subtle rounded-xl"
+                      >
+                        <ToolIcon size={16} className="text-text-muted shrink-0 mt-0.5" />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-text-primary font-medium">{meta?.name || toolId}</span>
+                            {meta?.requires_approval && (
+                              <Icons.ShieldAlert size={12} className="text-amber-400" />
+                            )}
+                          </div>
+                          {meta?.description && (
+                            <p className="text-xs text-text-muted mt-0.5">{meta.description}</p>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+              {agent.capabilities && agent.capabilities.length > 0 && (
+                <div className="mt-6">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">Good for</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {agent.capabilities.map((cap) => (
+                      <span key={cap} className={`${colors.tag} text-xs px-2.5 py-1 rounded-full font-medium`}>
+                        {cap}
+                      </span>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -363,7 +397,9 @@ export default function AgentDetailPage() {
               <h2 className="text-base font-semibold text-text-primary mb-3">Model</h2>
               <div className="inline-flex items-center gap-2.5 px-4 py-3 bg-bg-card border border-border-subtle rounded-xl">
                 <Icons.Cpu size={14} className="text-text-muted" />
-                <span className="text-sm text-text-secondary font-medium">{agent.model || 'Claude Sonnet'}</span>
+                <span className="text-sm text-text-secondary font-medium">
+                  {MODEL_LABELS[agent.model] || agent.model || 'Claude Sonnet'}
+                </span>
               </div>
             </div>
           )}

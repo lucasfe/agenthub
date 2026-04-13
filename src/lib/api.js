@@ -10,7 +10,7 @@ export async function fetchAgents() {
   requireSupabase()
   const { data, error } = await supabase
     .from('agents')
-    .select('id, name, category, description, tags, icon, color, featured, popularity')
+    .select('id, name, category, description, tags, icon, color, featured, popularity, tools, model, capabilities, content')
     .order('popularity', { ascending: false })
 
   if (error) throw error
@@ -119,6 +119,21 @@ export async function updateTeam(id, updates) {
     .eq('id', id)
     .select()
     .single()
+
+  if (error) throw error
+  return data
+}
+
+// ── Tools ───────────────────────────────────────────
+
+export async function fetchTools() {
+  requireSupabase()
+  const { data, error } = await supabase
+    .from('tools')
+    .select('*')
+    .eq('enabled', true)
+    .order('category', { ascending: true })
+    .order('name', { ascending: true })
 
   if (error) throw error
   return data

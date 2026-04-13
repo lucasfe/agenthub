@@ -124,6 +124,14 @@ body {
   75% { transform: rotate(0.5deg); }
 }
 
+@keyframes slide-in-right {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+.animate-slide-in-right {
+  animation: slide-in-right 0.2s ease-out;
+}
+
 @keyframes card-icon-tilt {
   0% { transform: rotate(0deg) scale(1); }
   40% { transform: rotate(-12deg) scale(1.18); }

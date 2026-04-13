@@ -1,14 +1,17 @@
 import { useState } from 'react'
-import { Bot, Users, LogIn, ChevronsLeft, ChevronsRight } from 'lucide-react'
+import { Bot, Users, Columns3, LogIn, LogOut, Settings, ChevronsLeft, ChevronsRight } from 'lucide-react'
 import { Link, useLocation } from 'react-router'
 import { useData } from '../context/DataContext'
+import { useAuth } from '../context/AuthContext'
 
 export default function Sidebar() {
   const location = useLocation()
   const [collapsed, setCollapsed] = useState(false)
   const { agents, teams } = useData()
+  const { user, signOut } = useAuth()
 
   const browseItems = [
+    { icon: Columns3, label: 'Board', path: '/board' },
     { icon: Bot, label: 'Agents', count: agents.length, path: '/' },
     { icon: Users, label: 'Teams', count: teams.length, path: '/teams' },
   ]
@@ -85,16 +88,37 @@ export default function Sidebar() {
         </nav>
       </div>
 
-      {/* Sign In */}
-      <div className={`mt-auto ${collapsed ? 'px-2' : 'px-4'} pb-5`}>
-        <a
-          href="#"
-          title={collapsed ? 'Sign In' : undefined}
-          className={`flex items-center ${collapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2'} rounded-lg text-sm text-text-secondary hover:bg-white/5 hover:text-text-primary transition-all duration-150`}
-        >
-          <LogIn size={18} className="text-text-muted" />
-          {!collapsed && <span>Sign In</span>}
-        </a>
+      {/* Auth section */}
+      <div className={`mt-auto ${collapsed ? 'px-2' : 'px-4'} pb-5 flex flex-col gap-0.5`}>
+        {user ? (
+          <>
+            <Link
+              to="/settings"
+              title={collapsed ? 'Settings' : undefined}
+              className={`flex items-center ${collapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2'} rounded-lg text-sm text-text-secondary hover:bg-white/5 hover:text-text-primary transition-all duration-150`}
+            >
+              <Settings size={18} className="text-text-muted" />
+              {!collapsed && <span>Settings</span>}
+            </Link>
+            <button
+              onClick={signOut}
+              title={collapsed ? 'Sign Out' : undefined}
+              className={`flex items-center ${collapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2'} rounded-lg text-sm text-text-secondary hover:bg-white/5 hover:text-text-primary transition-all duration-150`}
+            >
+              <LogOut size={18} className="text-text-muted" />
+              {!collapsed && <span>Sign Out</span>}
+            </button>
+          </>
+        ) : (
+          <Link
+            to="/login"
+            title={collapsed ? 'Sign In' : undefined}
+            className={`flex items-center ${collapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2'} rounded-lg text-sm text-text-secondary hover:bg-white/5 hover:text-text-primary transition-all duration-150`}
+          >
+            <LogIn size={18} className="text-text-muted" />
+            {!collapsed && <span>Sign In</span>}
+          </Link>
+        )}
       </div>
     </aside>
   )

@@ -542,6 +542,12 @@ async function createGoogleSlides(
         shared_with: shareEmail || null,
       },
       summary: `Created ${slides.length}-slide presentation: ${url}`,
+      artifact: {
+        type: 'file',
+        name: title,
+        format: 'google_slides',
+        content: url,
+      },
     }
   } catch (err) {
     return {

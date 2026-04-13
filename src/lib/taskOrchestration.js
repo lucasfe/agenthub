@@ -20,11 +20,12 @@ export function useTaskOrchestration({ task, agents, tools, onTaskUpdate }) {
   const [failedStepId, setFailedStepId] = useState(null)
   const abortRef = useRef(null)
 
+  const taskId = task?.id
   const patch = useCallback(
     (updates) => {
-      if (task?.id) onTaskUpdate(task.id, updates)
+      if (taskId) onTaskUpdate(taskId, updates)
     },
-    [task?.id, onTaskUpdate],
+    [taskId, onTaskUpdate],
   )
 
   const startPlanning = useCallback(() => {

@@ -211,6 +211,20 @@ export async function startCommand({
     return { exitCode: 0, started: false }
   }
 
+  // 8.5. Update check (best-effort, silent on failure)
+  const state = readSt(cwd)
+  if (state) {
+    const { newVersion, updatedState } = await update(currentVersion, state, { exec })
+    if (newVersion) {
+      out(
+        pc.yellow(
+          `New version available: ${newVersion} (run npm i -g @lucasfe/ralph to update)`,
+        ),
+      )
+      writeSt(cwd, updatedState)
+    }
+  }
+
   // 9. Launch tmux detached, running the bash loop shipped with the package
   const ralphTemplate = templatePath('ralph.sh')
   const tmuxLaunch = await exec(

@@ -33,6 +33,10 @@ export async function startCommand({
   loadEnv = loadEnvFile,
   hasCommand = commandExists,
   ask = confirm,
+  currentVersion = 'unknown',
+  update = checkForUpdate,
+  readSt = readState,
+  writeSt = writeState,
 } = {}) {
   const out = (msg) => stdout.write(msg + '\n')
   const err = (msg) => stderr.write(msg + '\n')

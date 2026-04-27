@@ -6,6 +6,7 @@ import { Command } from 'commander'
 import { startCommand, StartAbort } from '../lib/commands/start.js'
 import { stopCommand, StopAbort } from '../lib/commands/stop.js'
 import { initCommand, InitAbort } from '../lib/commands/init.js'
+import { doctorCommand, DoctorAbort } from '../lib/commands/doctor.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const pkg = JSON.parse(readFileSync(resolve(__dirname, '..', 'package.json'), 'utf8'))

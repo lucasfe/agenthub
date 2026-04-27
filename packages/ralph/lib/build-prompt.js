@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { pathToFileURL } from 'node:url'
 import { join, resolve } from 'node:path'
 import { interpolate } from './interpolate.js'
 import { templatePath } from './paths.js'

@@ -20,6 +20,18 @@ fi
 cd "$PROJECT_ROOT"
 export PROJECT_ROOT
 
+# Locate the package directory (one level up from this template).
+RALPH_PKG_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+export RALPH_PKG_DIR
+
+# Source ralph.config.sh first so commands/branches/merge config become env
+# vars visible to the prompt builder. Then source .env.local for credentials.
+if [ -f ralph.config.sh ]; then
+  set -a
+  . ./ralph.config.sh
+  set +a
+fi
+
 if [ -f .env.local ]; then
   set -a
   . ./.env.local

@@ -10,6 +10,13 @@ const TMUX_SESSION = 'ralph'
 const SEARCH_QUERY =
   'state:open -label:claude-working -label:claude-failed -label:do-not-ralph'
 
+class StartAbort extends Error {
+  constructor(message, exitCode = 1) {
+    super(message)
+    this.exitCode = exitCode
+  }
+}
+
 export async function startCommand({
   cwd = process.cwd(),
   stdout = process.stdout,
@@ -24,30 +31,23 @@ export async function startCommand({
   const out = (msg) => stdout.write(msg + '\n')
   const err = (msg) => stderr.write(msg + '\n')
 
-  // 1. tmux session uniqueness
-  try {
-    await exec('tmux', ['has-session', '-t', TMUX_SESSION], { reject: false }).then((r) => {
-      if (r.exitCode === 0) {
-        err(`❌ Sessão tmux '${TMUX_SESSION}' já existe.`)
-        out(`   Ver:    tmux attach -t ${TMUX_SESSION}`)
-        out(`   Matar:  tmux kill-session -t ${TMUX_SESSION}`)
-        const error = new Error('tmux session already exists')
-        error.exitCode = 1
-        throw error
-      }
-    })
-  } catch (e) {
-    if (e.exitCode === 1) throw e
-    // tmux not installed — fall through to dep check below
+  // 1. tmux session uniqueness (best-effort: silently fall through if tmux missing,
+  //    the dep check below will catch and report it).
+  if (hasCommand('tmux')) {
+    const has = await exec('tmux', ['has-session', '-t', TMUX_SESSION], { reject: false })
+    if (has.exitCode === 0) {
+      err(`❌ Sessão tmux '${TMUX_SESSION}' já existe.`)
+      out(`   Ver:    tmux attach -t ${TMUX_SESSION}`)
+      out(`   Matar:  tmux kill-session -t ${TMUX_SESSION}`)
+      throw new StartAbort('tmux session already exists', 1)
+    }
   }
 
   // 2. Required commands
   for (const cmd of REQUIRED_COMMANDS) {
     if (!hasCommand(cmd)) {
       err(`❌ '${cmd}' não encontrado no PATH`)
-      const error = new Error(`missing command: ${cmd}`)
-      error.exitCode = 1
-      throw error
+      throw new StartAbort(`missing command: ${cmd}`, 1)
     }
   }
 
@@ -67,9 +67,7 @@ export async function startCommand({
   const ghAuth = await exec('gh', ['auth', 'status'], { reject: false })
   if (ghAuth.exitCode !== 0) {
     err("❌ gh não autenticado. Rode 'gh auth login'.")
-    const error = new Error('gh not authenticated')
-    error.exitCode = 1
-    throw error
+    throw new StartAbort('gh not authenticated', 1)
   }
 
   // 5. .mcp.json validity
@@ -78,9 +76,7 @@ export async function startCommand({
     const mcpCheck = await exec('jq', ['-e', '.', mcpPath], { reject: false })
     if (mcpCheck.exitCode !== 0) {
       err('❌ .mcp.json com JSON inválido')
-      const error = new Error('invalid .mcp.json')
-      error.exitCode = 1
-      throw error
+      throw new StartAbort('invalid .mcp.json', 1)
     }
     const serversResult = await exec(
       'jq',
@@ -204,9 +200,7 @@ export async function startCommand({
   )
   if (tmuxLaunch.exitCode !== 0) {
     err(`❌ Falha ao iniciar sessão tmux: ${(tmuxLaunch.stderr || '').trim()}`)
-    const error = new Error('tmux launch failed')
-    error.exitCode = 1
-    throw error
+    throw new StartAbort('tmux launch failed', 1)
   }
 
   out(`✅ Ralph iniciado em background. ${count} issues na fila.`)
@@ -217,3 +211,5 @@ export async function startCommand({
   out('   Logs:           logs/ralph-issue-*.log')
   return { exitCode: 0, started: true, count: Number(count) }
 }
+
+export { StartAbort }

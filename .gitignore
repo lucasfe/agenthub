@@ -30,3 +30,5 @@ test-results/
 
 # Ralph
 .ralph/
+ralph-notify.sh
+.env.local

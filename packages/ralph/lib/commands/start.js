@@ -46,12 +46,21 @@ export async function startCommand({
     }
   }
 
-  // 2. Required commands
-  for (const cmd of REQUIRED_COMMANDS) {
-    if (!hasCommand(cmd)) {
-      err(`❌ '${cmd}' não encontrado no PATH`)
-      throw new StartAbort(`missing command: ${cmd}`, 1)
-    }
+  // 2. Required commands (shared dep check)
+  const platform = detectPlatform()
+  const depCheck = assertCriticalDeps({ hasCommand, platform })
+  if (!depCheck.ok) {
+    err(depCheck.message)
+    throw new StartAbort(
+      `missing command: ${depCheck.missingCritical.map((d) => d.name).join(', ')}`,
+      1,
+    )
+  }
+  const missingNonCritical = checkDeps({ hasCommand }).filter(
+    (r) => !r.present && !r.critical,
+  )
+  for (const r of missingNonCritical) {
+    out(`⚠️  '${r.name}' não encontrado (opcional). Algumas funções podem falhar.`)
   }
 
   // 3. .env.local — informational only

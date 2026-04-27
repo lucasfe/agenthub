@@ -56,7 +56,7 @@ while :; do
   num=$(gh issue list --search "$SEARCH_QUERY sort:created-asc" --limit 1 --json number -q '.[0].number')
   echo "==> Iteração para issue #$num ($count restantes)"
 
-  cat PROMPT.md | claude -p --dangerously-skip-permissions \
+  node "$RALPH_PKG_DIR/lib/build-prompt.js" | claude -p --dangerously-skip-permissions \
     --output-format stream-json --verbose --include-partial-messages 2>&1 \
     | jq -r --unbuffered '
         if .type == "assistant" then

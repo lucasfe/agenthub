@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { execa } from 'execa'
+import pc from 'picocolors'
 import { loadEnvFile } from '../utils/env.js'
 import { commandExists } from '../utils/which.js'
 import { confirm } from '../utils/prompt.js'
@@ -8,6 +9,8 @@ import { templatePath } from '../paths.js'
 import { assertCriticalDeps } from './doctor.js'
 import { checkDeps } from '../deps.js'
 import { detectPlatform } from '../platform.js'
+import { readState, writeState } from '../state.js'
+import { checkForUpdate } from '../update-check.js'
 
 const TMUX_SESSION = 'ralph'
 const SEARCH_QUERY =

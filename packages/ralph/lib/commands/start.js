@@ -4,6 +4,7 @@ import { execa } from 'execa'
 import { loadEnvFile } from '../utils/env.js'
 import { commandExists } from '../utils/which.js'
 import { confirm } from '../utils/prompt.js'
+import { templatePath } from '../paths.js'
 
 const REQUIRED_COMMANDS = ['tmux', 'jq', 'gh', 'claude', 'curl', 'npm', 'git']
 const TMUX_SESSION = 'ralph'

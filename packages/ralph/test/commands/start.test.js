@@ -98,7 +98,7 @@ describe('startCommand', () => {
     const result = await startCommand(deps)
     expect(result).toEqual({ exitCode: 0, started: false })
     expect(deps.stdout.output()).toContain('Nenhuma issue na fila')
-    expect(deps.exec.calls).not.toContain('tmux new -d -s ralph')
+    expect(deps.exec.calls.some((c) => c.startsWith('tmux new -d -s ralph'))).toBe(false)
   })
 
   it('launches tmux when queue has issues', async () => {

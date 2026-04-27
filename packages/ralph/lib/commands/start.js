@@ -193,10 +193,11 @@ export async function startCommand({
     return { exitCode: 0, started: false }
   }
 
-  // 9. Launch tmux detached
+  // 9. Launch tmux detached, running the bash loop shipped with the package
+  const ralphTemplate = templatePath('ralph.sh')
   const tmuxLaunch = await exec(
     'tmux',
-    ['new', '-d', '-s', TMUX_SESSION, `cd '${cwd}' && ./ralph.sh`],
+    ['new', '-d', '-s', TMUX_SESSION, `cd '${cwd}' && bash '${ralphTemplate}'`],
     { reject: false },
   )
   if (tmuxLaunch.exitCode !== 0) {

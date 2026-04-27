@@ -18,6 +18,20 @@ program
   .version(pkg.version, '-v, --version', 'output the current version')
 
 program
+  .command('init')
+  .description('Initialize Ralph in the current project (config + templates + slash command)')
+  .action(async () => {
+    try {
+      await initCommand()
+    } catch (e) {
+      if (e instanceof InitAbort) {
+        process.exit(e.exitCode ?? 1)
+      }
+      throw e
+    }
+  })
+
+program
   .command('start')
   .description('Run sanity checks and launch the Ralph loop in a detached tmux session')
   .action(async () => {

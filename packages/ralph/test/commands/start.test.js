@@ -114,7 +114,7 @@ describe('startCommand', () => {
       },
       'gh issue list --search state:open -label:claude-working -label:claude-failed -label:do-not-ralph --limit 100 --json number -q . | length':
         { exitCode: 0, stdout: '3', stderr: '' },
-      [`tmux new -d -s ralph cd '${cwd}' && ./ralph.sh`]: {
+      [`tmux new -d -s ralph cd '${cwd}' && bash '${RALPH_TEMPLATE}'`]: {
         exitCode: 0,
         stdout: '',
         stderr: '',

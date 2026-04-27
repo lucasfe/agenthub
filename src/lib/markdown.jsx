@@ -141,7 +141,7 @@ function renderInline(text, variant) {
     if (match[2]) {
       parts.push(
         <strong key={match.index} className={cls.strong}>
-          {match[2]}
+          {renderInline(match[2], variant)}
         </strong>,
       )
     } else if (match[4]) {

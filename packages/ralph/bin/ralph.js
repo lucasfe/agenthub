@@ -60,4 +60,19 @@ program
     }
   })
 
+program
+  .command('doctor')
+  .description('Check required system deps and print install commands for missing ones')
+  .action(async () => {
+    try {
+      const result = await doctorCommand()
+      process.exit(result.exitCode)
+    } catch (e) {
+      if (e instanceof DoctorAbort) {
+        process.exit(e.exitCode ?? 1)
+      }
+      throw e
+    }
+  })
+
 program.parse(process.argv)

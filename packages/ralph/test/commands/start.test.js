@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { startCommand, StartAbort } from '../../lib/commands/start.js'
+import { templatePath } from '../../lib/paths.js'
+
+const RALPH_TEMPLATE = templatePath('ralph.sh')
 
 function makeStream() {
   const chunks = []

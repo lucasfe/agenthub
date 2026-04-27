@@ -6,11 +6,11 @@ export function isValidSemver(s) {
 
 export function compareSemver(a, b) {
   const parse = (v) => {
-    const [main, pre = ''] = v.split('+')[0].split('-', 2).length === 2
-      ? v.split('+')[0].split(/-(.+)/)
-      : [v.split('+')[0], '']
-    const parts = main.split('.').map((n) => Number(n))
-    return { parts, pre }
+    const noBuild = v.split('+')[0]
+    const dashIdx = noBuild.indexOf('-')
+    const main = dashIdx === -1 ? noBuild : noBuild.slice(0, dashIdx)
+    const pre = dashIdx === -1 ? '' : noBuild.slice(dashIdx + 1)
+    return { parts: main.split('.').map((n) => Number(n)), pre }
   }
   const A = parse(a)
   const B = parse(b)

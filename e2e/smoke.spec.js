@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 
-const BASE = '/ai/agenthub'
+const BASE = ''
 
 // Data loads asynchronously from Supabase
 const DATA_TIMEOUT = 10000

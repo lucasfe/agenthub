@@ -31,7 +31,7 @@ export default defineConfig({
   ...(!isPreview && {
     webServer: {
       command: 'npm run dev',
-      url: 'http://localhost:5173/ai/agenthub/',
+      url: 'http://localhost:5173/',
       timeout: 10000,
       reuseExistingServer: !process.env.CI,
     },

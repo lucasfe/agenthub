@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { cleanupByPrefix } from './helpers.js'
 
-const BASE = '/ai/agenthub'
+const BASE = ''
 const DATA_TIMEOUT = 15000
 
 // Single run ID shared across all tests in this file.

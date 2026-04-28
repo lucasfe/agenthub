@@ -5,10 +5,10 @@
 // query params, header changes, response shape drift).
 //
 // Run via `npm run test:functions:integration`. Auto-skips when
-// `GITHUB_TEST_TOKEN` is not set, so unit-test-only environments stay green.
+// `GH_TEST_TOKEN` is not set, so unit-test-only environments stay green.
 //
 // Required env vars:
-//   GITHUB_TEST_TOKEN — fine-grained PAT with Issues read+write on the test
+//   GH_TEST_TOKEN — fine-grained PAT with Issues read+write on the test
 //                       repo, plus Metadata read.
 //   GITHUB_TEST_REPO  — `owner/name` of a sandbox repo. Defaults to
 //                       `lucasfe/agenthub`. Issues created here are auto-closed
@@ -19,12 +19,12 @@ import { assertEquals, assert } from 'https://deno.land/std@0.224.0/assert/mod.t
 import { createIssue, listRepos } from '../functions/chat/github.ts'
 import { filterAndSlim } from '../functions/chat/githubFilters.ts'
 
-const TOKEN = Deno.env.get('GITHUB_TEST_TOKEN')
+const TOKEN = Deno.env.get('GH_TEST_TOKEN')
 const REPO = Deno.env.get('GITHUB_TEST_REPO') || 'lucasfe/agenthub'
 const SKIP = !TOKEN
 
 const skipReason =
-  'GITHUB_TEST_TOKEN not set — skipping real GitHub API integration tests.'
+  'GH_TEST_TOKEN not set — skipping real GitHub API integration tests.'
 if (SKIP) console.warn(`[integration] ${skipReason}`)
 
 Deno.test({

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { Wand2, Github, Copy, Check, Plus } from 'lucide-react'
+import { Wand2, ExternalLink, Copy, Check, Plus } from 'lucide-react'
 
 const SKILL_CREATOR_PATH = '/agent/ai-specialists/skill-creator'
 

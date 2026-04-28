@@ -7,7 +7,7 @@ import { getSkill } from '../lib/skills'
 import { useAuth } from '../context/AuthContext'
 
 function buildInstallCommand(slug) {
-  return `npx degit lucasfe/skills/${slug} ~/.claude/skills/${slug}`
+  return `npx degit --mode=git lucasfe/skills/${slug} ~/.claude/skills/${slug}`
 }
 
 export default function SkillDetailPage() {

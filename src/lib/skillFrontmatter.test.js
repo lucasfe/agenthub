@@ -73,8 +73,8 @@ describe('parseFrontmatter', () => {
   })
 
   it('tolerates leading whitespace and BOM before the opening fence', () => {
-    const md =
-      '﻿\n   \n---\nname: review\ndescription: Review a pull request\n---\nbody'
+    const bom = String.fromCharCode(0xfeff)
+    const md = `${bom}\n   \n---\nname: review\ndescription: Review a pull request\n---\nbody`
     const parsed = parseFrontmatter(md)
     expect(parsed).not.toBeNull()
     expect(parsed.name).toBe('review')

@@ -14,6 +14,7 @@ export default function Sidebar() {
     { icon: Columns3, label: 'Board', path: '/board' },
     { icon: Bot, label: 'Agents', count: agents.length, path: '/' },
     { icon: Users, label: 'Teams', count: teams.length, path: '/teams' },
+    { icon: Wand2, label: 'Skills', path: '/skills' },
   ]
 
   return (

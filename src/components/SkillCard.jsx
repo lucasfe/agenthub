@@ -41,7 +41,10 @@ export default function SkillCard({ skill, variant }) {
   }
 
   return (
-    <article className="group relative p-5 bg-bg-card border border-border-subtle rounded-2xl hover:bg-bg-card-hover card-glow transition-all duration-200 hover:-translate-y-0.5 flex flex-col">
+    <Link
+      to={`/skills/${skill.slug}`}
+      className="group relative p-5 bg-bg-card border border-border-subtle rounded-2xl hover:bg-bg-card-hover card-glow transition-all duration-200 hover:-translate-y-0.5 flex flex-col"
+    >
       <div className="flex items-start justify-between mb-3">
         <div className="card-icon w-11 h-11 rounded-xl bg-gradient-to-br from-purple-500/15 to-purple-600/5 flex items-center justify-center">
           <Wand2 size={20} className="text-purple-400" />
@@ -51,6 +54,7 @@ export default function SkillCard({ skill, variant }) {
           target="_blank"
           rel="noreferrer"
           aria-label="View on GitHub"
+          onClick={(e) => e.stopPropagation()}
           className="text-text-muted hover:text-text-primary transition-colors p-1.5 rounded-lg hover:bg-white/5"
         >
           <ExternalLink size={16} />
@@ -77,6 +81,6 @@ export default function SkillCard({ skill, variant }) {
         {copied ? <Check size={14} /> : <Copy size={14} />}
         {copied ? 'Copied!' : 'Copy install command'}
       </button>
-    </article>
+    </Link>
   )
 }

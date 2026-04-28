@@ -8,10 +8,11 @@
 // consume them without touching this module.
 
 const FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/
+const LEADING_BOM_RE = /^﻿/
 
 export function parseFrontmatter(md) {
   if (typeof md !== 'string') return null
-  const stripped = md.replace(/^﻿/, '').replace(/^\s+/, '')
+  const stripped = md.replace(LEADING_BOM_RE, '').replace(/^\s+/, '')
   const match = stripped.match(FRONTMATTER_RE)
   if (!match) return null
   const [, yaml, body] = match

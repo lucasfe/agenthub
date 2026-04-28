@@ -191,16 +191,22 @@ npx degit lucasfe/skills/<slug> ~/.claude/skills/<slug>
 
 `degit` clones a single subfolder of the source repo into the user's local `~/.claude/skills/` directory without bringing along Git history. There is nothing else to "install" — the skill is just the contents of that folder.
 
-### v1 unauthenticated fetch & migration path
+### Edge Function proxy
 
-`src/lib/skills.js` calls `api.github.com` **without** a token. The repo is public, the catalog is single-user, and the unauthenticated rate limit (60 req/hr per IP) is comfortably more than enough. Avoiding a token also means no edge function proxy, no secret to rotate, and no extra failure mode on first paint.
+`lucasfe/skills` is a private repo, so the browser cannot reach the GitHub API directly. All skills traffic is proxied by the `skills` Edge Function (`supabase/functions/skills/index.ts`) which injects the existing `GITHUB_TOKEN` secret server-side. The frontend module `src/lib/skills.js` calls the proxy with the user's Supabase session token — there is no anonymous mode.
 
-If the rate limit ever starts hurting (e.g. the catalog grows large enough that one page load fans out into many `SKILL.md` fetches, or this becomes multi-user), the migration path is a one-line change at the call sites:
+**Two operations:**
 
-1. The internal `requestJson` / `fetch` helpers in `src/lib/skills.js` already attach `Authorization: Bearer <token>` when a `token` option is passed — `listSkills({ token })` and `getSkill(slug, { token })` are the only seams that need to start forwarding one.
-2. To avoid shipping the `GITHUB_TOKEN` secret to the browser, route the calls through a thin Edge Function proxy in `supabase/functions/` that injects the existing `GITHUB_TOKEN` (already configured for the GitHub Issue Creator agent — see [Required Edge Function secret](#required-edge-function-secret)) and forwards the upstream response. No new secret needs to be provisioned.
+- `GET /functions/v1/skills?op=list` — returns the JSON listing of top-level entries from the repo (passes through the GitHub Contents API response verbatim).
+- `GET /functions/v1/skills?op=raw&slug=<kebab>` — returns the raw text of `<slug>/SKILL.md`. The slug is validated against `^[a-zA-Z0-9_-]{1,80}$` before being forwarded.
 
-Do not pre-emptively wire this up; the v1 unauthenticated path is the right default until rate-limit pressure shows up in practice.
+**Auth:**
+
+- The function is deployed with `verify_jwt: true`, so Supabase rejects unauthenticated callers before the function runs.
+- `listSkills({ accessToken })` and `getSkill(slug, { accessToken })` both throw `SkillsApiError` with status 401 when no `accessToken` is passed — the frontend reads `session?.access_token` from `useAuth()` and forwards it.
+- The `GITHUB_TOKEN` Edge Function secret is the same one used by the GitHub Issue Creator agent — see [Required Edge Function secret](#required-edge-function-secret). No new secret to provision.
+
+**Why a proxy and not unauthenticated public-repo fetch?** The skills repo is intentionally private (it contains personal workflow notes, not just public-skill source). Routing through the function keeps the catalog visible to authenticated app users while keeping the upstream repo private.
 
 ## Naming Conventions
 

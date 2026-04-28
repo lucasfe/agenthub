@@ -650,12 +650,19 @@ function getAvailableTools(): Set<string> {
   if (!Deno.env.get('TAVILY_API_KEY')) {
     available.delete('web_search')
   }
+  if (!Deno.env.get('GITHUB_TOKEN')) {
+    available.delete('list_github_repos')
+    available.delete('create_github_issue')
+  }
   return available
 }
 
 function describeUnavailableReason(toolId: string): string {
   if (toolId === 'web_search') {
     return 'TAVILY_API_KEY is not configured in the Edge Function secrets.'
+  }
+  if (toolId === 'list_github_repos' || toolId === 'create_github_issue') {
+    return 'GITHUB_TOKEN is not configured in the Edge Function secrets.'
   }
   return 'Tool is not available in this environment.'
 }

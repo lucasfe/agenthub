@@ -185,6 +185,7 @@ function ProtectedShell() {
             <Route path="/teams/:teamId/edit" element={<CreateTeamPage />} />
             <Route path="/board" element={<BoardPage />} />
             <Route path="/skills" element={<SkillsPage />} />
+            <Route path="/skills/:slug" element={<SkillDetailPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Routes>
         </main>

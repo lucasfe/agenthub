@@ -1,18 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
-import { ThemeProvider } from '../context/ThemeContext'
-import { StackProvider } from '../context/StackContext'
-import { DataProvider } from '../context/DataContext'
-import { AuthProvider } from '../context/AuthContext'
-import SkillDetailPage from './SkillDetailPage'
-import { render } from '@testing-library/react'
 
-vi.mock('../lib/api', () => ({
-  fetchAgents: vi.fn().mockResolvedValue([]),
-  fetchTeams: vi.fn().mockResolvedValue([]),
-  fetchTools: vi.fn().mockResolvedValue([]),
+vi.mock('./Header', () => ({
+  default: () => null,
 }))
 
 vi.mock('../lib/skills', () => ({
@@ -20,21 +12,14 @@ vi.mock('../lib/skills', () => ({
 }))
 
 import { getSkill } from '../lib/skills'
+import SkillDetailPage from './SkillDetailPage'
 
 function renderAtSlug(slug) {
   return render(
     <MemoryRouter initialEntries={[`/skills/${slug}`]}>
-      <AuthProvider>
-        <DataProvider>
-          <ThemeProvider>
-            <StackProvider>
-              <Routes>
-                <Route path="/skills/:slug" element={<SkillDetailPage />} />
-              </Routes>
-            </StackProvider>
-          </ThemeProvider>
-        </DataProvider>
-      </AuthProvider>
+      <Routes>
+        <Route path="/skills/:slug" element={<SkillDetailPage />} />
+      </Routes>
     </MemoryRouter>,
   )
 }
@@ -59,7 +44,7 @@ describe('SkillDetailPage', () => {
 
     renderAtSlug('grill-me')
 
-    expect(await screen.findByRole('heading', { name: 'grill-me' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'grill-me', level: 1 })).toBeInTheDocument()
     expect(
       screen.getByText('npx degit lucasfe/skills/grill-me ~/.claude/skills/grill-me'),
     ).toBeInTheDocument()

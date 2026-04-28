@@ -61,7 +61,7 @@ export async function listRepos(token: string): Promise<GithubRepo[]> {
   assertToken(token)
   const url =
     `${GITHUB_API_BASE}/user/repos` +
-    `?affiliation=owner&type=owner&sort=pushed&per_page=50`
+    `?affiliation=owner&sort=pushed&per_page=50`
   const res = await fetch(url, { headers: authHeaders(token) })
   if (!res.ok) {
     const message = await extractGithubError(res)

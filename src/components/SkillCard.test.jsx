@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import SkillCard from './SkillCard'
@@ -17,18 +17,16 @@ const mockSkill = {
   sourceUrl: 'https://github.com/lucasfe/skills/tree/main/grill-me',
 }
 
-let writeText
-
-beforeEach(() => {
-  writeText = vi.fn().mockResolvedValue(undefined)
-  Object.defineProperty(navigator, 'clipboard', {
-    configurable: true,
-    value: { writeText },
-  })
-})
+function setupClipboard() {
+  const user = userEvent.setup()
+  const writeText = vi
+    .spyOn(navigator.clipboard, 'writeText')
+    .mockResolvedValue(undefined)
+  return { user, writeText }
+}
 
 afterEach(() => {
-  vi.useRealTimers()
+  vi.restoreAllMocks()
 })
 
 describe('SkillCard — default variant', () => {

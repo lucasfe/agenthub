@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bot, Users, Columns3, LogIn, LogOut, Settings, ChevronsLeft, ChevronsRight } from 'lucide-react'
+import { Bot, Users, Columns3, LogIn, LogOut, Settings, ChevronsLeft, ChevronsRight, Wand2 } from 'lucide-react'
 import { Link, useLocation } from 'react-router'
 import { useData } from '../context/DataContext'
 import { useAuth } from '../context/AuthContext'

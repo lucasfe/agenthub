@@ -153,6 +153,55 @@ The v1 tool surface is intentionally minimal (`repo`, `title`, `body` only). Whe
 
 Each of these is its own PRD; do not bundle them onto the existing surface without a fresh decision.
 
+## Skills
+
+The Skills section is a separate catalog (alongside Agents and Teams) for reusable Claude Code skills. Cards are rendered live from a public source-of-truth repo: [`lucasfe/skills`](https://github.com/lucasfe/skills). Each top-level folder in that repo is a skill; the folder must contain a `SKILL.md` whose YAML frontmatter declares `name` and `description`. Folders without a valid `SKILL.md` are silently skipped, so the repo can hold work-in-progress directories without breaking the catalog.
+
+### Routes
+
+- `/skills` — catalog page (`src/components/SkillsPage.jsx`). Lists every valid skill from the source repo as cards (`src/components/SkillCard.jsx`). Live fetch on every visit — there is no client-side cache in v1.
+- `/skills/[slug]` — detail page (`src/components/SkillDetailPage.jsx`). Renders the skill's `SKILL.md` body and the install command. The `slug` segment is the folder name in the source repo, which is also the local install path under `~/.claude/skills/<slug>`.
+
+Both routes are gated by `RequireAuth`, like every other private page.
+
+### Deep modules
+
+The Skills feature follows the same deep-module pattern as the GitHub Issue Creator agent — narrow, well-tested modules with clear seams:
+
+- `src/lib/skills.js` — GitHub Contents API client. Exports `listSkills()` (returns the slim `{ slug, name, description, sourceUrl }[]` shape used by the catalog) and `getSkill(slug)` (returns the same plus `body` for the detail page). Knows everything about reaching `lucasfe/skills`: URL building, accept headers (`application/vnd.github+json` for listings, `application/vnd.github.raw` for `SKILL.md` bodies), and error surfacing as a `SkillsApiError` with the upstream HTTP status. Callers do not need to understand the GitHub API.
+- `src/lib/skillFrontmatter.js` — pure parser for the YAML frontmatter block at the top of a `SKILL.md` file. Zero new dependencies, zero I/O. Returns the parsed frontmatter merged with the raw markdown body, or `null` when the block is missing or malformed. Only `name` and `description` are read by the catalog in v1; extra optional keys pass through untouched so future readers can consume them without changing the parser.
+
+Tests live next to each module as `skills.test.js` / `skillFrontmatter.test.js` and run via `npm test`.
+
+### Skill Creator agent
+
+The `skill-creator` agent (catalog category **AI Specialists**, icon `Wand2`, color `cyan`) interviews the user about a new skill, then files a structured GitHub issue against `lucasfe/skills` containing a ready-to-paste `SKILL.md`. It does not commit code or open PRs — humans (or another loop) act on the issue.
+
+- Hardcoded target repo: `lucasfe/skills`. The system prompt embeds this so the LLM cannot mis-target another repo.
+- Tool dependency: reuses the existing `create_github_issue` tool from the [GitHub Issue Creator agent](#github-issue-creator-agent). It is the only tool the agent declares in `src/data/agents.json` (no `list_github_repos` — there is nothing to choose). Approval gating, error handling, and the `GITHUB_TOKEN` Edge Function secret are inherited from that feature unchanged.
+- Card definition in `src/data/agents.json` (`id: "skill-creator"`); system prompt keyed by `skill-creator` in `src/data/agentContent.js` (and mirrored in `supabase/seed-tools.sql` for the database-side `agents` row).
+
+### Install flow
+
+The detail page renders the install command for the displayed skill:
+
+```
+npx degit lucasfe/skills/<slug> ~/.claude/skills/<slug>
+```
+
+`degit` clones a single subfolder of the source repo into the user's local `~/.claude/skills/` directory without bringing along Git history. There is nothing else to "install" — the skill is just the contents of that folder.
+
+### v1 unauthenticated fetch & migration path
+
+`src/lib/skills.js` calls `api.github.com` **without** a token. The repo is public, the catalog is single-user, and the unauthenticated rate limit (60 req/hr per IP) is comfortably more than enough. Avoiding a token also means no edge function proxy, no secret to rotate, and no extra failure mode on first paint.
+
+If the rate limit ever starts hurting (e.g. the catalog grows large enough that one page load fans out into many `SKILL.md` fetches, or this becomes multi-user), the migration path is a one-line change at the call sites:
+
+1. The internal `requestJson` / `fetch` helpers in `src/lib/skills.js` already attach `Authorization: Bearer <token>` when a `token` option is passed — `listSkills({ token })` and `getSkill(slug, { token })` are the only seams that need to start forwarding one.
+2. To avoid shipping the `GITHUB_TOKEN` secret to the browser, route the calls through a thin Edge Function proxy in `supabase/functions/` that injects the existing `GITHUB_TOKEN` (already configured for the GitHub Issue Creator agent — see [Required Edge Function secret](#required-edge-function-secret)) and forwards the upstream response. No new secret needs to be provisioned.
+
+Do not pre-emptively wire this up; the v1 unauthenticated path is the right default until rate-limit pressure shows up in practice.
+
 ## Naming Conventions
 
 | What             | Convention           | Example                          |

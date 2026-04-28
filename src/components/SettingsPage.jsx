@@ -49,7 +49,7 @@ function GoogleSlidesIntegration() {
           },
           body: JSON.stringify({
             code,
-            redirect_uri: `${window.location.origin}/ai/agenthub/settings`,
+            redirect_uri: `${window.location.origin}/settings`,
           }),
         },
       )
@@ -92,7 +92,7 @@ function GoogleSlidesIntegration() {
       return
     }
     const scopes = 'https://www.googleapis.com/auth/presentations https://www.googleapis.com/auth/drive.file'
-    const redirectUri = `${window.location.origin}/ai/agenthub/settings`
+    const redirectUri = `${window.location.origin}/settings`
     const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(GOOGLE_CLIENT_ID)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scopes)}&access_type=offline&prompt=consent`
     window.location.href = url
   }

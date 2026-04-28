@@ -1,9 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { listSkills, getSkill, SkillsApiError } from './skills'
 
-const LIST_URL = 'https://api.github.com/repos/lucasfe/skills/contents'
-const SKILL_URL = (slug) =>
-  `https://api.github.com/repos/lucasfe/skills/contents/${slug}/SKILL.md`
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://test.supabase.co'
+const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'anon-key'
+const PROXY_BASE = `${SUPABASE_URL}/functions/v1/skills`
+const ACCESS_TOKEN = 'test-access-token'
+
+const LIST_URL = `${PROXY_BASE}?op=list`
+const RAW_URL = (slug) => `${PROXY_BASE}?op=raw&slug=${slug}`
 
 function jsonResponse(body, init = {}) {
   return new Response(JSON.stringify(body), {
@@ -38,7 +42,7 @@ afterEach(() => {
 })
 
 describe('listSkills — happy path', () => {
-  it('lists folders, fetches each SKILL.md, and returns the slim catalog shape', async () => {
+  it('lists folders, fetches each SKILL.md via the proxy, and returns the slim catalog shape', async () => {
     fetchMock.mockImplementation(async (url) => {
       if (url === LIST_URL) {
         return jsonResponse([
@@ -46,16 +50,16 @@ describe('listSkills — happy path', () => {
           { type: 'dir', name: 'to-prd' },
         ])
       }
-      if (url === SKILL_URL('grill-me')) {
+      if (url === RAW_URL('grill-me')) {
         return textResponse(frontmatter('grill-me', 'Interview the user'))
       }
-      if (url === SKILL_URL('to-prd')) {
+      if (url === RAW_URL('to-prd')) {
         return textResponse(frontmatter('to-prd', 'Turn context into a PRD'))
       }
       throw new Error(`unexpected url: ${url}`)
     })
 
-    const skills = await listSkills()
+    const skills = await listSkills({ accessToken: ACCESS_TOKEN })
 
     expect(skills).toEqual([
       {
@@ -73,26 +77,26 @@ describe('listSkills — happy path', () => {
     ])
   })
 
-  it('uses the GitHub Contents API URL with the JSON accept header for the listing call', async () => {
+  it('attaches the Supabase auth headers (Authorization Bearer + apikey) on every call', async () => {
     fetchMock.mockResolvedValue(jsonResponse([]))
 
-    await listSkills()
+    await listSkills({ accessToken: ACCESS_TOKEN })
 
     expect(fetchMock).toHaveBeenCalledWith(
       LIST_URL,
       expect.objectContaining({
-        headers: expect.objectContaining({ Accept: 'application/vnd.github+json' }),
+        headers: expect.objectContaining({
+          Authorization: `Bearer ${ACCESS_TOKEN}`,
+          apikey: ANON_KEY,
+        }),
       }),
     )
   })
 
-  it('does not send an Authorization header when no token is provided (v1)', async () => {
-    fetchMock.mockResolvedValue(jsonResponse([]))
-
-    await listSkills()
-
-    const [, init] = fetchMock.mock.calls[0]
-    expect(init.headers.Authorization).toBeUndefined()
+  it('throws SkillsApiError with status 401 when no accessToken is passed', async () => {
+    await expect(listSkills()).rejects.toBeInstanceOf(SkillsApiError)
+    await expect(listSkills()).rejects.toMatchObject({ status: 401 })
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 })
 
@@ -106,17 +110,17 @@ describe('listSkills — filtering', () => {
           { type: 'dir', name: 'tdd' },
         ])
       }
-      if (url === SKILL_URL('tdd')) {
+      if (url === RAW_URL('tdd')) {
         return textResponse(frontmatter('tdd', 'Test-driven development'))
       }
       throw new Error(`unexpected url: ${url}`)
     })
 
-    const skills = await listSkills()
+    const skills = await listSkills({ accessToken: ACCESS_TOKEN })
 
     expect(skills).toHaveLength(1)
     expect(skills[0].slug).toBe('tdd')
-    expect(fetchMock).not.toHaveBeenCalledWith(SKILL_URL('README.md'), expect.anything())
+    expect(fetchMock).not.toHaveBeenCalledWith(RAW_URL('README.md'), expect.anything())
   })
 
   it('skips a folder without a SKILL.md (404) instead of crashing the catalog', async () => {
@@ -127,21 +131,21 @@ describe('listSkills — filtering', () => {
           { type: 'dir', name: 'orphan' },
         ])
       }
-      if (url === SKILL_URL('has-skill')) {
+      if (url === RAW_URL('has-skill')) {
         return textResponse(frontmatter('has-skill', 'A real skill'))
       }
-      if (url === SKILL_URL('orphan')) {
+      if (url === RAW_URL('orphan')) {
         return new Response('Not Found', { status: 404 })
       }
       throw new Error(`unexpected url: ${url}`)
     })
 
-    const skills = await listSkills()
+    const skills = await listSkills({ accessToken: ACCESS_TOKEN })
 
     expect(skills.map((s) => s.slug)).toEqual(['has-skill'])
   })
 
-  it('skips a SKILL.md without frontmatter (consistent with the loader behavior)', async () => {
+  it('skips a SKILL.md without frontmatter', async () => {
     fetchMock.mockImplementation(async (url) => {
       if (url === LIST_URL) {
         return jsonResponse([
@@ -149,16 +153,16 @@ describe('listSkills — filtering', () => {
           { type: 'dir', name: 'no-frontmatter' },
         ])
       }
-      if (url === SKILL_URL('good')) {
+      if (url === RAW_URL('good')) {
         return textResponse(frontmatter('good', 'Good skill'))
       }
-      if (url === SKILL_URL('no-frontmatter')) {
+      if (url === RAW_URL('no-frontmatter')) {
         return textResponse('# just a heading\n\nbody only, no frontmatter')
       }
       throw new Error(`unexpected url: ${url}`)
     })
 
-    const skills = await listSkills()
+    const skills = await listSkills({ accessToken: ACCESS_TOKEN })
 
     expect(skills.map((s) => s.slug)).toEqual(['good'])
   })
@@ -171,39 +175,45 @@ describe('listSkills — filtering', () => {
           { type: 'dir', name: 'no-desc' },
         ])
       }
-      if (url === SKILL_URL('no-name')) {
+      if (url === RAW_URL('no-name')) {
         return textResponse('---\ndescription: only a description\n---\nbody')
       }
-      if (url === SKILL_URL('no-desc')) {
+      if (url === RAW_URL('no-desc')) {
         return textResponse('---\nname: only-a-name\n---\nbody')
       }
       throw new Error(`unexpected url: ${url}`)
     })
 
-    const skills = await listSkills()
+    const skills = await listSkills({ accessToken: ACCESS_TOKEN })
 
     expect(skills).toEqual([])
   })
 })
 
 describe('listSkills — error surfacing', () => {
-  it('throws a SkillsApiError on 403 (rate limit) when listing folders', async () => {
-    fetchMock.mockResolvedValue(
-      new Response('rate limited', { status: 403 }),
-    )
+  it('throws a SkillsApiError on 403 when listing folders', async () => {
+    fetchMock.mockResolvedValue(new Response('rate limited', { status: 403 }))
 
-    await expect(listSkills()).rejects.toBeInstanceOf(SkillsApiError)
-    await expect(listSkills()).rejects.toMatchObject({ status: 403 })
+    await expect(listSkills({ accessToken: ACCESS_TOKEN })).rejects.toBeInstanceOf(
+      SkillsApiError,
+    )
+    await expect(listSkills({ accessToken: ACCESS_TOKEN })).rejects.toMatchObject({
+      status: 403,
+    })
   })
 
   it('throws a SkillsApiError on 5xx when listing folders', async () => {
     fetchMock.mockResolvedValue(new Response('boom', { status: 503 }))
 
-    await expect(listSkills()).rejects.toBeInstanceOf(SkillsApiError)
-    await expect(listSkills()).rejects.toMatchObject({ status: 503 })
+    await expect(listSkills({ accessToken: ACCESS_TOKEN })).rejects.toBeInstanceOf(
+      SkillsApiError,
+    )
+    await expect(listSkills({ accessToken: ACCESS_TOKEN })).rejects.toMatchObject({
+      status: 503,
+    })
   })
 
-  it('throws a SkillsApiError on 403 when fetching an individual SKILL.md', async () => {
+  it('throws a SkillsApiError when an individual SKILL.md returns 403', async () => {
     fetchMock.mockImplementation(async (url) => {
       if (url === LIST_URL) {
         return jsonResponse([{ type: 'dir', name: 'limited' }])
@@ -211,13 +221,17 @@ describe('listSkills — error surfacing', () => {
       return new Response('rate limited', { status: 403 })
     })
 
-    await expect(listSkills()).rejects.toBeInstanceOf(SkillsApiError)
+    await expect(listSkills({ accessToken: ACCESS_TOKEN })).rejects.toBeInstanceOf(
+      SkillsApiError,
+    )
   })
 
   it('throws a SkillsApiError when the listing response is not an array', async () => {
     fetchMock.mockResolvedValue(jsonResponse({ message: 'unexpected' }))
 
-    await expect(listSkills()).rejects.toBeInstanceOf(SkillsApiError)
+    await expect(listSkills({ accessToken: ACCESS_TOKEN })).rejects.toBeInstanceOf(
+      SkillsApiError,
+    )
   })
 })
 
@@ -228,7 +242,7 @@ describe('getSkill', () => {
 
   it('returns the skill with the rendered body, name, description, slug, and sourceUrl', async () => {
     fetchMock.mockImplementation(async (url) => {
-      if (url === SKILL_URL('grill-me')) {
+      if (url === RAW_URL('grill-me')) {
         return textResponse(
           '---\nname: grill-me\ndescription: Interview the user\n---\n# Heading\n\nFull body here.',
         )
@@ -236,7 +250,7 @@ describe('getSkill', () => {
       throw new Error(`unexpected url: ${url}`)
     })
 
-    const skill = await getSkill('grill-me')
+    const skill = await getSkill('grill-me', { accessToken: ACCESS_TOKEN })
 
     expect(skill).toEqual({
       slug: 'grill-me',
@@ -250,15 +264,15 @@ describe('getSkill', () => {
   it('returns null when the slug is missing on the remote (404)', async () => {
     fetchMock.mockResolvedValue(new Response('Not Found', { status: 404 }))
 
-    const skill = await getSkill('does-not-exist')
+    const skill = await getSkill('does-not-exist', { accessToken: ACCESS_TOKEN })
 
     expect(skill).toBeNull()
   })
 
   it('returns null for empty or non-string slugs without making a request', async () => {
-    expect(await getSkill('')).toBeNull()
-    expect(await getSkill(undefined)).toBeNull()
-    expect(await getSkill(null)).toBeNull()
+    expect(await getSkill('', { accessToken: ACCESS_TOKEN })).toBeNull()
+    expect(await getSkill(undefined, { accessToken: ACCESS_TOKEN })).toBeNull()
+    expect(await getSkill(null, { accessToken: ACCESS_TOKEN })).toBeNull()
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
@@ -267,7 +281,7 @@ describe('getSkill', () => {
       textResponse('# just a heading\n\nbody only, no frontmatter'),
     )
 
-    const skill = await getSkill('no-frontmatter')
+    const skill = await getSkill('no-frontmatter', { accessToken: ACCESS_TOKEN })
 
     expect(skill).toBeNull()
   })
@@ -277,21 +291,33 @@ describe('getSkill', () => {
       textResponse('---\nname: only-a-name\n---\nbody'),
     )
 
-    const skill = await getSkill('no-desc')
+    const skill = await getSkill('no-desc', { accessToken: ACCESS_TOKEN })
 
     expect(skill).toBeNull()
   })
 
-  it('throws a SkillsApiError on 403 (rate limit)', async () => {
+  it('throws a SkillsApiError on 403', async () => {
     fetchMock.mockResolvedValue(new Response('rate limited', { status: 403 }))
 
-    await expect(getSkill('grill-me')).rejects.toBeInstanceOf(SkillsApiError)
-    await expect(getSkill('grill-me')).rejects.toMatchObject({ status: 403 })
+    await expect(
+      getSkill('grill-me', { accessToken: ACCESS_TOKEN }),
+    ).rejects.toBeInstanceOf(SkillsApiError)
+    await expect(
+      getSkill('grill-me', { accessToken: ACCESS_TOKEN }),
+    ).rejects.toMatchObject({ status: 403 })
   })
 
   it('throws a SkillsApiError on 5xx', async () => {
     fetchMock.mockResolvedValue(new Response('boom', { status: 503 }))
 
+    await expect(
+      getSkill('grill-me', { accessToken: ACCESS_TOKEN }),
+    ).rejects.toBeInstanceOf(SkillsApiError)
+  })
+
+  it('throws SkillsApiError with status 401 when no accessToken is passed', async () => {
     await expect(getSkill('grill-me')).rejects.toBeInstanceOf(SkillsApiError)
+    await expect(getSkill('grill-me')).rejects.toMatchObject({ status: 401 })
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 })

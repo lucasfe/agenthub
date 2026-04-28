@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Search, Moon, Sun, Sparkles, LogOut, Settings, ChevronDown } from 'lucide-react'
+import { Search, Moon, Sun, Sparkles, LogOut, Settings, ChevronDown, Wand2 } from 'lucide-react'
 import { Link } from 'react-router'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'

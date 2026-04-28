@@ -378,7 +378,8 @@ npm run lint         # ESLint check
 npm test             # Run frontend tests (vitest)
 npm run test:watch   # Run frontend tests in watch mode
 npm run test:coverage # Run frontend tests with coverage report
-npm run test:functions # Run Edge Function tests (deno)
+npm run test:functions # Run Edge Function tests (deno, mocked fetch)
+npm run test:functions:integration # Run real-API integration tests (deno, hits GitHub)
 ```
 
 ## Testing

@@ -77,6 +77,33 @@ async function fetchSkillForFolder(slug, token) {
   }
 }
 
+export async function getSkill(slug, options = {}) {
+  if (typeof slug !== 'string' || slug.length === 0) return null
+  const { token } = options
+  const url = `${GITHUB_API_BASE}/repos/${REPO}/contents/${encodeURIComponent(slug)}/SKILL.md`
+  const res = await fetch(url, { headers: buildHeaders(ACCEPT_RAW, token) })
+  if (res.status === 404) return null
+  if (!res.ok) {
+    throw new SkillsApiError(
+      `Failed to fetch SKILL.md for "${slug}" (${res.status}).`,
+      res.status,
+    )
+  }
+  const text = await res.text()
+  const parsed = parseFrontmatter(text)
+  if (!parsed) return null
+  const name = typeof parsed.name === 'string' ? parsed.name.trim() : ''
+  const description = typeof parsed.description === 'string' ? parsed.description.trim() : ''
+  if (!name || !description) return null
+  return {
+    slug,
+    name,
+    description,
+    body: typeof parsed.body === 'string' ? parsed.body : '',
+    sourceUrl: `https://github.com/${REPO}/tree/main/${slug}`,
+  }
+}
+
 async function requestJson(url, token, label) {
   const res = await fetch(url, { headers: buildHeaders(ACCEPT_JSON, token) })
   if (!res.ok) {

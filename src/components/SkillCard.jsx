@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { Wand2, ExternalLink, Copy, Check, Plus } from 'lucide-react'
 
 const SKILL_CREATOR_PATH = '/agent/ai-specialists/skill-creator'
@@ -10,6 +10,7 @@ function buildInstallCommand(slug) {
 
 export default function SkillCard({ skill, variant }) {
   const [copied, setCopied] = useState(false)
+  const navigate = useNavigate()
 
   if (variant === 'create') {
     return (
@@ -40,8 +41,28 @@ export default function SkillCard({ skill, variant }) {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const detailPath = `/skills/${skill.slug}`
+
+  const handleCardClick = () => {
+    navigate(detailPath)
+  }
+
+  const handleCardKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      navigate(detailPath)
+    }
+  }
+
   return (
-    <article className="group relative p-5 bg-bg-card border border-border-subtle rounded-2xl hover:bg-bg-card-hover card-glow transition-all duration-200 hover:-translate-y-0.5 flex flex-col">
+    <article
+      role="link"
+      tabIndex={0}
+      onClick={handleCardClick}
+      onKeyDown={handleCardKeyDown}
+      aria-label={skill.name}
+      className="group relative p-5 bg-bg-card border border-border-subtle rounded-2xl hover:bg-bg-card-hover card-glow transition-all duration-200 hover:-translate-y-0.5 flex flex-col cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent-blue/50"
+    >
       <div className="flex items-start justify-between mb-3">
         <div className="card-icon w-11 h-11 rounded-xl bg-gradient-to-br from-purple-500/15 to-purple-600/5 flex items-center justify-center">
           <Wand2 size={20} className="text-purple-400" />
@@ -51,6 +72,7 @@ export default function SkillCard({ skill, variant }) {
           target="_blank"
           rel="noreferrer"
           aria-label="View on GitHub"
+          onClick={(e) => e.stopPropagation()}
           className="text-text-muted hover:text-text-primary transition-colors p-1.5 rounded-lg hover:bg-white/5"
         >
           <ExternalLink size={16} />

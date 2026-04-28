@@ -279,18 +279,18 @@ npm run dev          # Start dev server (localhost:5173)
 npm run build        # Production build
 npm run preview      # Preview production build
 npm run lint         # ESLint check
-npm test             # Run all tests (vitest)
-npm run test:watch   # Run tests in watch mode
-npm run test:coverage # Run tests with coverage report
+npm test             # Run frontend tests (vitest)
+npm run test:watch   # Run frontend tests in watch mode
+npm run test:coverage # Run frontend tests with coverage report
+npm run test:functions # Run Edge Function tests (deno)
 ```
 
 ## Testing
 
-- **Framework**: Vitest 2 + @testing-library/react
-- **Config**: `vitest.config.js` (jsdom environment, automatic JSX)
-- **Setup**: `src/test/setup.js` (jest-dom matchers, matchMedia mock)
-- **Utils**: `src/test/test-utils.jsx` — `renderWithProviders()` wraps components with BrowserRouter + ThemeProvider + StackProvider
-- **Convention**: Test files live next to their source: `Component.test.jsx`
+The repo has two distinct test suites:
+
+- **Frontend (`npm test`)** — Vitest 2 + @testing-library/react against React components, contexts, and pure JS modules under `src/`. Config: `vitest.config.js` (jsdom environment, automatic JSX). Setup: `src/test/setup.js` (jest-dom matchers, matchMedia mock). Utils: `src/test/test-utils.jsx` — `renderWithProviders()` wraps components with BrowserRouter + ThemeProvider + StackProvider. Convention: test files live next to their source as `Component.test.jsx`.
+- **Edge Functions (`npm run test:functions`)** — Deno's built-in test runner against TypeScript modules under `supabase/functions/`. Edge Functions run in Deno at the Supabase edge, so they need a Deno-native suite (vitest cannot import `Deno.*` APIs or `jsr:` modules). Convention: test files live next to their source as `module.test.ts`. Requires Deno installed locally (`brew install deno`). Vitest's `exclude` skips `supabase/functions/**` so the two suites do not collide.
 
 ## Branching & CI/CD
 

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 
-const BASE = '/ai/agenthub'
+const BASE = ''
 const T = 15000
 
 test.describe('Navigation & Layout', () => {

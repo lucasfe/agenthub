@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { cleanupByPrefix } from './helpers.js'
 
-const BASE = '/ai/agenthub'
+const BASE = ''
 const T = 15000
 
 // Names start with "E2E" so IDs always start with "e2e-" for bulk cleanup.

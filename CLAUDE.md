@@ -186,10 +186,10 @@ The `skill-creator` agent (catalog category **AI Specialists**, icon `Wand2`, co
 The detail page renders the install command for the displayed skill:
 
 ```
-npx degit lucasfe/skills/<slug> ~/.claude/skills/<slug>
+npx degit --mode=git lucasfe/skills/<slug> ~/.claude/skills/<slug>
 ```
 
-`degit` clones a single subfolder of the source repo into the user's local `~/.claude/skills/` directory without bringing along Git history. There is nothing else to "install" — the skill is just the contents of that folder.
+`degit` clones a single subfolder of the source repo into the user's local `~/.claude/skills/` directory without bringing along Git history. The `--mode=git` flag is required because `lucasfe/skills` is private — the default tarball mode is unauthenticated and 404s on private repos. With `--mode=git`, `degit` shells out to `git clone --depth 1` and reuses the user's local SSH/HTTPS git auth, then extracts the requested subfolder. There is nothing else to "install" — the skill is just the contents of that folder.
 
 ### Edge Function proxy
 

@@ -13,6 +13,7 @@ import CreateTeamPage from './components/CreateTeamPage'
 import SettingsPage from './components/SettingsPage'
 import LoginPage from './components/LoginPage'
 import BoardPage from './components/BoardPage'
+import RequireAuth from './components/RequireAuth'
 import StackButton from './components/StackButton'
 import { StackProvider } from './context/StackContext'
 import { useData } from './context/DataContext'
@@ -166,7 +167,7 @@ function TeamsListPage() {
   )
 }
 
-export default function App() {
+function ProtectedShell() {
   return (
     <StackProvider>
       <div className="flex min-h-screen bg-bg-primary">
@@ -182,11 +183,26 @@ export default function App() {
             <Route path="/teams/:teamId/edit" element={<CreateTeamPage />} />
             <Route path="/board" element={<BoardPage />} />
             <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/login" element={<LoginPage />} />
           </Routes>
         </main>
         <StackButton />
       </div>
     </StackProvider>
+  )
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/*"
+        element={
+          <RequireAuth>
+            <ProtectedShell />
+          </RequireAuth>
+        }
+      />
+    </Routes>
   )
 }

@@ -48,6 +48,7 @@ src/
 ## Routing
 
 ```
+/login                          → Public login page (only public route)
 /                               → Agent listing (grid/list)
 /agent/:category/:agentId      → Agent detail with prompt viewer
 /create                         → Create new agent form
@@ -55,9 +56,31 @@ src/
 /teams/:teamId                  → Team detail page
 /teams/create                   → Create new team form
 /teams/:teamId/edit             → Edit existing team
+/board                          → Orchestration board
+/settings                       → User settings
 ```
 
 Category in URLs is derived from `agent.category.toLowerCase().replace(/\s+/g, '-')`.
+
+Every route except `/login` is wrapped by `RequireAuth` (`src/components/RequireAuth.jsx`). Visiting any private route while unauthenticated or with an unauthorized email redirects to `/login`.
+
+## Authentication & Authorization
+
+The app is gated behind Supabase Google OAuth + an email allowlist.
+
+- `src/lib/supabase.js` — Supabase browser client (reads `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`).
+- `src/lib/auth.js` — pure helper. `isAllowed(email)` reads `VITE_ALLOWED_EMAILS` (comma-separated), trims, lowercases, and checks membership. Fails closed: missing/empty env var means no one is allowed.
+- `src/context/AuthContext.jsx` — wraps the Supabase session. After every Supabase auth change, the provider checks the user's email against `isAllowed`. If unauthorized, it calls `signOut()`, clears local state, and exposes an `error` string. Exposes `{ user, session, loading, error, isAuthorized, signInWithGoogle, signOut }`.
+- `src/components/RequireAuth.jsx` — route-level gate. Renders a loading indicator while `loading` is true; otherwise either renders the children (when `user && isAuthorized`) or redirects to `/login`.
+- `src/components/LoginPage.jsx` — public route. Renders the Google button and an inline error banner when the context's `error` is set.
+
+### Required env vars
+
+| Variable | Required | Notes |
+|---|---|---|
+| `VITE_SUPABASE_URL` | Yes | Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | Yes | Supabase anon (publishable) key |
+| `VITE_ALLOWED_EMAILS` | Yes | Comma-separated emails. Empty/missing ⇒ no one is allowed. Adding family/friends is just an env-var update + redeploy. |
 
 ## Naming Conventions
 

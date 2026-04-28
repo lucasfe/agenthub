@@ -92,10 +92,10 @@ describe('SkillDetailPage', () => {
       body: 'body',
       sourceUrl: 'https://github.com/lucasfe/skills/tree/main/grill-me',
     })
+    const user = userEvent.setup()
     const writeText = vi
       .spyOn(navigator.clipboard, 'writeText')
       .mockResolvedValue(undefined)
-    const user = userEvent.setup()
 
     renderAtSlug('grill-me')
 

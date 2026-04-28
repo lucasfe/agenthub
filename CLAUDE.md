@@ -112,6 +112,47 @@ For local development, set the same variables in `.env.local` (see `.env.local.e
 | `VITE_SUPABASE_ANON_KEY` | Yes | Supabase anon (publishable) key |
 | `VITE_ALLOWED_EMAILS` | Yes | Comma-separated emails, case-insensitive. Empty/missing ⇒ no one is allowed (fail closed). Update in Vercel + redeploy to add or revoke access. |
 
+## GitHub Issue Creator agent
+
+The `github-issue-creator` agent turns a free-text chat description into a GitHub issue in one of Lucas's owned repositories, with explicit user approval before the issue is created. It lives in the **AI Specialists** catalog category and is consumed via the existing AI Assistant chat — no new UI surface.
+
+### Tools
+
+The agent calls two tools, both registered in `supabase/functions/chat/executor.ts`'s `TOOL_HANDLERS` registry:
+
+- **`list_github_repos`** — read-only. No parameters. Fetches the live list of repos Lucas owns from the GitHub REST API, slimmed to `{ name, full_name, description, pushed_at }`. `requires_approval: false`. The system prompt instructs the agent to call this exactly once at the start of every new conversation so it grounds itself in the current repo set rather than stale model memory.
+- **`create_github_issue`** — write. Parameters: `repo` (`owner/name` string), `title` (string), `body` (Markdown string). Creates the issue and returns `{ url, number }`. **`requires_approval: true`** on the row in the `tools` table, which makes the existing chat approval gate pause execution and render a one-click "Approve" button before the call goes out. There is no way to bypass the approval from the agent side.
+
+The two `tools` rows and the `agents` row that wires them to `github-issue-creator` are seeded in [`supabase/seed-tools.sql`](supabase/seed-tools.sql). The catalog card definition lives in `src/data/agents.json`; the agent's system prompt is keyed by `github-issue-creator` in `src/data/agentContent.js` (and a copy is embedded in the same `seed-tools.sql` for the database-side `agents` row).
+
+### Module layout
+
+The Edge Function side of the agent is split into deep modules so the executor stays thin:
+
+- `supabase/functions/chat/github.ts` — HTTP client. Two functions (`listRepos`, `createIssue`) wrap `fetch` with the right URL, headers (`Authorization: Bearer <token>`, `Accept: application/vnd.github+json`), and error surfacing. Both take the token as the first argument; neither reads global state, so the client is straightforward to mock and easy to swap for a GitHub App or OAuth flow later.
+- `supabase/functions/chat/githubFilters.ts` — pure function. Drops `archived`, `fork`, and empty (`size === 0`) repos and maps each survivor to the slim shape returned to the LLM. No side effects, fully unit-tested.
+- `supabase/functions/chat/executor.ts` — registers the two tool handlers in `TOOL_HANDLERS` and reads `GITHUB_TOKEN` from the Edge Function environment. If the secret is unset, both handlers return a structured "tool unavailable" error string the LLM can surface to the user instead of producing a confusing fetch failure.
+
+Tests for all three modules live alongside the source as `*.test.ts` and run via `npm run test:functions`.
+
+### Required Edge Function secret
+
+| Variable | Required | Notes |
+|---|---|---|
+| `GITHUB_TOKEN` | Yes (for this agent only) | Fine-grained Personal Access Token with the `repo` scope. Set as a Supabase Edge Function secret, not a Vercel env var or a frontend var. The agent is non-functional until this secret is set; both tool handlers fail fast with a clear "missing GITHUB_TOKEN" message. Setup steps live in the manual `do-not-ralph` issue [#48](https://github.com/lucasfe/agenthub/issues/48), not in code, so the token can be rotated without a redeploy. |
+
+### Extending in v2
+
+The v1 tool surface is intentionally minimal (`repo`, `title`, `body` only). When demand is demonstrated, follow-up PRDs can:
+
+- add `labels`, `assignees`, or `milestones` to the `create_github_issue` input schema and handler;
+- pull issue templates from `.github/ISSUE_TEMPLATE/` to scaffold the body;
+- migrate from a single-user PAT to a GitHub App or per-user OAuth flow (the deep `github.ts` module is the seam — callers do not need to change);
+- broaden the GitHub `affiliation` query param from `owner` to include `collaborator` and `organization_member`;
+- wire the agent into the orchestration board so the plan-and-execute mode can file issues automatically.
+
+Each of these is its own PRD; do not bundle them onto the existing surface without a fresh decision.
+
 ## Naming Conventions
 
 | What             | Convention           | Example                          |

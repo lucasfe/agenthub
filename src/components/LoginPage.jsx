@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { Navigate } from 'react-router'
 
 export default function LoginPage() {
-  const { user, loading, signInWithGoogle } = useAuth()
+  const { user, isAuthorized, loading, error, signInWithGoogle } = useAuth()
 
   if (loading) {
     return (
@@ -13,7 +13,7 @@ export default function LoginPage() {
     )
   }
 
-  if (user) return <Navigate to="/" replace />
+  if (user && isAuthorized) return <Navigate to="/" replace />
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-bg-primary">
@@ -25,6 +25,15 @@ export default function LoginPage() {
           <h1 className="text-2xl font-bold text-text-primary">Lucas AI Hub</h1>
           <p className="text-sm text-text-muted mt-1">Sign in to manage your agents</p>
         </div>
+
+        {error && (
+          <div
+            role="alert"
+            className="mb-4 px-4 py-3 rounded-xl bg-accent-rose/10 border border-accent-rose/30 text-sm text-text-primary"
+          >
+            {error}
+          </div>
+        )}
 
         <button
           onClick={signInWithGoogle}

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { listSkills, SkillsApiError } from './skills'
+import { listSkills, getSkill, SkillsApiError } from './skills'
 
 const LIST_URL = 'https://api.github.com/repos/lucasfe/skills/contents'
 const SKILL_URL = (slug) =>

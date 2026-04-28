@@ -560,6 +560,76 @@ async function createGoogleSlides(
   }
 }
 
+// ─── GitHub Issue Creator tools ─────────────────────────────────────────────
+
+const MISSING_GITHUB_TOKEN_ERROR =
+  'GitHub Issue Creator is not configured. Set GITHUB_TOKEN in the Edge Function secrets to enable this tool.'
+
+async function listGithubRepos(
+  _input: Record<string, unknown>,
+  _ctx: ToolContext,
+): Promise<ToolResult> {
+  const token = Deno.env.get('GITHUB_TOKEN')
+  if (!token) {
+    return {
+      ok: false,
+      error: MISSING_GITHUB_TOKEN_ERROR,
+      result: { error: 'not_configured' },
+    }
+  }
+  try {
+    const repos = await listRepos(token)
+    const slim = filterAndSlim(repos)
+    return {
+      ok: true,
+      result: { repos: slim },
+      summary: `Found ${slim.length} owned repo${slim.length === 1 ? '' : 's'}`,
+    }
+  } catch (err) {
+    return { ok: false, error: (err as Error).message }
+  }
+}
+
+async function createGithubIssue(
+  input: { repo?: unknown; title?: unknown; body?: unknown },
+  _ctx: ToolContext,
+): Promise<ToolResult> {
+  const repo = typeof input.repo === 'string' ? input.repo.trim() : ''
+  const title = typeof input.title === 'string' ? input.title.trim() : ''
+  const body = typeof input.body === 'string' ? input.body.trim() : ''
+  if (!repo) {
+    return {
+      ok: false,
+      error:
+        'create_github_issue requires a non-empty `repo` (e.g. "owner/name").',
+    }
+  }
+  if (!title) {
+    return { ok: false, error: 'create_github_issue requires a non-empty `title`.' }
+  }
+  if (!body) {
+    return { ok: false, error: 'create_github_issue requires a non-empty `body`.' }
+  }
+  const token = Deno.env.get('GITHUB_TOKEN')
+  if (!token) {
+    return {
+      ok: false,
+      error: MISSING_GITHUB_TOKEN_ERROR,
+      result: { error: 'not_configured' },
+    }
+  }
+  try {
+    const result = await createIssue(token, repo, title, body)
+    return {
+      ok: true,
+      result,
+      summary: `Created issue #${result.number} in ${repo}`,
+    }
+  } catch (err) {
+    return { ok: false, error: (err as Error).message }
+  }
+}
+
 export const TOOL_HANDLERS: Record<string, ToolHandler> = {
   web_search: webSearch,
   fetch_url: fetchUrl,
@@ -568,6 +638,8 @@ export const TOOL_HANDLERS: Record<string, ToolHandler> = {
   read_agent: readAgent,
   save_artifact: saveArtifact,
   create_google_slides: createGoogleSlides,
+  list_github_repos: listGithubRepos,
+  create_github_issue: createGithubIssue,
 }
 
 // Which tools are functional in the current environment. Some tools depend on

@@ -13,6 +13,15 @@ vi.mock('../lib/skills', () => ({
   listSkills: vi.fn(),
 }))
 
+vi.mock('../context/AuthContext', () => ({
+  useAuth: () => ({
+    session: { access_token: 'test-access-token' },
+    user: { email: 'lucasfe@gmail.com' },
+    signOut: vi.fn(),
+  }),
+  AuthProvider: ({ children }) => children,
+}))
+
 import { listSkills } from '../lib/skills'
 
 beforeEach(() => {

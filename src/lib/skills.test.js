@@ -220,3 +220,78 @@ describe('listSkills — error surfacing', () => {
     await expect(listSkills()).rejects.toBeInstanceOf(SkillsApiError)
   })
 })
+
+describe('getSkill', () => {
+  it('exists as an exported function', () => {
+    expect(typeof getSkill).toBe('function')
+  })
+
+  it('returns the skill with the rendered body, name, description, slug, and sourceUrl', async () => {
+    fetchMock.mockImplementation(async (url) => {
+      if (url === SKILL_URL('grill-me')) {
+        return textResponse(
+          '---\nname: grill-me\ndescription: Interview the user\n---\n# Heading\n\nFull body here.',
+        )
+      }
+      throw new Error(`unexpected url: ${url}`)
+    })
+
+    const skill = await getSkill('grill-me')
+
+    expect(skill).toEqual({
+      slug: 'grill-me',
+      name: 'grill-me',
+      description: 'Interview the user',
+      body: '# Heading\n\nFull body here.',
+      sourceUrl: 'https://github.com/lucasfe/skills/tree/main/grill-me',
+    })
+  })
+
+  it('returns null when the slug is missing on the remote (404)', async () => {
+    fetchMock.mockResolvedValue(new Response('Not Found', { status: 404 }))
+
+    const skill = await getSkill('does-not-exist')
+
+    expect(skill).toBeNull()
+  })
+
+  it('returns null for empty or non-string slugs without making a request', async () => {
+    expect(await getSkill('')).toBeNull()
+    expect(await getSkill(undefined)).toBeNull()
+    expect(await getSkill(null)).toBeNull()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('returns null when SKILL.md exists but has no frontmatter', async () => {
+    fetchMock.mockImplementation(async () =>
+      textResponse('# just a heading\n\nbody only, no frontmatter'),
+    )
+
+    const skill = await getSkill('no-frontmatter')
+
+    expect(skill).toBeNull()
+  })
+
+  it('returns null when the frontmatter is missing name or description', async () => {
+    fetchMock.mockImplementation(async () =>
+      textResponse('---\nname: only-a-name\n---\nbody'),
+    )
+
+    const skill = await getSkill('no-desc')
+
+    expect(skill).toBeNull()
+  })
+
+  it('throws a SkillsApiError on 403 (rate limit)', async () => {
+    fetchMock.mockResolvedValue(new Response('rate limited', { status: 403 }))
+
+    await expect(getSkill('grill-me')).rejects.toBeInstanceOf(SkillsApiError)
+    await expect(getSkill('grill-me')).rejects.toMatchObject({ status: 403 })
+  })
+
+  it('throws a SkillsApiError on 5xx', async () => {
+    fetchMock.mockResolvedValue(new Response('boom', { status: 503 }))
+
+    await expect(getSkill('grill-me')).rejects.toBeInstanceOf(SkillsApiError)
+  })
+})

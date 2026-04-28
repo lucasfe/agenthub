@@ -218,5 +218,17 @@
     "color": "amber",
     "featured": false,
     "popularity": 71
+  },
+  {
+    "id": "github-issue-creator",
+    "name": "GitHub Issue Creator",
+    "category": "AI Specialists",
+    "description": "Captures ideas and bug reports from chat and turns them into well-formed GitHub issues in the right repo, with a one-click approval before posting.",
+    "tags": ["GitHub", "Issues", "Productivity"],
+    "icon": "Github",
+    "color": "purple",
+    "featured": false,
+    "popularity": 75,
+    "tools": ["list_github_repos", "create_github_issue"]
   }
 ]

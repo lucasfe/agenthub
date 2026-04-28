@@ -10,6 +10,7 @@ function buildInstallCommand(slug) {
 
 export default function SkillCard({ skill, variant }) {
   const [copied, setCopied] = useState(false)
+  const navigate = useNavigate()
 
   if (variant === 'create') {
     return (

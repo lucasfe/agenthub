@@ -15,6 +15,9 @@
 //
 // deno-lint-ignore-file no-explicit-any
 
+import { createIssue, listRepos } from './github.ts'
+import { filterAndSlim } from './githubFilters.ts'
+
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages'
 const DEFAULT_STEP_MODEL = 'claude-sonnet-4-6'
 const ANALYZER_MODEL = Deno.env.get('ANALYZER_MODEL') || 'claude-sonnet-4-6'

@@ -11,6 +11,7 @@
     "test": "vitest run --reporter=verbose",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:functions": "deno test --allow-net --allow-env supabase/functions/",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"
   },

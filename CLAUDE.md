@@ -48,6 +48,7 @@ src/
 ## Routing
 
 ```
+/login                          → Public login page (only public route)
 /                               → Agent listing (grid/list)
 /agent/:category/:agentId      → Agent detail with prompt viewer
 /create                         → Create new agent form
@@ -55,9 +56,151 @@ src/
 /teams/:teamId                  → Team detail page
 /teams/create                   → Create new team form
 /teams/:teamId/edit             → Edit existing team
+/board                          → Orchestration board
+/settings                       → User settings
 ```
 
 Category in URLs is derived from `agent.category.toLowerCase().replace(/\s+/g, '-')`.
+
+Every route except `/login` is wrapped by `RequireAuth` (`src/components/RequireAuth.jsx`). Visiting any private route while unauthenticated or with an unauthorized email redirects to `/login`.
+
+## Authentication & Authorization
+
+The app is gated behind Supabase Google OAuth + an email allowlist. **Every route except `/login` requires both an authenticated Supabase session AND an email present in the allowlist.** There is no anonymous mode and no way to bypass the gate from the client.
+
+### Components of the gate
+
+- `src/lib/supabase.js` — Supabase browser client (reads `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`).
+- `src/lib/auth.js` — pure helper. `isAllowed(email)` reads `VITE_ALLOWED_EMAILS`, splits by comma, trims whitespace, lowercases each entry, and checks membership against the user's lowercased email. **Matching is case-insensitive** on both sides.
+- `src/context/AuthContext.jsx` — wraps the Supabase session. After every Supabase auth change, the provider checks the user's email against `isAllowed`. If unauthorized, it calls `signOut()`, clears local state, and exposes an `error` string. Exposes `{ user, session, loading, error, isAuthorized, signInWithGoogle, signOut }`.
+- `src/components/RequireAuth.jsx` — route-level wrapper used in `App.jsx`. Renders a loading indicator while `loading` is true; otherwise either renders the children (when `user && isAuthorized`) or redirects to `/login`.
+- `src/components/LoginPage.jsx` — the only public route. Renders the Google sign-in button and an inline error banner when the context's `error` is set (e.g. after an unauthorized sign-in attempt).
+
+### Fail-closed invariant
+
+`isAllowed` is intentionally strict: if `VITE_ALLOWED_EMAILS` is missing, empty, or contains only whitespace, **no email is considered allowed** and every login attempt will be rejected. This is by design — there is no "deploy without the allowlist set" mode. The check happens client-side, but combined with Supabase RLS this still effectively keeps the app private.
+
+### Unauthorized-account UX
+
+When a Google account that is not on the allowlist signs in:
+
+1. Supabase completes OAuth and emits a `SIGNED_IN` event.
+2. `AuthContext` detects `isAllowed(email) === false`, immediately calls `supabase.auth.signOut()`, and sets `error` to a user-readable message.
+3. `RequireAuth` sees no authorized user and redirects (or keeps the user) on `/login`.
+4. `LoginPage` reads the `error` from context and renders an inline banner explaining the account is not authorized.
+
+The user never reaches a private route, even momentarily, because `RequireAuth` runs before any private page renders.
+
+### Onboarding a new authorized email
+
+Adding a family member, friend, or new team member is a config change — no code change required:
+
+1. Open the Vercel project settings → **Environment Variables**.
+2. Edit `VITE_ALLOWED_EMAILS`. The value is a single comma-separated string, e.g. `lucas@example.com,family@example.com,friend@example.com`. Whitespace around commas is fine; matching is case-insensitive.
+3. Save and trigger a redeploy (Vercel will pick up the new value on the next build).
+4. The newly allowed user can now sign in with their Google account.
+
+To revoke access, remove the email from the same env var and redeploy. Existing sessions will fail on their next `AuthContext` re-check (e.g. on next page load) because `isAllowed` will return `false` and they'll be signed out automatically.
+
+For local development, set the same variables in `.env.local` (see `.env.local.example`).
+
+### Required env vars
+
+| Variable | Required | Notes |
+|---|---|---|
+| `VITE_SUPABASE_URL` | Yes | Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | Yes | Supabase anon (publishable) key |
+| `VITE_ALLOWED_EMAILS` | Yes | Comma-separated emails, case-insensitive. Empty/missing ⇒ no one is allowed (fail closed). Update in Vercel + redeploy to add or revoke access. |
+
+## GitHub Issue Creator agent
+
+The `github-issue-creator` agent turns a free-text chat description into a GitHub issue in one of Lucas's owned repositories, with explicit user approval before the issue is created. It lives in the **AI Specialists** catalog category and is consumed via the existing AI Assistant chat — no new UI surface.
+
+### Tools
+
+The agent calls two tools, both registered in `supabase/functions/chat/executor.ts`'s `TOOL_HANDLERS` registry:
+
+- **`list_github_repos`** — read-only. No parameters. Fetches the live list of repos Lucas owns from the GitHub REST API, slimmed to `{ name, full_name, description, pushed_at }`. `requires_approval: false`. The system prompt instructs the agent to call this exactly once at the start of every new conversation so it grounds itself in the current repo set rather than stale model memory.
+- **`create_github_issue`** — write. Parameters: `repo` (`owner/name` string), `title` (string), `body` (Markdown string). Creates the issue and returns `{ url, number }`. **`requires_approval: true`** on the row in the `tools` table, which makes the existing chat approval gate pause execution and render a one-click "Approve" button before the call goes out. There is no way to bypass the approval from the agent side.
+
+The two `tools` rows and the `agents` row that wires them to `github-issue-creator` are seeded in [`supabase/seed-tools.sql`](supabase/seed-tools.sql). The catalog card definition lives in `src/data/agents.json`; the agent's system prompt is keyed by `github-issue-creator` in `src/data/agentContent.js` (and a copy is embedded in the same `seed-tools.sql` for the database-side `agents` row).
+
+### Module layout
+
+The Edge Function side of the agent is split into deep modules so the executor stays thin:
+
+- `supabase/functions/chat/github.ts` — HTTP client. Two functions (`listRepos`, `createIssue`) wrap `fetch` with the right URL, headers (`Authorization: Bearer <token>`, `Accept: application/vnd.github+json`), and error surfacing. Both take the token as the first argument; neither reads global state, so the client is straightforward to mock and easy to swap for a GitHub App or OAuth flow later.
+- `supabase/functions/chat/githubFilters.ts` — pure function. Drops `archived`, `fork`, and empty (`size === 0`) repos and maps each survivor to the slim shape returned to the LLM. No side effects, fully unit-tested.
+- `supabase/functions/chat/executor.ts` — registers the two tool handlers in `TOOL_HANDLERS` and reads `GITHUB_TOKEN` from the Edge Function environment. If the secret is unset, both handlers return a structured "tool unavailable" error string the LLM can surface to the user instead of producing a confusing fetch failure.
+
+Tests for all three modules live alongside the source as `*.test.ts` and run via `npm run test:functions`.
+
+### Required Edge Function secret
+
+| Variable | Required | Notes |
+|---|---|---|
+| `GITHUB_TOKEN` | Yes (for this agent only) | Fine-grained Personal Access Token with the `repo` scope. Set as a Supabase Edge Function secret, not a Vercel env var or a frontend var. The agent is non-functional until this secret is set; both tool handlers fail fast with a clear "missing GITHUB_TOKEN" message. Setup steps live in the manual `do-not-ralph` issue [#48](https://github.com/lucasfe/agenthub/issues/48), not in code, so the token can be rotated without a redeploy. |
+
+### Extending in v2
+
+The v1 tool surface is intentionally minimal (`repo`, `title`, `body` only). When demand is demonstrated, follow-up PRDs can:
+
+- add `labels`, `assignees`, or `milestones` to the `create_github_issue` input schema and handler;
+- pull issue templates from `.github/ISSUE_TEMPLATE/` to scaffold the body;
+- migrate from a single-user PAT to a GitHub App or per-user OAuth flow (the deep `github.ts` module is the seam — callers do not need to change);
+- broaden the GitHub `affiliation` query param from `owner` to include `collaborator` and `organization_member`;
+- wire the agent into the orchestration board so the plan-and-execute mode can file issues automatically.
+
+Each of these is its own PRD; do not bundle them onto the existing surface without a fresh decision.
+
+## Skills
+
+The Skills section is a separate catalog (alongside Agents and Teams) for reusable Claude Code skills. Cards are rendered live from a public source-of-truth repo: [`lucasfe/skills`](https://github.com/lucasfe/skills). Each top-level folder in that repo is a skill; the folder must contain a `SKILL.md` whose YAML frontmatter declares `name` and `description`. Folders without a valid `SKILL.md` are silently skipped, so the repo can hold work-in-progress directories without breaking the catalog.
+
+### Routes
+
+- `/skills` — catalog page (`src/components/SkillsPage.jsx`). Lists every valid skill from the source repo as cards (`src/components/SkillCard.jsx`). Live fetch on every visit — there is no client-side cache in v1.
+- `/skills/[slug]` — detail page (`src/components/SkillDetailPage.jsx`). Renders the skill's `SKILL.md` body and the install command. The `slug` segment is the folder name in the source repo, which is also the local install path under `~/.claude/skills/<slug>`.
+
+Both routes are gated by `RequireAuth`, like every other private page.
+
+### Deep modules
+
+The Skills feature follows the same deep-module pattern as the GitHub Issue Creator agent — narrow, well-tested modules with clear seams:
+
+- `src/lib/skills.js` — GitHub Contents API client. Exports `listSkills()` (returns the slim `{ slug, name, description, sourceUrl }[]` shape used by the catalog) and `getSkill(slug)` (returns the same plus `body` for the detail page). Knows everything about reaching `lucasfe/skills`: URL building, accept headers (`application/vnd.github+json` for listings, `application/vnd.github.raw` for `SKILL.md` bodies), and error surfacing as a `SkillsApiError` with the upstream HTTP status. Callers do not need to understand the GitHub API.
+- `src/lib/skillFrontmatter.js` — pure parser for the YAML frontmatter block at the top of a `SKILL.md` file. Zero new dependencies, zero I/O. Returns the parsed frontmatter merged with the raw markdown body, or `null` when the block is missing or malformed. Only `name` and `description` are read by the catalog in v1; extra optional keys pass through untouched so future readers can consume them without changing the parser.
+
+Tests live next to each module as `skills.test.js` / `skillFrontmatter.test.js` and run via `npm test`.
+
+### Skill Creator agent
+
+The `skill-creator` agent (catalog category **AI Specialists**, icon `Wand2`, color `cyan`) interviews the user about a new skill, then files a structured GitHub issue against `lucasfe/skills` containing a ready-to-paste `SKILL.md`. It does not commit code or open PRs — humans (or another loop) act on the issue.
+
+- Hardcoded target repo: `lucasfe/skills`. The system prompt embeds this so the LLM cannot mis-target another repo.
+- Tool dependency: reuses the existing `create_github_issue` tool from the [GitHub Issue Creator agent](#github-issue-creator-agent). It is the only tool the agent declares in `src/data/agents.json` (no `list_github_repos` — there is nothing to choose). Approval gating, error handling, and the `GITHUB_TOKEN` Edge Function secret are inherited from that feature unchanged.
+- Card definition in `src/data/agents.json` (`id: "skill-creator"`); system prompt keyed by `skill-creator` in `src/data/agentContent.js` (and mirrored in `supabase/seed-tools.sql` for the database-side `agents` row).
+
+### Install flow
+
+The detail page renders the install command for the displayed skill:
+
+```
+npx degit lucasfe/skills/<slug> ~/.claude/skills/<slug>
+```
+
+`degit` clones a single subfolder of the source repo into the user's local `~/.claude/skills/` directory without bringing along Git history. There is nothing else to "install" — the skill is just the contents of that folder.
+
+### v1 unauthenticated fetch & migration path
+
+`src/lib/skills.js` calls `api.github.com` **without** a token. The repo is public, the catalog is single-user, and the unauthenticated rate limit (60 req/hr per IP) is comfortably more than enough. Avoiding a token also means no edge function proxy, no secret to rotate, and no extra failure mode on first paint.
+
+If the rate limit ever starts hurting (e.g. the catalog grows large enough that one page load fans out into many `SKILL.md` fetches, or this becomes multi-user), the migration path is a one-line change at the call sites:
+
+1. The internal `requestJson` / `fetch` helpers in `src/lib/skills.js` already attach `Authorization: Bearer <token>` when a `token` option is passed — `listSkills({ token })` and `getSkill(slug, { token })` are the only seams that need to start forwarding one.
+2. To avoid shipping the `GITHUB_TOKEN` secret to the browser, route the calls through a thin Edge Function proxy in `supabase/functions/` that injects the existing `GITHUB_TOKEN` (already configured for the GitHub Issue Creator agent — see [Required Edge Function secret](#required-edge-function-secret)) and forwards the upstream response. No new secret needs to be provisioned.
+
+Do not pre-emptively wire this up; the v1 unauthenticated path is the right default until rate-limit pressure shows up in practice.
 
 ## Naming Conventions
 
@@ -226,18 +369,18 @@ npm run dev          # Start dev server (localhost:5173)
 npm run build        # Production build
 npm run preview      # Preview production build
 npm run lint         # ESLint check
-npm test             # Run all tests (vitest)
-npm run test:watch   # Run tests in watch mode
-npm run test:coverage # Run tests with coverage report
+npm test             # Run frontend tests (vitest)
+npm run test:watch   # Run frontend tests in watch mode
+npm run test:coverage # Run frontend tests with coverage report
+npm run test:functions # Run Edge Function tests (deno)
 ```
 
 ## Testing
 
-- **Framework**: Vitest 2 + @testing-library/react
-- **Config**: `vitest.config.js` (jsdom environment, automatic JSX)
-- **Setup**: `src/test/setup.js` (jest-dom matchers, matchMedia mock)
-- **Utils**: `src/test/test-utils.jsx` — `renderWithProviders()` wraps components with BrowserRouter + ThemeProvider + StackProvider
-- **Convention**: Test files live next to their source: `Component.test.jsx`
+The repo has two distinct test suites:
+
+- **Frontend (`npm test`)** — Vitest 2 + @testing-library/react against React components, contexts, and pure JS modules under `src/`. Config: `vitest.config.js` (jsdom environment, automatic JSX). Setup: `src/test/setup.js` (jest-dom matchers, matchMedia mock). Utils: `src/test/test-utils.jsx` — `renderWithProviders()` wraps components with BrowserRouter + ThemeProvider + StackProvider. Convention: test files live next to their source as `Component.test.jsx`.
+- **Edge Functions (`npm run test:functions`)** — Deno's built-in test runner against TypeScript modules under `supabase/functions/`. Edge Functions run in Deno at the Supabase edge, so they need a Deno-native suite (vitest cannot import `Deno.*` APIs or `jsr:` modules). Convention: test files live next to their source as `module.test.ts`. Requires Deno installed locally (`brew install deno`). Vitest's `exclude` skips `supabase/functions/**` so the two suites do not collide.
 
 ## Branching & CI/CD
 

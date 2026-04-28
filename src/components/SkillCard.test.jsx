@@ -39,7 +39,7 @@ describe('SkillCard — default variant', () => {
   })
 
   it('writes the install command to the clipboard on click', async () => {
-    const user = userEvent.setup()
+    const { user, writeText } = setupClipboard()
     renderWithProviders(<SkillCard skill={mockSkill} />)
     await user.click(screen.getByRole('button', { name: /copy install command/i }))
     expect(writeText).toHaveBeenCalledTimes(1)
@@ -49,7 +49,7 @@ describe('SkillCard — default variant', () => {
   })
 
   it('shows transient "Copied!" feedback after the click', async () => {
-    const user = userEvent.setup()
+    const { user } = setupClipboard()
     renderWithProviders(<SkillCard skill={mockSkill} />)
     await user.click(screen.getByRole('button', { name: /copy install command/i }))
     expect(

@@ -13,6 +13,7 @@ import CreateTeamPage from './components/CreateTeamPage'
 import SettingsPage from './components/SettingsPage'
 import LoginPage from './components/LoginPage'
 import BoardPage from './components/BoardPage'
+import SkillsPage from './components/SkillsPage'
 import RequireAuth from './components/RequireAuth'
 import StackButton from './components/StackButton'
 import { StackProvider } from './context/StackContext'
@@ -182,6 +183,7 @@ function ProtectedShell() {
             <Route path="/teams/create" element={<CreateTeamPage />} />
             <Route path="/teams/:teamId/edit" element={<CreateTeamPage />} />
             <Route path="/board" element={<BoardPage />} />
+            <Route path="/skills" element={<SkillsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Routes>
         </main>

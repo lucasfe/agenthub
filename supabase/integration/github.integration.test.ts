@@ -10,7 +10,7 @@
 // Required env vars:
 //   GH_TEST_TOKEN — fine-grained PAT with Issues read+write on the test
 //                       repo, plus Metadata read.
-//   GITHUB_TEST_REPO  — `owner/name` of a sandbox repo. Defaults to
+//   GH_TEST_REPO  — `owner/name` of a sandbox repo. Defaults to
 //                       `lucasfe/agenthub`. Issues created here are auto-closed
 //                       at the end of the test, but they remain in the repo's
 //                       history as closed.
@@ -20,7 +20,7 @@ import { createIssue, listRepos } from '../functions/chat/github.ts'
 import { filterAndSlim } from '../functions/chat/githubFilters.ts'
 
 const TOKEN = Deno.env.get('GH_TEST_TOKEN')
-const REPO = Deno.env.get('GITHUB_TEST_REPO') || 'lucasfe/agenthub'
+const REPO = Deno.env.get('GH_TEST_REPO') || 'lucasfe/agenthub'
 const SKIP = !TOKEN
 
 const skipReason =

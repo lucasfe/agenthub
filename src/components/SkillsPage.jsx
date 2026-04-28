@@ -3,17 +3,21 @@ import { Wand2 } from 'lucide-react'
 import Header from './Header'
 import SkillCard from './SkillCard'
 import { listSkills } from '../lib/skills'
+import { useAuth } from '../context/AuthContext'
 
 export default function SkillsPage() {
+  const { session } = useAuth()
+  const accessToken = session?.access_token
   const [skills, setSkills] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
   useEffect(() => {
+    if (!accessToken) return
     let cancelled = false
     setLoading(true)
     setError(null)
-    listSkills()
+    listSkills({ accessToken })
       .then((result) => {
         if (cancelled) return
         setSkills(Array.isArray(result) ? result : [])
@@ -26,7 +30,7 @@ export default function SkillsPage() {
         if (!cancelled) setLoading(false)
       })
     return () => { cancelled = true }
-  }, [])
+  }, [accessToken])
 
   return (
     <>

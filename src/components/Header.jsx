@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Search, Moon, Sun, Sparkles, LogOut, Settings, ChevronDown, Wand2 } from 'lucide-react'
+import { Search, Moon, Sun, Sparkles, LogOut, Settings, ChevronDown } from 'lucide-react'
 import { Link } from 'react-router'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
@@ -67,14 +67,6 @@ export default function Header() {
 
         {/* Right Actions */}
         <div className="flex items-center gap-2 ml-6">
-          <Link
-            to="/skills"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-text-secondary hover:bg-bg-input hover:text-text-primary transition-colors"
-          >
-            <Wand2 size={16} />
-            <span>Skills</span>
-          </Link>
-
           <button
             onClick={toggleTheme}
             className="p-2 rounded-lg hover:bg-bg-input text-text-secondary hover:text-text-primary transition-colors"

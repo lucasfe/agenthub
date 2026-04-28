@@ -1,25 +1,22 @@
-// GitHub Contents API client for the `lucasfe/skills` catalog.
+// Client for the `lucasfe/skills` catalog.
 //
-// Deep, narrow module: knows everything about reaching the skills repo (URL
-// building, accept headers, listing folders, fetching SKILL.md, and surfacing
-// rate-limit / server errors as a typed error). Returns the slim shape the
-// `/skills` page renders — no caller needs to understand the GitHub API or the
-// frontmatter format.
+// The repo is private, so the browser cannot reach the GitHub API directly.
+// Both calls go through the `skills` Supabase Edge Function, which injects
+// the existing `GITHUB_TOKEN` secret server-side. Callers must pass the
+// authenticated user's `accessToken` (Supabase session token) so the
+// function's JWT gate accepts the call — there is no anonymous mode.
 //
-// v1 is unauthenticated (the repo is public, the 60 req/hr limit is fine for a
-// single-user catalog). The internal `requestJson` / `requestText` helpers
-// already attach an `Authorization` header when a token is provided, so a
-// future migration to an Edge Function proxy that forwards the existing
-// `GITHUB_TOKEN` secret is a one-line change at the call sites.
+// This module only knows about reaching the proxy and parsing what comes
+// back. Frontmatter parsing is delegated to `./skillFrontmatter.js`.
 
 import { parseFrontmatter } from './skillFrontmatter.js'
 
-const GITHUB_API_BASE = 'https://api.github.com'
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
+const PROXY_PATH = '/functions/v1/skills'
 const REPO_OWNER = 'lucasfe'
 const REPO_NAME = 'skills'
 const REPO = `${REPO_OWNER}/${REPO_NAME}`
-const ACCEPT_JSON = 'application/vnd.github+json'
-const ACCEPT_RAW = 'application/vnd.github.raw'
 
 export class SkillsApiError extends Error {
   constructor(message, status) {
@@ -29,30 +26,51 @@ export class SkillsApiError extends Error {
   }
 }
 
+function buildProxyUrl(op, params = {}) {
+  const url = new URL(`${SUPABASE_URL}${PROXY_PATH}`)
+  url.searchParams.set('op', op)
+  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v)
+  return url.toString()
+}
+
+function buildHeaders(accessToken) {
+  if (!accessToken) {
+    throw new SkillsApiError(
+      'Skills proxy requires an authenticated session. Sign in first.',
+      401,
+    )
+  }
+  return {
+    Authorization: `Bearer ${accessToken}`,
+    apikey: ANON_KEY,
+  }
+}
+
 export async function listSkills(options = {}) {
-  const { token } = options
-  const entries = await requestJson(
-    `${GITHUB_API_BASE}/repos/${REPO}/contents`,
-    token,
-    'list skills',
-  )
+  const { accessToken } = options
+  const headers = buildHeaders(accessToken)
+  const res = await fetch(buildProxyUrl('list'), { headers })
+  if (!res.ok) {
+    throw new SkillsApiError(`Failed to list skills (${res.status}).`, res.status)
+  }
+  const entries = await res.json()
   if (!Array.isArray(entries)) {
-    throw new SkillsApiError('GitHub returned an unexpected response shape.', 502)
+    throw new SkillsApiError('Proxy returned an unexpected response shape.', 502)
   }
   const folders = entries.filter(
     (entry) => entry && entry.type === 'dir' && typeof entry.name === 'string',
   )
   const skills = []
   for (const folder of folders) {
-    const skill = await fetchSkillForFolder(folder.name, token)
+    const skill = await fetchSkillForFolder(folder.name, accessToken)
     if (skill) skills.push(skill)
   }
   return skills
 }
 
-async function fetchSkillForFolder(slug, token) {
-  const url = `${GITHUB_API_BASE}/repos/${REPO}/contents/${encodeURIComponent(slug)}/SKILL.md`
-  const res = await fetch(url, { headers: buildHeaders(ACCEPT_RAW, token) })
+async function fetchSkillForFolder(slug, accessToken) {
+  const headers = buildHeaders(accessToken)
+  const res = await fetch(buildProxyUrl('raw', { slug }), { headers })
   if (res.status === 404) return null
   if (!res.ok) {
     if (res.status === 403 || res.status >= 500) {
@@ -79,9 +97,9 @@ async function fetchSkillForFolder(slug, token) {
 
 export async function getSkill(slug, options = {}) {
   if (typeof slug !== 'string' || slug.length === 0) return null
-  const { token } = options
-  const url = `${GITHUB_API_BASE}/repos/${REPO}/contents/${encodeURIComponent(slug)}/SKILL.md`
-  const res = await fetch(url, { headers: buildHeaders(ACCEPT_RAW, token) })
+  const { accessToken } = options
+  const headers = buildHeaders(accessToken)
+  const res = await fetch(buildProxyUrl('raw', { slug }), { headers })
   if (res.status === 404) return null
   if (!res.ok) {
     throw new SkillsApiError(
@@ -102,29 +120,4 @@ export async function getSkill(slug, options = {}) {
     body: typeof parsed.body === 'string' ? parsed.body : '',
     sourceUrl: `https://github.com/${REPO}/tree/main/${slug}`,
   }
-}
-
-async function requestJson(url, token, label) {
-  const res = await fetch(url, { headers: buildHeaders(ACCEPT_JSON, token) })
-  if (!res.ok) {
-    if (res.status === 403 || res.status >= 500) {
-      throw new SkillsApiError(
-        `Failed to ${label} (${res.status}).`,
-        res.status,
-      )
-    }
-    throw new SkillsApiError(
-      `Failed to ${label} (${res.status}).`,
-      res.status,
-    )
-  }
-  return res.json()
-}
-
-function buildHeaders(accept, token) {
-  const headers = { Accept: accept }
-  if (typeof token === 'string' && token.length > 0) {
-    headers.Authorization = `Bearer ${token}`
-  }
-  return headers
 }

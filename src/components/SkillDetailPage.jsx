@@ -4,6 +4,7 @@ import { ArrowLeft, Wand2, ExternalLink, Copy, Check } from 'lucide-react'
 import Header from './Header'
 import Markdown from '../lib/markdown'
 import { getSkill } from '../lib/skills'
+import { useAuth } from '../context/AuthContext'
 
 function buildInstallCommand(slug) {
   return `npx degit lucasfe/skills/${slug} ~/.claude/skills/${slug}`
@@ -11,17 +12,20 @@ function buildInstallCommand(slug) {
 
 export default function SkillDetailPage() {
   const { slug } = useParams()
+  const { session } = useAuth()
+  const accessToken = session?.access_token
   const [skill, setSkill] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
+    if (!accessToken) return
     let cancelled = false
     setLoading(true)
     setError(null)
     setSkill(null)
-    getSkill(slug)
+    getSkill(slug, { accessToken })
       .then((result) => {
         if (cancelled) return
         setSkill(result)
@@ -34,7 +38,7 @@ export default function SkillDetailPage() {
         if (!cancelled) setLoading(false)
       })
     return () => { cancelled = true }
-  }, [slug])
+  }, [slug, accessToken])
 
   const installCommand = skill ? buildInstallCommand(skill.slug) : ''
 

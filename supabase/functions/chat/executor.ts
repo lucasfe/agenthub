@@ -374,6 +374,7 @@ async function createGoogleSlides(
       speaker_notes?: string
       layout?: string
     }>
+    share_with_email?: string
   },
   ctx: ToolContext,
 ): Promise<ToolResult> {

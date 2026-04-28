@@ -38,8 +38,8 @@ jobs:
     # Skips itself cleanly when secrets are absent (e.g. on forked-PR CI),
     # so we always run the job — the Deno test cases self-ignore.
     env:
-      GITHUB_TEST_TOKEN: ${{ secrets.GITHUB_TEST_TOKEN }}
-      GITHUB_TEST_REPO: ${{ vars.GITHUB_TEST_REPO || 'lucasfe/agenthub' }}
+      GH_TEST_TOKEN: ${{ secrets.GH_TEST_TOKEN }}
+      GH_TEST_REPO: ${{ vars.GH_TEST_REPO || 'lucasfe/agenthub' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

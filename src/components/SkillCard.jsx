@@ -53,7 +53,7 @@ export default function SkillCard({ skill, variant }) {
           aria-label="View on GitHub"
           className="text-text-muted hover:text-text-primary transition-colors p-1.5 rounded-lg hover:bg-white/5"
         >
-          <Github size={16} />
+          <ExternalLink size={16} />
         </a>
       </div>
 

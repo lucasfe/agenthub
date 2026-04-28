@@ -41,10 +41,27 @@ export default function SkillCard({ skill, variant }) {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const detailPath = `/skills/${skill.slug}`
+
+  const handleCardClick = () => {
+    navigate(detailPath)
+  }
+
+  const handleCardKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      navigate(detailPath)
+    }
+  }
+
   return (
-    <Link
-      to={`/skills/${skill.slug}`}
-      className="group relative p-5 bg-bg-card border border-border-subtle rounded-2xl hover:bg-bg-card-hover card-glow transition-all duration-200 hover:-translate-y-0.5 flex flex-col"
+    <article
+      role="link"
+      tabIndex={0}
+      onClick={handleCardClick}
+      onKeyDown={handleCardKeyDown}
+      aria-label={skill.name}
+      className="group relative p-5 bg-bg-card border border-border-subtle rounded-2xl hover:bg-bg-card-hover card-glow transition-all duration-200 hover:-translate-y-0.5 flex flex-col cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent-blue/50"
     >
       <div className="flex items-start justify-between mb-3">
         <div className="card-icon w-11 h-11 rounded-xl bg-gradient-to-br from-purple-500/15 to-purple-600/5 flex items-center justify-center">
@@ -82,6 +99,6 @@ export default function SkillCard({ skill, variant }) {
         {copied ? <Check size={14} /> : <Copy size={14} />}
         {copied ? 'Copied!' : 'Copy install command'}
       </button>
-    </Link>
+    </article>
   )
 }

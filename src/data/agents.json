@@ -230,5 +230,17 @@
     "featured": false,
     "popularity": 75,
     "tools": ["list_github_repos", "create_github_issue"]
+  },
+  {
+    "id": "skill-creator",
+    "name": "Skill Creator",
+    "category": "AI Specialists",
+    "description": "Interviews you about a new agent skill and files a structured issue against lucasfe/skills with a ready-to-paste SKILL.md.",
+    "tags": ["Skills", "Claude", "GitHub"],
+    "icon": "Wand2",
+    "color": "cyan",
+    "featured": false,
+    "popularity": 70,
+    "tools": ["create_github_issue"]
   }
 ]

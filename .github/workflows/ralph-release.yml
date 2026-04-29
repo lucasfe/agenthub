@@ -1,5 +1,24 @@
 name: Ralph release
 
+# End-to-end automation for @lucasfe/ralph releases.
+#
+# Flow on every push to main:
+#   1. release-please inspects commits since the last ralph release. If
+#      it finds user-facing CC types (`feat:` / `fix:`), it opens (or
+#      updates) a Release PR that bumps `packages/ralph/package.json`
+#      and prepends a CHANGELOG entry.
+#   2. auto-merge-release-pr enables auto-merge on that PR (admin merge,
+#      squash). Once required checks pass, GitHub merges it. The merge
+#      triggers another `push: main` event → this workflow runs again.
+#   3. publish (always-run, idempotent): reads
+#      `packages/ralph/package.json`, asks npm if that exact version is
+#      already published, and publishes only if it isn't. This is the
+#      safety net — if release-please's Release PR merged and the new
+#      version isn't on npm yet, this job fills the gap. If the version
+#      is already there, it's a no-op.
+#
+# No manual Release PR review. No `--admin` clicks. No close+reopen.
+
 on:
   push:
     branches:
@@ -16,8 +35,7 @@ jobs:
     name: Release Please
     runs-on: ubuntu-latest
     outputs:
-      releases_created: ${{ steps.release.outputs.releases_created }}
-      ralph_release_created: ${{ steps.release.outputs['packages/ralph--release_created'] }}
+      pr_number: ${{ steps.release.outputs['packages/ralph--pr'] }}
     steps:
       - uses: googleapis/release-please-action@v4
         id: release
@@ -25,10 +43,33 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
-  publish:
-    name: Publish @lucasfe/ralph to npm
+  auto-merge-release-pr:
+    name: Auto-merge release-please PR
     needs: release-please
-    if: needs.release-please.outputs.ralph_release_created == 'true' || github.event_name == 'workflow_dispatch'
+    if: needs.release-please.outputs.pr_number != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Admin-merge Release PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER='${{ needs.release-please.outputs.pr_number }}'
+          # Use --admin so the merge bypasses required checks that may
+          # not have fired (release-please PRs created via GITHUB_TOKEN
+          # historically didn't trigger downstream workflows).
+          gh pr merge "$PR_NUMBER" \
+            --repo "${{ github.repository }}" \
+            --squash \
+            --admin
+
+  publish:
+    name: Publish @lucasfe/ralph to npm (match-publish safety net)
+    needs: release-please
+    # Run even when no Release PR was created — the previous run already
+    # auto-merged a Release PR and bumped package.json; this run sees
+    # the new version and publishes. Idempotent: skips if already
+    # published.
+    if: always() && (needs.release-please.result == 'success' || needs.release-please.result == 'skipped')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -48,18 +89,35 @@ jobs:
           cache: 'npm'
           cache-dependency-path: packages/ralph/package-lock.json
 
+      - name: Check whether current package.json version is already on npm
+        id: check
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if npm view "@lucasfe/ralph@$VERSION" version 2>/dev/null | grep -q "^$VERSION$"; then
+            echo "already_published=true" >> "$GITHUB_OUTPUT"
+            echo "Version $VERSION already on npm — nothing to do."
+          else
+            echo "already_published=false" >> "$GITHUB_OUTPUT"
+            echo "Version $VERSION not on npm — will publish."
+          fi
+
       - name: Install dependencies
+        if: steps.check.outputs.already_published == 'false'
         run: npm ci
 
       - name: Run tests
+        if: steps.check.outputs.already_published == 'false'
         run: npm test
 
       - name: Publish to npm via OIDC (Trusted Publisher)
+        if: steps.check.outputs.already_published == 'false'
         run: |
-          # Use the "rc" dist-tag for prereleases (versions containing "-").
-          # Stable versions (no "-") publish to "latest" by default.
-          VERSION=$(node -p "require('./package.json').version")
+          VERSION='${{ steps.check.outputs.version }}'
           if [[ "$VERSION" == *-* ]]; then
+            # Prereleases (0.4.0-rc.1, 0.5.0-beta.2, …) go to the `rc`
+            # dist-tag so `latest` keeps pointing at the most recent
+            # stable.
             npm publish --access public --provenance --tag rc
           else
             npm publish --access public --provenance

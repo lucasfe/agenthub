@@ -31,17 +31,33 @@ jobs:
           # to roll forward and close.
           SINCE=$(git log -1 origin/main --pretty=%cI)
 
-          if [ -n "$EXISTING_PR" ]; then
-            echo "PR #$EXISTING_PR already exists — new commits pushed automatically"
-            # Refresh closing keywords on the existing PR to capture any newly
-            # merged underlying PRs since the auto-PR was last opened.
-            CLOSES=$(git log origin/main..HEAD --since="$SINCE" --pretty=%B \
-              | grep -oE '#[0-9]+' \
-              | sort -u \
-              | sed 's/^/Closes /' \
-              | paste -sd $'\n' -)
-            COMMITS=$(git log origin/main..HEAD --since="$SINCE" --oneline | head -20)
-            gh pr edit "$EXISTING_PR" --body "$(cat <<EOF
+          # Closing keywords for issues referenced in this rollforward.
+          CLOSES=$(git log origin/main..HEAD --since="$SINCE" --pretty=%B \
+            | grep -oE '#[0-9]+' \
+            | sort -u \
+            | sed 's/^/Closes /' \
+            | paste -sd $'\n' -)
+          COMMITS=$(git log origin/main..HEAD --since="$SINCE" --oneline | head -20)
+
+          # Compute the highest-impact Conventional Commit type across the
+          # rollforward window so the squash subject on main carries that
+          # signal forward to release-please. Without this, `chore:` always
+          # wins and release-please ignores the merge — so a `feat:` buried
+          # in dev never bumps the version. Order: feat! > feat > fix > chore.
+          BODIES=$(git log origin/main..HEAD --since="$SINCE" --pretty=%B)
+          if echo "$BODIES" | grep -qE '^(feat|fix|chore|docs|refactor|test|perf|ci|build|revert)(\([^)]+\))?!:|BREAKING CHANGE'; then
+            CC_TYPE='feat!'
+          elif echo "$BODIES" | grep -qE '^feat(\([^)]+\))?:'; then
+            CC_TYPE='feat'
+          elif echo "$BODIES" | grep -qE '^fix(\([^)]+\))?:'; then
+            CC_TYPE='fix'
+          else
+            CC_TYPE='chore'
+          fi
+          TITLE="${CC_TYPE}: dev → main rollforward"
+          echo "Computed rollforward title: $TITLE"
+
+          BODY=$(cat <<EOF
           ## Auto-generated PR
 
           Latest commits from \`dev\`:
@@ -55,38 +71,16 @@ jobs:
           ---
           🤖 Generated automatically on push to \`dev\`
           EOF
-          )"
-          else
-            # Collect every issue/PR number referenced in dev commit messages
-            # since the last main rollforward. These become `Closes #N` lines
-            # in the body so that when this PR squash-merges into main, the
-            # underlying issues auto-close — the original PRs targeted dev,
-            # so their own `Closes #N` keywords never fired.
-            CLOSES=$(git log origin/main..HEAD --since="$SINCE" --pretty=%B \
-              | grep -oE '#[0-9]+' \
-              | sort -u \
-              | sed 's/^/Closes /' \
-              | paste -sd $'\n' -)
-            COMMITS=$(git log origin/main..HEAD --since="$SINCE" --oneline | head -20)
+          )
 
+          if [ -n "$EXISTING_PR" ]; then
+            echo "PR #$EXISTING_PR already exists — refreshing title + body"
+            gh pr edit "$EXISTING_PR" --title "$TITLE" --body "$BODY"
+          else
             gh pr create \
-              --title "chore: dev → main rollforward" \
+              --title "$TITLE" \
               --base main \
               --head dev \
-              --body "$(cat <<EOF
-          ## Auto-generated PR
-
-          Latest commits from \`dev\`:
-
-          \`\`\`
-          $COMMITS
-          \`\`\`
-
-          $CLOSES
-
-          ---
-          🤖 Generated automatically on push to \`dev\`
-          EOF
-          )"
+              --body "$BODY"
             echo "New PR created"
           fi

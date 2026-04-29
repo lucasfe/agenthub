@@ -90,7 +90,7 @@ export function AuthProvider({ children }) {
     setError(null)
   }
 
-  const isAuthorized = !!user && isAllowed(user.email ?? '')
+  const isAuthorized = E2E_BYPASS ? true : !!user && isAllowed(user.email ?? '')
 
   return (
     <AuthContext.Provider

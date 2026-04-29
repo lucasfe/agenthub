@@ -1,6 +1,8 @@
 import {
   existsSync as realExistsSync,
   mkdirSync as realMkdirSync,
+  readdirSync as realReaddirSync,
+  readFileSync as realReadFileSync,
   unlinkSync as realUnlinkSync,
   writeFileSync as realWriteFileSync,
 } from 'node:fs'

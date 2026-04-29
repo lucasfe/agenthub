@@ -2,6 +2,9 @@ import { describe, it, expect } from 'vitest'
 import {
   parseInterval,
   scheduleInstallCommand,
+  schedulePauseCommand,
+  scheduleResumeCommand,
+  scheduleStatusCommand,
   scheduleRemoveCommand,
 } from './schedule.js'
 

@@ -65,8 +65,8 @@ const baseDeps = (overrides = {}) => {
   const stdout = makeStream()
   const stderr = makeStream()
   const sendWa = makeWa()
-  const pingSuccess = makePing('pingSuccess')
-  const pingFail = makePing('pingFail')
+  const pingSuccess = makePing()
+  const pingFail = makePing()
   return {
     cwd: REPO,
     stdout,

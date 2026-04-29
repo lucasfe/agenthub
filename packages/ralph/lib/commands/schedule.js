@@ -4,10 +4,16 @@ import { basename, join, resolve } from 'node:path'
 import { execa } from 'execa'
 import { detectPlatform } from '../platform.js'
 import {
+  getAgentStatus as defaultGetAgentStatus,
   installAgent as defaultInstallAgent,
-  removeAgent as defaultRemoveAgent,
+  listInstalledAgents as defaultListInstalledAgents,
+  pauseAgent as defaultPauseAgent,
   plistPathFor,
+  removeAgent as defaultRemoveAgent,
+  resumeAgent as defaultResumeAgent,
 } from '../launchd.js'
+import { peekLock as defaultPeekLock } from '../lock.js'
+import { confirm as defaultConfirm } from '../utils/prompt.js'
 
 const DEFAULT_INTERVAL_SECONDS = 4 * 3600
 

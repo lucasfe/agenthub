@@ -84,6 +84,45 @@ program
     }
   })
 
+const schedule = program
+  .command('schedule')
+  .description('Manage the macOS launchd agent that runs `ralph cycle` on a timer')
+
+schedule
+  .command('install')
+  .description('Install a launchd agent that fires `ralph cycle` every --interval')
+  .option('--interval <duration>', 'Interval between cycles (e.g. 4h, 30m, 1d)', '4h')
+  .option('--force', 'Overwrite an existing plist for this repo')
+  .action(async (opts) => {
+    try {
+      const result = await scheduleInstallCommand({
+        interval: opts.interval,
+        force: Boolean(opts.force),
+      })
+      process.exit(result.exitCode ?? 0)
+    } catch (e) {
+      if (e instanceof ScheduleAbort) {
+        process.exit(e.exitCode ?? 1)
+      }
+      throw e
+    }
+  })
+
+schedule
+  .command('remove')
+  .description('Unload and delete the launchd agent for the current repo')
+  .action(async () => {
+    try {
+      const result = await scheduleRemoveCommand()
+      process.exit(result.exitCode ?? 0)
+    } catch (e) {
+      if (e instanceof ScheduleAbort) {
+        process.exit(e.exitCode ?? 1)
+      }
+      throw e
+    }
+  })
+
 program
   .command('doctor')
   .description('Check required system deps and print install commands for missing ones')

@@ -813,6 +813,7 @@ function MessageBubble({
   error,
   showCursor,
   toolCall,
+  agentToolCalls,
   plan,
   planStatus,
   planFallback,
@@ -829,7 +830,8 @@ function MessageBubble({
 }) {
   const isUser = role === 'user'
   const hasPlan = Boolean(plan || planFallback || planStatus === 'proposing')
-  if (!content && !showCursor && !toolCall && !hasPlan) return null
+  const hasAgentTools = Array.isArray(agentToolCalls) && agentToolCalls.length > 0
+  if (!content && !showCursor && !toolCall && !hasPlan && !hasAgentTools) return null
 
   // Render markdown for assistant (non-error) messages; everything else is plain text.
   const renderAsMarkdown = role === 'assistant' && !error

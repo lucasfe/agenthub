@@ -107,7 +107,7 @@ export default function AgentCard({ agent, viewMode }) {
         <span className="text-[10px] font-medium text-text-muted bg-bg-input px-2 py-0.5 rounded-full">{categorySlug}</span>
         <span className="flex items-center gap-1 text-[11px] font-medium text-accent-green bg-accent-green/10 px-2 py-0.5 rounded-full">
           <Icons.Download size={10} />
-          {(agent.popularity * 243).toLocaleString()}
+          {(agent.usage_count ?? 0).toLocaleString()}
         </span>
       </div>
     </Link>

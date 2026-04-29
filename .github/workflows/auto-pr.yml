@@ -62,12 +62,12 @@ jobs:
             # in the body so that when this PR squash-merges into main, the
             # underlying issues auto-close — the original PRs targeted dev,
             # so their own `Closes #N` keywords never fired.
-            CLOSES=$(git log origin/main..HEAD --pretty=%B \
+            CLOSES=$(git log origin/main..HEAD --since="$SINCE" --pretty=%B \
               | grep -oE '#[0-9]+' \
               | sort -u \
               | sed 's/^/Closes /' \
               | paste -sd $'\n' -)
-            COMMITS=$(git log origin/main..HEAD --oneline | head -20)
+            COMMITS=$(git log origin/main..HEAD --since="$SINCE" --oneline | head -20)
 
             gh pr create \
               --title "chore: dev → main rollforward" \

@@ -235,6 +235,39 @@ describe('AiAssistant', () => {
     expect(call.selectedAgentId).toBe('frontend-developer')
   })
 
+  it('renders tool-call chips when the selected-agent branch emits chat.tool_call_start/done', async () => {
+    scriptSession([
+      { type: 'router.classified', mode: 'chat' },
+      {
+        type: 'chat.tool_call_start',
+        tool_call_id: 'tu1',
+        name: 'list_github_repos',
+        input: {},
+      },
+      {
+        type: 'chat.tool_call_done',
+        tool_call_id: 'tu1',
+        status: 'done',
+        summary: 'Found 3 repos',
+        duration_ms: 120,
+      },
+      { type: 'chat.text', value: 'Found a few repos for you.' },
+      { type: 'chat.done' },
+    ])
+
+    const user = userEvent.setup()
+    renderWithProviders(<AiAssistant open={true} onClose={() => {}} />)
+
+    await user.type(screen.getByPlaceholderText('Type a message...'), 'list my repos')
+    await user.click(screen.getByLabelText('Send message'))
+
+    await waitFor(() => {
+      expect(screen.getByText('list_github_repos')).toBeInTheDocument()
+    })
+    expect(screen.getByText(/Found 3 repos/)).toBeInTheDocument()
+    expect(screen.getByText(/Found a few repos for you/)).toBeInTheDocument()
+  })
+
   it('defaults selectedAgentId to null when the user keeps "Auto"', async () => {
     scriptSession([
       { type: 'chat.text', value: 'auto reply' },

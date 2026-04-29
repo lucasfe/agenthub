@@ -14,6 +14,7 @@
 // deno-lint-ignore-file no-explicit-any
 
 import { analyzeRequirements, runExecutorBranch } from './executor.ts'
+import { runSelectedAgentBranch } from './selectedAgentBranch.ts'
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages'
 const CHAT_MODEL = Deno.env.get('CHAT_MODEL') || 'claude-sonnet-4-6'
@@ -837,6 +838,10 @@ Deno.serve(async (req: Request) => {
         // Route: task → planner, everything else → chat branch.
         // `mode: 'planned'` forces the planner regardless of classification.
         // An explicit agent selection always wins — never go to the planner.
+        // It also wins over the legacy chat branch: the selected-agent branch
+        // wires up the agent's own tools and runs them server-side, instead of
+        // exposing the hub-assistant tools (draft_agent / update_agent) to a
+        // persona that doesn't know what to do with them.
         const goPlanner =
           !selectedAgent &&
           (mode === 'planned' || classification === 'task' || isRefinement)
@@ -849,6 +854,16 @@ Deno.serve(async (req: Request) => {
             refinement: body.refinement,
             originalTask: lastUser?.content || '',
             apiKey,
+          })
+        } else if (selectedAgent) {
+          await runSelectedAgentBranch(emit, {
+            agent: selectedAgent,
+            messages: cleanMessages,
+            systemPrompt,
+            agentsContext: agentsContextRaw,
+            toolsContext: toolsContextRaw,
+            apiKey,
+            userId,
           })
         } else {
           await runChatBranch(emit, {

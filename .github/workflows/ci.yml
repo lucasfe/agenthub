@@ -97,6 +97,14 @@ jobs:
     name: E2E Tests
     runs-on: ubuntu-latest
     needs: [build]
+    # Serialize E2E across the whole repo: tests CRUD against the shared
+    # Supabase project and use a fixed `e2e-%` prefix for cleanup. Running
+    # two jobs in parallel (e.g. push to dev + pull_request synchronize on
+    # PR #180 for the same SHA) makes one job's cleanup wipe rows the other
+    # is asserting on. Group by repo/workflow so all E2E jobs queue up.
+    concurrency:
+      group: e2e-${{ github.repository }}-${{ github.workflow }}
+      cancel-in-progress: false
     env:
       VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
       VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}

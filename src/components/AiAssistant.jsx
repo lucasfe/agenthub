@@ -464,6 +464,10 @@ export default function AiAssistant({ open, onClose }) {
     setInput('')
     setIsStreaming(true)
 
+    if (selectedAgentId) {
+      bumpAgentUsage?.(selectedAgentId, 'orchestrator_invoke')
+    }
+
     const session = startSession({
       mode: 'chat',
       messages: outgoing,

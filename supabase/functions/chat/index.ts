@@ -759,7 +759,16 @@ Deno.serve(async (req: Request) => {
   const toolsContextRaw = Array.isArray(body.tools_context)
     ? (body.tools_context as any[])
     : []
-  const systemPrompt = buildSystemPrompt(agentsContextRaw)
+  const selectedAgentId =
+    typeof body.selected_agent_id === 'string' && body.selected_agent_id
+      ? body.selected_agent_id
+      : null
+  const selectedAgent = selectedAgentId
+    ? agentsContextRaw.find((a: any) => a && a.id === selectedAgentId) || null
+    : null
+  const systemPrompt = selectedAgent
+    ? buildSelectedAgentSystemPrompt(selectedAgent)
+    : buildSystemPrompt(agentsContextRaw)
   const lastUser = [...cleanMessages].reverse().find((m) => m.role === 'user')
   const isRefinement = Boolean(
     body.refinement && (body.refinement.previous_plan || body.refinement.instructions),

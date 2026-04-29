@@ -55,4 +55,12 @@ jobs:
         run: npm test
 
       - name: Publish to npm via OIDC (Trusted Publisher)
-        run: npm publish --access public --provenance
+        run: |
+          # Use the "rc" dist-tag for prereleases (versions containing "-").
+          # Stable versions (no "-") publish to "latest" by default.
+          VERSION=$(node -p "require('./package.json').version")
+          if [[ "$VERSION" == *-* ]]; then
+            npm publish --access public --provenance --tag rc
+          else
+            npm publish --access public --provenance
+          fi

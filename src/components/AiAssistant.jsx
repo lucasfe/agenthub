@@ -527,6 +527,15 @@ export default function AiAssistant({ open, onClose }) {
     })
     setIsStreaming(true)
 
+    // Bump every unique agent referenced in the plan once the user approves.
+    // We bump on approval rather than per-step start because the executor is
+    // server-side and approval is the authoritative "this run is happening"
+    // signal we have on the client.
+    const planAgents = Array.isArray(target.plan?.steps)
+      ? [...new Set(target.plan.steps.map((s) => s?.agent_id).filter(Boolean))]
+      : []
+    planAgents.forEach((id) => bumpAgentUsage?.(id, 'orchestrator_invoke'))
+
     const session = startSession({
       mode: 'execute',
       messages: target.outgoingSnapshot || [],

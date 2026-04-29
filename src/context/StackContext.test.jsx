@@ -114,6 +114,7 @@ describe('StackContext', () => {
         () => ({ stack: useStack(), data: useData() }),
         { wrapper: dataWrapper },
       )
+      await waitFor(() => expect(result.current.data.agents.length).toBeGreaterThan(0))
 
       act(() => result.current.stack.toggleAgent('frontend-developer'))
       expect(api.trackAgentUsage).toHaveBeenCalledTimes(1)
@@ -137,6 +138,7 @@ describe('StackContext', () => {
         () => ({ stack: useStack(), data: useData() }),
         { wrapper: dataWrapper },
       )
+      await waitFor(() => expect(result.current.data.agents.length).toBeGreaterThan(0))
 
       act(() => result.current.stack.addAgents(['frontend-developer']))
       act(() =>

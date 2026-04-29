@@ -39,6 +39,7 @@ export async function startCommand({
   update = checkForUpdate,
   readSt = readState,
   writeSt = writeState,
+  sendWa = sendWhatsappMessage,
 } = {}) {
   const out = (msg) => stdout.write(msg + '\n')
   const err = (msg) => stderr.write(msg + '\n')

@@ -198,6 +198,63 @@ describe('AiAssistant', () => {
     expect(call.agents.find((a) => a.id === 'frontend-developer')).toBeTruthy()
   })
 
+  it('forwards selectedAgentId to startSession when an agent is picked next to the chat bar', async () => {
+    scriptSession([
+      { type: 'router.classified', mode: 'chat' },
+      { type: 'chat.text', value: 'hi from frontend' },
+      { type: 'chat.done' },
+    ])
+
+    const user = userEvent.setup()
+    renderWithProviders(<AiAssistant open={true} onClose={() => {}} />)
+
+    // Wait for agents to load so the selector lists at least one option.
+    await waitFor(() => {
+      expect(screen.getByLabelText('Select agent')).toBeInTheDocument()
+    })
+
+    // Open the selector and pick the agent.
+    await user.click(screen.getByLabelText('Select agent'))
+    await waitFor(() => {
+      expect(screen.getByRole('listbox')).toBeInTheDocument()
+    })
+    await user.click(screen.getByRole('option', { name: /Frontend Developer/ }))
+
+    // The trigger now reflects the selection.
+    await waitFor(() => {
+      expect(screen.getByLabelText('Select agent').textContent).toMatch(/Frontend Developer/)
+    })
+
+    await user.type(screen.getByPlaceholderText('Type a message...'), 'oi')
+    await user.click(screen.getByLabelText('Send message'))
+
+    await waitFor(() => {
+      expect(orchestrationMock.startSession).toHaveBeenCalled()
+    })
+    const call = orchestrationMock.startSession.mock.calls[0][0]
+    expect(call.selectedAgentId).toBe('frontend-developer')
+  })
+
+  it('defaults selectedAgentId to null when the user keeps "Auto"', async () => {
+    scriptSession([
+      { type: 'chat.text', value: 'auto reply' },
+      { type: 'chat.done' },
+    ])
+
+    const user = userEvent.setup()
+    renderWithProviders(<AiAssistant open={true} onClose={() => {}} />)
+
+    await user.type(screen.getByPlaceholderText('Type a message...'), 'oi')
+    await user.click(screen.getByLabelText('Send message'))
+
+    await waitFor(() => {
+      expect(orchestrationMock.startSession).toHaveBeenCalled()
+    })
+    const call = orchestrationMock.startSession.mock.calls[0][0]
+    expect(call.selectedAgentId).toBeNull()
+    expect(screen.getByLabelText('Select agent').textContent).toMatch(/Auto/)
+  })
+
   it('shows an error bubble when the session emits chat.error', async () => {
     scriptSession([{ type: 'chat.error', error: 'boom' }])
 

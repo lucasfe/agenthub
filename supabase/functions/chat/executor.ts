@@ -660,7 +660,7 @@ export function getAvailableTools(): Set<string> {
   return available
 }
 
-function describeUnavailableReason(toolId: string): string {
+export function describeUnavailableReason(toolId: string): string {
   if (toolId === 'web_search') {
     return 'TAVILY_API_KEY is not configured in the Edge Function secrets.'
   }

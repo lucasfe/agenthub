@@ -4,17 +4,22 @@ import { isAllowed } from '../lib/auth'
 
 const AuthContext = createContext()
 
+const E2E_BYPASS = import.meta.env.VITE_E2E_AUTH_BYPASS === 'true'
+const E2E_USER = { id: 'e2e-test-user', email: 'e2e@test.local' }
+const E2E_SESSION = { user: E2E_USER, access_token: 'e2e-test-token' }
+
 function unauthorizedMessage(email) {
   return `Your account ${email} is not authorized to access this site.`
 }
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
-  const [session, setSession] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState(E2E_BYPASS ? E2E_USER : null)
+  const [session, setSession] = useState(E2E_BYPASS ? E2E_SESSION : null)
+  const [loading, setLoading] = useState(!E2E_BYPASS)
   const [error, setError] = useState(null)
 
   useEffect(() => {
+    if (E2E_BYPASS) return
     if (!supabase) {
       setLoading(false)
       return
@@ -85,7 +90,7 @@ export function AuthProvider({ children }) {
     setError(null)
   }
 
-  const isAuthorized = !!user && isAllowed(user.email ?? '')
+  const isAuthorized = E2E_BYPASS ? true : !!user && isAllowed(user.email ?? '')
 
   return (
     <AuthContext.Provider

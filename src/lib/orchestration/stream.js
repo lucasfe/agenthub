@@ -45,6 +45,7 @@ export async function streamOrchestration({
   plan,
   originalTask,
   stepAnswers,
+  selectedAgentId,
   signal,
   onEvent,
 }) {

@@ -1,15 +1,22 @@
 import { createContext, useContext, useState } from 'react'
+import { useData } from './DataContext'
 
 const StackContext = createContext()
 
 export function StackProvider({ children }) {
   const [stack, setStack] = useState([])
   const [panelOpen, setPanelOpen] = useState(false)
+  // DataContext is optional in tests that render StackProvider in isolation,
+  // so guard against an undefined context.
+  const data = useData()
+  const bumpAgentUsage = data?.bumpAgentUsage
 
   const toggleAgent = (agentId) => {
-    setStack((prev) =>
-      prev.includes(agentId) ? prev.filter((id) => id !== agentId) : [...prev, agentId]
-    )
+    setStack((prev) => {
+      if (prev.includes(agentId)) return prev.filter((id) => id !== agentId)
+      bumpAgentUsage?.(agentId, 'cart_add')
+      return [...prev, agentId]
+    })
   }
 
   const removeAgent = (agentId) => {
@@ -22,7 +29,12 @@ export function StackProvider({ children }) {
   }
 
   const addAgents = (agentIds) => {
-    setStack((prev) => [...new Set([...prev, ...agentIds])])
+    setStack((prev) => {
+      const existing = new Set(prev)
+      const added = agentIds.filter((id) => !existing.has(id))
+      added.forEach((id) => bumpAgentUsage?.(id, 'cart_add'))
+      return [...prev, ...added]
+    })
   }
 
   const removeAgents = (agentIds) => {

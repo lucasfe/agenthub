@@ -1,9 +1,28 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { StackProvider, useStack } from './StackContext'
+import { DataProvider, useData } from './DataContext'
+
+vi.mock('../lib/api', () => ({
+  fetchAgents: vi.fn().mockResolvedValue([
+    { id: 'frontend-developer', name: 'Frontend Dev', usage_count: 0 },
+    { id: 'backend-developer', name: 'Backend Dev', usage_count: 0 },
+  ]),
+  fetchTeams: vi.fn().mockResolvedValue([]),
+  fetchTools: vi.fn().mockResolvedValue([]),
+  trackAgentUsage: vi.fn().mockResolvedValue(1),
+}))
 
 function wrapper({ children }) {
   return <StackProvider>{children}</StackProvider>
+}
+
+function dataWrapper({ children }) {
+  return (
+    <DataProvider>
+      <StackProvider>{children}</StackProvider>
+    </DataProvider>
+  )
 }
 
 describe('StackContext', () => {

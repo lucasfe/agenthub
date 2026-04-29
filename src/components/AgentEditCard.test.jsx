@@ -9,6 +9,7 @@ const apiMock = vi.hoisted(() => ({
   fetchTeams: vi.fn(),
   fetchTools: vi.fn().mockResolvedValue([]),
   updateAgent: vi.fn(),
+  trackAgentUsage: vi.fn().mockResolvedValue(null),
 }))
 
 vi.mock('../lib/api', () => apiMock)

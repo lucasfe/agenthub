@@ -10,7 +10,10 @@ import { doctorCommand, DoctorAbort } from '../lib/commands/doctor.js'
 import { cycleCommand, CycleAbort } from '../lib/commands/cycle.js'
 import {
   scheduleInstallCommand,
+  schedulePauseCommand,
+  scheduleResumeCommand,
   scheduleRemoveCommand,
+  scheduleStatusCommand,
   ScheduleAbort,
 } from '../lib/commands/schedule.js'
 

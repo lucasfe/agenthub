@@ -72,8 +72,25 @@ export function DataProvider({ children }) {
     }
   }
 
+  // Optimistically bump the local counter and fire-and-forget the RPC. We
+  // don't refetch on the response: a refetch would race with rapid sequential
+  // bumps (e.g. adding several agents to the cart in a row) and re-order the
+  // list. The optimistic update keeps the UI in sync with the user's actions
+  // and matches what the next full reload will show.
+  const bumpAgentUsage = useCallback((agentId, event) => {
+    if (!agentId) return
+    setAgents((prev) =>
+      prev.map((a) =>
+        a.id === agentId
+          ? { ...a, usage_count: (a.usage_count ?? 0) + 1 }
+          : a,
+      ),
+    )
+    trackAgentUsage(agentId, event)
+  }, [])
+
   return (
-    <DataContext.Provider value={{ agents, teams, tools, loading, error, refreshAgents, refreshTeams, refreshTools }}>
+    <DataContext.Provider value={{ agents, teams, tools, loading, error, refreshAgents, refreshTeams, refreshTools, bumpAgentUsage }}>
       {children}
     </DataContext.Provider>
   )

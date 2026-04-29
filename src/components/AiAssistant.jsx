@@ -115,6 +115,41 @@ export default function AiAssistant({ open, onClose }) {
             toolCall: { name: event.name, input: event.input },
           })
           break
+        // ── Selected-agent branch tool events ───────────
+        // The selected-agent branch executes tools server-side and surfaces
+        // each call as start/done pairs so the user gets feedback while a
+        // long tool call is in flight.
+        case 'chat.tool_call_start':
+          patchMessageAt(messageIdx, (msg) => ({
+            ...msg,
+            agentToolCalls: [
+              ...(msg.agentToolCalls || []),
+              {
+                id: event.tool_call_id,
+                name: event.name,
+                input: event.input,
+                status: 'running',
+              },
+            ],
+          }))
+          break
+        case 'chat.tool_call_done':
+          patchMessageAt(messageIdx, (msg) => {
+            const list = msg.agentToolCalls || []
+            const next = list.map((tc) =>
+              tc.id === event.tool_call_id
+                ? {
+                    ...tc,
+                    status: event.status || 'done',
+                    summary: event.summary,
+                    error: event.error,
+                    duration_ms: event.duration_ms,
+                  }
+                : tc,
+            )
+            return { ...msg, agentToolCalls: next }
+          })
+          break
         case 'chat.done':
           setIsStreaming(false)
           sessionRef.current = null

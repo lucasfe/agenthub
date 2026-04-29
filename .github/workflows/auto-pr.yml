@@ -23,11 +23,51 @@ jobs:
           # Check if an open PR from dev->main already exists
           EXISTING_PR=$(gh pr list --head dev --base main --state open --json number --jq '.[0].number')
 
+          # Squash-merging dev → main produces a single rollforward commit
+          # on main that doesn't share history with the individual dev
+          # commits, so `main..HEAD` reports ALL of dev's history. Filter by
+          # the last-main-commit timestamp to get only commits that landed on
+          # dev AFTER the previous rollforward — those are the ones we want
+          # to roll forward and close.
+          SINCE=$(git log -1 origin/main --pretty=%cI)
+
           if [ -n "$EXISTING_PR" ]; then
             echo "PR #$EXISTING_PR already exists — new commits pushed automatically"
+            # Refresh closing keywords on the existing PR to capture any newly
+            # merged underlying PRs since the auto-PR was last opened.
+            CLOSES=$(git log origin/main..HEAD --since="$SINCE" --pretty=%B \
+              | grep -oE '#[0-9]+' \
+              | sort -u \
+              | sed 's/^/Closes /' \
+              | paste -sd $'\n' -)
+            COMMITS=$(git log origin/main..HEAD --since="$SINCE" --oneline | head -20)
+            gh pr edit "$EXISTING_PR" --body "$(cat <<EOF
+          ## Auto-generated PR
+
+          Latest commits from \`dev\`:
+
+          \`\`\`
+          $COMMITS
+          \`\`\`
+
+          $CLOSES
+
+          ---
+          🤖 Generated automatically on push to \`dev\`
+          EOF
+          )"
           else
-            # Get recent commit messages for PR body
-            COMMITS=$(git log origin/main..HEAD --oneline | head -20)
+            # Collect every issue/PR number referenced in dev commit messages
+            # since the last main rollforward. These become `Closes #N` lines
+            # in the body so that when this PR squash-merges into main, the
+            # underlying issues auto-close — the original PRs targeted dev,
+            # so their own `Closes #N` keywords never fired.
+            CLOSES=$(git log origin/main..HEAD --since="$SINCE" --pretty=%B \
+              | grep -oE '#[0-9]+' \
+              | sort -u \
+              | sed 's/^/Closes /' \
+              | paste -sd $'\n' -)
+            COMMITS=$(git log origin/main..HEAD --since="$SINCE" --oneline | head -20)
 
             gh pr create \
               --title "chore: dev → main rollforward" \
@@ -41,6 +81,8 @@ jobs:
           \`\`\`
           $COMMITS
           \`\`\`
+
+          $CLOSES
 
           ---
           🤖 Generated automatically on push to \`dev\`

@@ -30,7 +30,7 @@ jobs:
             COMMITS=$(git log origin/main..HEAD --oneline | head -20)
 
             gh pr create \
-              --title "dev → main" \
+              --title "chore: dev → main rollforward" \
               --base main \
               --head dev \
               --body "$(cat <<EOF

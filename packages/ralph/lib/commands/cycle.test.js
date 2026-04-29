@@ -40,14 +40,13 @@ function makeWa() {
   return sendWa
 }
 
-function makePing(name) {
+function makePing() {
   const calls = []
   const fn = async (opts) => {
     calls.push(opts)
     return { ok: true }
   }
   fn.calls = calls
-  fn.name = name
   return fn
 }
 

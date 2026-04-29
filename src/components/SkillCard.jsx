@@ -5,7 +5,7 @@ import { Wand2, ExternalLink, Copy, Check, Plus } from 'lucide-react'
 const SKILL_CREATOR_PATH = '/agent/ai-specialists/skill-creator'
 
 function buildInstallCommand(slug) {
-  return `npx degit lucasfe/skills/${slug} ~/.claude/skills/${slug}`
+  return `npx degit --mode=git lucasfe/skills/${slug} ~/.claude/skills/${slug}`
 }
 
 export default function SkillCard({ skill, variant }) {

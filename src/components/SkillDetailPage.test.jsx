@@ -55,7 +55,7 @@ describe('SkillDetailPage', () => {
 
     expect(await screen.findByRole('heading', { name: 'grill-me', level: 1 })).toBeInTheDocument()
     expect(
-      screen.getByText('npx degit lucasfe/skills/grill-me ~/.claude/skills/grill-me'),
+      screen.getByText('npx degit --mode=git lucasfe/skills/grill-me ~/.claude/skills/grill-me'),
     ).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /heading/i, level: 2 })).toBeInTheDocument()
     expect(screen.getByText(/full body here/i)).toBeInTheDocument()
@@ -112,7 +112,7 @@ describe('SkillDetailPage', () => {
     await user.click(button)
     await waitFor(() =>
       expect(writeText).toHaveBeenCalledWith(
-        'npx degit lucasfe/skills/grill-me ~/.claude/skills/grill-me',
+        'npx degit --mode=git lucasfe/skills/grill-me ~/.claude/skills/grill-me',
       ),
     )
   })

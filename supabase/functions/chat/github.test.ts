@@ -56,7 +56,7 @@ Deno.test('listRepos — builds correct URL with all four query params', async (
   const url = new URL(calls[0].url)
   assertEquals(url.origin + url.pathname, 'https://api.github.com/user/repos')
   assertEquals(url.searchParams.get('affiliation'), 'owner')
-  assertEquals(url.searchParams.get('type'), 'owner')
+  assertEquals(url.searchParams.get('type'), null)
   assertEquals(url.searchParams.get('sort'), 'pushed')
   assertEquals(url.searchParams.get('per_page'), '50')
 })

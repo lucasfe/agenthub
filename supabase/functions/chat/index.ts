@@ -177,6 +177,17 @@ function buildSystemPrompt(agentsContext: unknown): string {
   return `${BASE_SYSTEM_PROMPT}\n\n## Existing Agents\n\n${lines.join('\n')}`
 }
 
+// When the user explicitly picks an agent next to the chat bar, we drop the
+// hub-assistant persona and let that agent drive the conversation directly.
+// The agent's `content` (its full markdown system prompt) becomes the system
+// prompt; the router/planner is bypassed for the rest of this turn.
+function buildSelectedAgentSystemPrompt(agent: any): string {
+  if (!agent || typeof agent !== 'object') return BASE_SYSTEM_PROMPT
+  const content = typeof agent.content === 'string' ? agent.content.trim() : ''
+  const header = `You are "${agent.name || agent.id}", an AI agent inside Lucas AI Hub. Reply in the same language the user used. Stay in character — do not mention this hub's other agents unless the user asks.`
+  return content ? `${header}\n\n${content}` : header
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',

@@ -4,6 +4,15 @@
 
 set -u
 
+# `--once` mode: callable from `ralph cycle`, which owns its own start/end
+# notifications, lock, and process lifetime. In once mode we drain the queue a
+# single time and exit cleanly without sending end-of-run notifications or
+# killing the tmux session (cycle is not running inside one).
+RALPH_ONCE_MODE="${RALPH_ONCE:-}"
+if [ "${1:-}" = "--once" ]; then
+  RALPH_ONCE_MODE=1
+fi
+
 # Path safety: anchor the loop to the git project root and refuse to run
 # outside a git repo or in $HOME / root. PROJECT_ROOT is exported so child
 # tools (Claude, gh, npm) inherit the same anchor.

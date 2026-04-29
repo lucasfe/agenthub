@@ -5,9 +5,13 @@ import {
   getAgentStatus,
   installAgent,
   labelFor,
+  listInstalledAgents,
   loadAgent,
+  parsePlistMetadata,
+  pauseAgent,
   plistPathFor,
   removeAgent,
+  resumeAgent,
   unloadAgent,
 } from './launchd.js'
 

@@ -695,17 +695,23 @@ export default function AiAssistant({ open, onClose }) {
           className="border-t border-border-subtle p-4 shrink-0"
         >
           <div
-            className={`flex items-end gap-2 bg-bg-input border border-border-subtle rounded-xl px-3 py-2 focus-within:border-border-hover transition-colors ${
+            className={`flex items-end gap-2 bg-bg-input border border-border-subtle rounded-xl px-2 py-2 focus-within:border-border-hover transition-colors ${
               fullscreen ? 'max-w-3xl mx-auto' : ''
             }`}
           >
+            <AgentSelector
+              agents={agents}
+              selectedAgentId={selectedAgentId}
+              onChange={setSelectedAgentId}
+              disabled={isStreaming}
+            />
             <input
               ref={inputRef}
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Type a message..."
-              className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-muted outline-none py-1.5"
+              className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-muted outline-none py-1.5 min-w-0"
               disabled={isStreaming}
             />
             <button

@@ -294,6 +294,8 @@ function wrapFs(fsImpl) {
       writeFileSync: realWriteFileSync,
       unlinkSync: realUnlinkSync,
       mkdirSync: realMkdirSync,
+      readdirSync: realReaddirSync,
+      readFileSync: realReadFileSync,
     }
   }
   return {
@@ -301,5 +303,11 @@ function wrapFs(fsImpl) {
     writeFileSync: fsImpl.writeFileSync.bind(fsImpl),
     unlinkSync: fsImpl.unlinkSync.bind(fsImpl),
     mkdirSync: fsImpl.mkdirSync.bind(fsImpl),
+    readdirSync: fsImpl.readdirSync
+      ? fsImpl.readdirSync.bind(fsImpl)
+      : realReaddirSync,
+    readFileSync: fsImpl.readFileSync
+      ? fsImpl.readFileSync.bind(fsImpl)
+      : realReadFileSync,
   }
 }

@@ -672,7 +672,7 @@ export function describeUnavailableReason(toolId: string): string {
 
 // ─── Anthropic tool schema derivation ───────────────────────────────────────
 
-function buildAnthropicTool(toolId: string, toolsContext: any[]): any | null {
+export function buildAnthropicTool(toolId: string, toolsContext: any[]): any | null {
   const meta = toolsContext.find((t: any) => t && t.id === toolId)
   if (!meta) return null
   // Tools table already stores an Anthropic-compatible input_schema. The

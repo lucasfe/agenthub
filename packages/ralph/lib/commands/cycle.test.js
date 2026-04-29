@@ -404,6 +404,7 @@ describe('cycleCommand — best-effort failures never abort the cycle', () => {
     const deps = baseDeps({
       loadEnv: () => ({}),
       runQueueOnce: async () => ({ successes: [101], failures: [] }),
+      processEnv: {},
     })
     deps.exec = makeExec({
       ...baseHandlers(),

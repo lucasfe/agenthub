@@ -89,6 +89,7 @@ export function startSession({
   plan,
   originalTask,
   stepAnswers,
+  selectedAgentId,
 }) {
   const session = new Session({ mode })
   session.status = SESSION_STATUS.STREAMING
@@ -105,6 +106,7 @@ export function startSession({
     plan,
     originalTask,
     stepAnswers,
+    selectedAgentId,
     signal: session.signal,
     onEvent: (evt) => {
       // Ensure every event carries the session_id the caller expects.

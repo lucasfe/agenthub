@@ -15,8 +15,35 @@ create table if not exists agents (
   tools text[] not null default '{}',
   model text not null default 'claude-sonnet-4-6',
   capabilities text[] not null default '{}',
+  usage_count integer not null default 0,
   created_at timestamptz not null default now()
 );
+
+-- Backfill for existing deployments where the column did not exist yet.
+alter table agents add column if not exists usage_count integer not null default 0;
+
+-- Atomic increment for agent usage. SECURITY DEFINER lets unauthenticated
+-- clients bump the counter without granting blanket write access on the row,
+-- which keeps RLS in place for everything else (name, content, etc.).
+create or replace function increment_agent_usage(p_agent_id text)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  new_count integer;
+begin
+  update agents
+     set usage_count = usage_count + 1
+   where id = p_agent_id
+   returning usage_count into new_count;
+  return new_count;
+end;
+$$;
+
+revoke all on function increment_agent_usage(text) from public;
+grant execute on function increment_agent_usage(text) to anon, authenticated;
 
 -- Teams table
 create table if not exists teams (

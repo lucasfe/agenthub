@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { Sparkles, X, Send, Loader2, Maximize2, Minimize2 } from 'lucide-react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { Sparkles, X, Send, Loader2, Maximize2, Minimize2, Bot, ChevronDown } from 'lucide-react'
 import { startSession, isOrchestrationConfigured } from '../lib/orchestration'
 import Markdown from '../lib/markdown'
 import AgentDraftCard from './AgentDraftCard'
@@ -23,6 +23,9 @@ export default function AiAssistant({ open, onClose }) {
   const [input, setInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
+  // null means "Auto" (let the router classify and pick the best path).
+  // A string is the explicit agent.id the user wants to drive the conversation.
+  const [selectedAgentId, setSelectedAgentId] = useState(null)
   // Which assistant message (by index) is currently opened in the side
   // review panel. null means no panel is open. One panel at a time.
   const [reviewPanelMsgIdx, setReviewPanelMsgIdx] = useState(null)
@@ -431,6 +434,7 @@ export default function AiAssistant({ open, onClose }) {
       messages: outgoing,
       agents,
       tools,
+      selectedAgentId,
     })
     sessionRef.current = { session, messageIdx: assistantIdx }
     subscribeSession(session, assistantIdx)
@@ -691,17 +695,23 @@ export default function AiAssistant({ open, onClose }) {
           className="border-t border-border-subtle p-4 shrink-0"
         >
           <div
-            className={`flex items-end gap-2 bg-bg-input border border-border-subtle rounded-xl px-3 py-2 focus-within:border-border-hover transition-colors ${
+            className={`flex items-end gap-2 bg-bg-input border border-border-subtle rounded-xl px-2 py-2 focus-within:border-border-hover transition-colors ${
               fullscreen ? 'max-w-3xl mx-auto' : ''
             }`}
           >
+            <AgentSelector
+              agents={agents}
+              selectedAgentId={selectedAgentId}
+              onChange={setSelectedAgentId}
+              disabled={isStreaming}
+            />
             <input
               ref={inputRef}
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Type a message..."
-              className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-muted outline-none py-1.5"
+              className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-muted outline-none py-1.5 min-w-0"
               disabled={isStreaming}
             />
             <button
@@ -889,6 +899,125 @@ function countMissingRequired(plan, stepAnswers) {
     }
   }
   return count
+}
+
+// Compact dropdown that lets the user pick which agent should drive the
+// next message. Renders next to the chat input. The default ("Auto") falls
+// back to the server-side router/planner that classifies the message and
+// chooses a path. Picking a specific agent forwards `selectedAgentId` to
+// the orchestration session, which short-circuits the router on the server.
+function AgentSelector({ agents, selectedAgentId, onChange, disabled }) {
+  const [open, setOpen] = useState(false)
+  const buttonRef = useRef(null)
+  const menuRef = useRef(null)
+
+  const sortedAgents = useMemo(() => {
+    if (!Array.isArray(agents)) return []
+    return [...agents].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+  }, [agents])
+
+  const selected = useMemo(
+    () => sortedAgents.find((a) => a.id === selectedAgentId) || null,
+    [sortedAgents, selectedAgentId],
+  )
+
+  useEffect(() => {
+    if (!open) return
+    const handleClickOutside = (e) => {
+      if (
+        !buttonRef.current?.contains(e.target) &&
+        !menuRef.current?.contains(e.target)
+      ) {
+        setOpen(false)
+      }
+    }
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    window.addEventListener('mousedown', handleClickOutside)
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('mousedown', handleClickOutside)
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [open])
+
+  const label = selected ? selected.name : 'Auto'
+
+  return (
+    <div className="relative shrink-0">
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        disabled={disabled}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label="Select agent"
+        title={selected ? `Agent: ${selected.name}` : 'Auto (router decides)'}
+        className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs text-text-secondary hover:text-text-primary hover:bg-bg-card border border-transparent hover:border-border-subtle transition-colors disabled:opacity-40 disabled:cursor-not-allowed max-w-[140px]"
+      >
+        <Bot size={14} />
+        <span className="truncate">{label}</span>
+        <ChevronDown size={12} className="shrink-0 opacity-70" />
+      </button>
+      {open && (
+        <div
+          ref={menuRef}
+          role="listbox"
+          aria-label="Agent options"
+          className="absolute bottom-full left-0 mb-2 w-64 max-h-72 overflow-y-auto bg-bg-sidebar border border-border-subtle rounded-xl shadow-xl z-10 py-1"
+        >
+          <button
+            type="button"
+            role="option"
+            aria-selected={selectedAgentId == null}
+            onClick={() => {
+              onChange(null)
+              setOpen(false)
+            }}
+            className={`w-full text-left px-3 py-2 text-xs hover:bg-bg-input transition-colors ${
+              selectedAgentId == null
+                ? 'text-text-primary font-medium'
+                : 'text-text-secondary'
+            }`}
+          >
+            <div>Auto</div>
+            <div className="text-[10px] text-text-muted">
+              Let the router pick the best path
+            </div>
+          </button>
+          {sortedAgents.length > 0 && (
+            <div className="my-1 mx-3 border-t border-border-subtle" />
+          )}
+          {sortedAgents.map((agent) => (
+            <button
+              key={agent.id}
+              type="button"
+              role="option"
+              aria-selected={selectedAgentId === agent.id}
+              onClick={() => {
+                onChange(agent.id)
+                setOpen(false)
+              }}
+              className={`w-full text-left px-3 py-2 text-xs hover:bg-bg-input transition-colors ${
+                selectedAgentId === agent.id
+                  ? 'text-text-primary font-medium'
+                  : 'text-text-secondary'
+              }`}
+            >
+              <div className="truncate">{agent.name}</div>
+              {agent.category && (
+                <div className="text-[10px] text-text-muted truncate">
+                  {agent.category}
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 // Serialize a previous assistant tool call as a short text summary, so the

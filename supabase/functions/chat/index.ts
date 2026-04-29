@@ -177,6 +177,17 @@ function buildSystemPrompt(agentsContext: unknown): string {
   return `${BASE_SYSTEM_PROMPT}\n\n## Existing Agents\n\n${lines.join('\n')}`
 }
 
+// When the user explicitly picks an agent next to the chat bar, we drop the
+// hub-assistant persona and let that agent drive the conversation directly.
+// The agent's `content` (its full markdown system prompt) becomes the system
+// prompt; the router/planner is bypassed for the rest of this turn.
+function buildSelectedAgentSystemPrompt(agent: any): string {
+  if (!agent || typeof agent !== 'object') return BASE_SYSTEM_PROMPT
+  const content = typeof agent.content === 'string' ? agent.content.trim() : ''
+  const header = `You are "${agent.name || agent.id}", an AI agent inside Lucas AI Hub. Reply in the same language the user used. Stay in character — do not mention this hub's other agents unless the user asks.`
+  return content ? `${header}\n\n${content}` : header
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -692,6 +703,7 @@ Deno.serve(async (req: Request) => {
     plan?: { steps?: unknown[] }
     original_task?: string
     step_answers?: Record<string, Record<string, string>>
+    selected_agent_id?: string
   }
   try {
     body = await req.json()
@@ -747,7 +759,16 @@ Deno.serve(async (req: Request) => {
   const toolsContextRaw = Array.isArray(body.tools_context)
     ? (body.tools_context as any[])
     : []
-  const systemPrompt = buildSystemPrompt(agentsContextRaw)
+  const selectedAgentId =
+    typeof body.selected_agent_id === 'string' && body.selected_agent_id
+      ? body.selected_agent_id
+      : null
+  const selectedAgent = selectedAgentId
+    ? agentsContextRaw.find((a: any) => a && a.id === selectedAgentId) || null
+    : null
+  const systemPrompt = selectedAgent
+    ? buildSelectedAgentSystemPrompt(selectedAgent)
+    : buildSystemPrompt(agentsContextRaw)
   const lastUser = [...cleanMessages].reverse().find((m) => m.role === 'user')
   const isRefinement = Boolean(
     body.refinement && (body.refinement.previous_plan || body.refinement.instructions),
@@ -795,9 +816,13 @@ Deno.serve(async (req: Request) => {
         }
 
         // Router: classify the latest user message unless this is a refinement
-        // call (which is always a task re-plan by definition).
+        // call (which is always a task re-plan by definition). When the user
+        // explicitly picked an agent next to the chat bar, skip the router
+        // entirely and force the chat branch with that agent's persona.
         let classification: 'chat' | 'crud' | 'task'
-        if (isRefinement) {
+        if (selectedAgent) {
+          classification = 'chat'
+        } else if (isRefinement) {
           classification = 'task'
         } else if (lastUser) {
           classification = await classifyIntent(lastUser.content, apiKey)
@@ -805,14 +830,16 @@ Deno.serve(async (req: Request) => {
           classification = 'chat'
         }
         console.log(
-          `[router] session=${sessionId} mode=${mode} classified=${classification} refinement=${isRefinement}`,
+          `[router] session=${sessionId} mode=${mode} classified=${classification} refinement=${isRefinement} selected_agent=${selectedAgent?.id ?? 'none'}`,
         )
         emit('router.classified', { mode: classification })
 
         // Route: task → planner, everything else → chat branch.
         // `mode: 'planned'` forces the planner regardless of classification.
+        // An explicit agent selection always wins — never go to the planner.
         const goPlanner =
-          mode === 'planned' || classification === 'task' || isRefinement
+          !selectedAgent &&
+          (mode === 'planned' || classification === 'task' || isRefinement)
 
         if (goPlanner) {
           await runPlannerBranch(emit, {

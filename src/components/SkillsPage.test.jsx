@@ -7,6 +7,7 @@ vi.mock('../lib/api', () => ({
   fetchAgents: vi.fn().mockResolvedValue([]),
   fetchTeams: vi.fn().mockResolvedValue([]),
   fetchTools: vi.fn().mockResolvedValue([]),
+  trackAgentUsage: vi.fn().mockResolvedValue(null),
 }))
 
 vi.mock('../lib/skills', () => ({

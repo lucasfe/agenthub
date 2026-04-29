@@ -81,8 +81,12 @@ export async function startCommand({
   }
   const callmebotKey = env.CALLMEBOT_KEY ?? process.env.CALLMEBOT_KEY ?? ''
   const whatsappPhone = env.WHATSAPP_PHONE ?? process.env.WHATSAPP_PHONE ?? ''
+  const startupMessage =
+    env.RALPH_STARTUP_MESSAGE ??
+    process.env.RALPH_STARTUP_MESSAGE ??
+    DEFAULT_STARTUP_MESSAGE
   if (!callmebotKey || !whatsappPhone) {
-    out('ℹ️  CALLMEBOT_KEY/WHATSAPP_PHONE ausentes; notificação WhatsApp será pulada.')
+    out('ℹ️  CALLMEBOT_KEY/WHATSAPP_PHONE ausentes; notificações WhatsApp serão puladas.')
   }
 
   // 4. gh authenticated

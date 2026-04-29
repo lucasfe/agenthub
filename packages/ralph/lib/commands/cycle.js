@@ -46,6 +46,7 @@ export async function cycleCommand({
   runQueueOnce = defaultRunQueueOnce,
   now = Date.now,
   claudeCredentialsPath = resolve(homedir(), '.claude', '.credentials.json'),
+  processEnv = process.env,
 } = {}) {
   const out = (msg) => stdout.write(msg + '\n')
   const err = (msg) => stderr.write(msg + '\n')

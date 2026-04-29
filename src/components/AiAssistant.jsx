@@ -115,6 +115,41 @@ export default function AiAssistant({ open, onClose }) {
             toolCall: { name: event.name, input: event.input },
           })
           break
+        // ── Selected-agent branch tool events ───────────
+        // The selected-agent branch executes tools server-side and surfaces
+        // each call as start/done pairs so the user gets feedback while a
+        // long tool call is in flight.
+        case 'chat.tool_call_start':
+          patchMessageAt(messageIdx, (msg) => ({
+            ...msg,
+            agentToolCalls: [
+              ...(msg.agentToolCalls || []),
+              {
+                id: event.tool_call_id,
+                name: event.name,
+                input: event.input,
+                status: 'running',
+              },
+            ],
+          }))
+          break
+        case 'chat.tool_call_done':
+          patchMessageAt(messageIdx, (msg) => {
+            const list = msg.agentToolCalls || []
+            const next = list.map((tc) =>
+              tc.id === event.tool_call_id
+                ? {
+                    ...tc,
+                    status: event.status || 'done',
+                    summary: event.summary,
+                    error: event.error,
+                    duration_ms: event.duration_ms,
+                  }
+                : tc,
+            )
+            return { ...msg, agentToolCalls: next }
+          })
+          break
         case 'chat.done':
           setIsStreaming(false)
           sessionRef.current = null
@@ -645,6 +680,7 @@ export default function AiAssistant({ open, onClose }) {
                   error={msg.error}
                   showCursor={showCursor}
                   toolCall={msg.toolCall}
+                  agentToolCalls={msg.agentToolCalls}
                   plan={msg.plan}
                   planStatus={msg.planStatus}
                   planFallback={msg.planFallback}
@@ -777,6 +813,7 @@ function MessageBubble({
   error,
   showCursor,
   toolCall,
+  agentToolCalls,
   plan,
   planStatus,
   planFallback,
@@ -793,7 +830,8 @@ function MessageBubble({
 }) {
   const isUser = role === 'user'
   const hasPlan = Boolean(plan || planFallback || planStatus === 'proposing')
-  if (!content && !showCursor && !toolCall && !hasPlan) return null
+  const hasAgentTools = Array.isArray(agentToolCalls) && agentToolCalls.length > 0
+  if (!content && !showCursor && !toolCall && !hasPlan && !hasAgentTools) return null
 
   // Render markdown for assistant (non-error) messages; everything else is plain text.
   const renderAsMarkdown = role === 'assistant' && !error
@@ -829,6 +867,13 @@ function MessageBubble({
             targetId={toolCall.input?.id}
             updates={toolCall.input?.updates}
           />
+        )}
+        {hasAgentTools && (
+          <div className="mt-2 flex flex-wrap gap-1.5" aria-label="Tool calls">
+            {agentToolCalls.map((tc) => (
+              <AgentToolChip key={tc.id} call={tc} />
+            ))}
+          </div>
         )}
         {plan && (
           <PlanCard
@@ -1017,6 +1062,32 @@ function AgentSelector({ agents, selectedAgentId, onChange, disabled }) {
         </div>
       )}
     </div>
+  )
+}
+
+// Compact chip rendered inside the assistant bubble for each tool call the
+// selected agent runs. Shows the tool name, a status dot, and the optional
+// summary or error returned by the tool handler.
+function AgentToolChip({ call }) {
+  const status = call?.status || 'running'
+  const dot =
+    status === 'done'
+      ? 'bg-emerald-400'
+      : status === 'error'
+        ? 'bg-rose-400'
+        : 'bg-amber-400 animate-pulse'
+  const detail = call?.error || call?.summary || ''
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-bg-input border border-border-subtle text-[11px] text-text-secondary"
+      title={detail}
+    >
+      <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
+      <span className="font-mono">{call?.name || 'tool'}</span>
+      {detail && (
+        <span className="truncate max-w-[180px] opacity-80">— {detail}</span>
+      )}
+    </span>
   )
 }
 

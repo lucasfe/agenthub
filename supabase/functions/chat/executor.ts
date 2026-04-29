@@ -24,6 +24,8 @@ const ANALYZER_MODEL = Deno.env.get('ANALYZER_MODEL') || 'claude-sonnet-4-6'
 const MAX_STEP_TOKENS = 8192
 const ANALYZER_MAX_TOKENS = 2048
 const MAX_TOOL_ITERATIONS = 50
+export const SELECTED_AGENT_TOOL_CALL_TIMEOUT_MS = 30_000
+export const SELECTED_AGENT_MAX_TOOL_ITERATIONS = MAX_TOOL_ITERATIONS
 const TOOL_CALL_TIMEOUT_MS = 30_000
 const MAX_REQUIREMENTS_PER_STEP = 4
 
@@ -646,7 +648,7 @@ export const TOOL_HANDLERS: Record<string, ToolHandler> = {
 // Which tools are functional in the current environment. Some tools depend on
 // external config (API keys) — if that config is missing, we'd rather drop the
 // tool from the sub-agent's toolset than let it loop on repeated failures.
-function getAvailableTools(): Set<string> {
+export function getAvailableTools(): Set<string> {
   const available = new Set(Object.keys(TOOL_HANDLERS))
   if (!Deno.env.get('TAVILY_API_KEY')) {
     available.delete('web_search')
@@ -658,7 +660,7 @@ function getAvailableTools(): Set<string> {
   return available
 }
 
-function describeUnavailableReason(toolId: string): string {
+export function describeUnavailableReason(toolId: string): string {
   if (toolId === 'web_search') {
     return 'TAVILY_API_KEY is not configured in the Edge Function secrets.'
   }
@@ -670,7 +672,7 @@ function describeUnavailableReason(toolId: string): string {
 
 // ─── Anthropic tool schema derivation ───────────────────────────────────────
 
-function buildAnthropicTool(toolId: string, toolsContext: any[]): any | null {
+export function buildAnthropicTool(toolId: string, toolsContext: any[]): any | null {
   const meta = toolsContext.find((t: any) => t && t.id === toolId)
   if (!meta) return null
   // Tools table already stores an Anthropic-compatible input_schema. The

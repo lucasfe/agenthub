@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { Sparkles, X, Send, Loader2, Maximize2, Minimize2 } from 'lucide-react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { Sparkles, X, Send, Loader2, Maximize2, Minimize2, Bot, ChevronDown } from 'lucide-react'
 import { startSession, isOrchestrationConfigured } from '../lib/orchestration'
 import Markdown from '../lib/markdown'
 import AgentDraftCard from './AgentDraftCard'

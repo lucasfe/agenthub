@@ -1065,6 +1065,32 @@ function AgentSelector({ agents, selectedAgentId, onChange, disabled }) {
   )
 }
 
+// Compact chip rendered inside the assistant bubble for each tool call the
+// selected agent runs. Shows the tool name, a status dot, and the optional
+// summary or error returned by the tool handler.
+function AgentToolChip({ call }) {
+  const status = call?.status || 'running'
+  const dot =
+    status === 'done'
+      ? 'bg-emerald-400'
+      : status === 'error'
+        ? 'bg-rose-400'
+        : 'bg-amber-400 animate-pulse'
+  const detail = call?.error || call?.summary || ''
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-bg-input border border-border-subtle text-[11px] text-text-secondary"
+      title={detail}
+    >
+      <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
+      <span className="font-mono">{call?.name || 'tool'}</span>
+      {detail && (
+        <span className="truncate max-w-[180px] opacity-80">— {detail}</span>
+      )}
+    </span>
+  )
+}
+
 // Serialize a previous assistant tool call as a short text summary, so the
 // next outgoing request gives Claude enough context to iterate without having
 // to re-send the full tool_use block (which would require tool_result).

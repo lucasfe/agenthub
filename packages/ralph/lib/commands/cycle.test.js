@@ -384,6 +384,7 @@ describe('cycleCommand — best-effort failures never abort the cycle', () => {
     const deps = baseDeps({
       loadEnv: () => ({ CALLMEBOT_KEY: 'k', WHATSAPP_PHONE: '+1' }),
       runQueueOnce: async () => ({ successes: [101], failures: [] }),
+      processEnv: {},
     })
     deps.exec = makeExec({
       ...baseHandlers(),

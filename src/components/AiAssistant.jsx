@@ -680,6 +680,7 @@ export default function AiAssistant({ open, onClose }) {
                   error={msg.error}
                   showCursor={showCursor}
                   toolCall={msg.toolCall}
+                  agentToolCalls={msg.agentToolCalls}
                   plan={msg.plan}
                   planStatus={msg.planStatus}
                   planFallback={msg.planFallback}

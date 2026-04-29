@@ -64,7 +64,7 @@ Deno.test({
 })
 
 Deno.test({
-  name: 'integration · createIssue creates a real issue and we close it (real GitHub API)',
+  name: 'integration · createIssue creates a real issue and we delete it (real GitHub API)',
   ignore: SKIP,
   async fn() {
     const stamp = new Date().toISOString()
@@ -72,30 +72,60 @@ Deno.test({
     const body =
       'This issue was created by the automated integration test suite ' +
       `(supabase/integration/github.integration.test.ts) at ${stamp}. ` +
-      'It should be auto-closed within seconds. Safe to ignore or delete.'
+      'It is hard-deleted via GraphQL at the end of the test. If you see ' +
+      'this issue lingering open, the cleanup mutation failed — check that ' +
+      "the test PAT has Issues: Read+Write on the test repo and that the " +
+      'token owner is a repo admin (deleteIssue requires admin).'
 
     const created = await createIssue(TOKEN!, REPO, title, body)
     assertEquals(typeof created.number, 'number')
     assert(created.url.startsWith(`https://github.com/${REPO}/issues/`))
 
-    // Cleanup: close the issue immediately. Issues cannot be deleted via REST,
-    // but closing is enough to keep the repo tidy.
-    const closeRes = await fetch(
+    // Fetch the issue's GraphQL global ID (REST `node_id`).
+    const getRes = await fetch(
       `https://api.github.com/repos/${REPO}/issues/${created.number}`,
       {
-        method: 'PATCH',
         headers: {
           Authorization: `Bearer ${TOKEN}`,
           Accept: 'application/vnd.github+json',
-          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ state: 'closed' }),
       },
     )
-    if (!closeRes.ok) {
-      const text = await closeRes.text().catch(() => '')
+    if (!getRes.ok) {
+      const text = await getRes.text().catch(() => '')
       throw new Error(
-        `Failed to close test issue #${created.number}: ${closeRes.status} ${text.slice(0, 200)}`,
+        `Failed to fetch node_id for test issue #${created.number}: ${getRes.status} ${text.slice(0, 200)}`,
+      )
+    }
+    const issue = await getRes.json()
+    const nodeId: string = issue.node_id
+    assertEquals(typeof nodeId, 'string')
+
+    // Hard-delete via GraphQL `deleteIssue` mutation (REST has no delete).
+    // Requires Issues:write on the repo AND the token owner being a repo
+    // admin (or the repo's "Allow issue deletion" setting enabled).
+    const gqlRes = await fetch('https://api.github.com/graphql', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query:
+          'mutation($id: ID!) { deleteIssue(input: { issueId: $id }) { repository { name } } }',
+        variables: { id: nodeId },
+      }),
+    })
+    if (!gqlRes.ok) {
+      const text = await gqlRes.text().catch(() => '')
+      throw new Error(
+        `Failed to delete test issue #${created.number} via GraphQL: ${gqlRes.status} ${text.slice(0, 200)}`,
+      )
+    }
+    const gqlBody = await gqlRes.json()
+    if (gqlBody.errors) {
+      throw new Error(
+        `GraphQL deleteIssue returned errors for #${created.number}: ${JSON.stringify(gqlBody.errors).slice(0, 300)}`,
       )
     }
   },

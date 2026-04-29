@@ -37,11 +37,15 @@ describe('AgentCard', () => {
     expect(screen.getByText('CSS')).toBeInTheDocument()
   })
 
-  it('displays formatted download count from popularity', () => {
+  it('displays the persisted usage count', () => {
     renderWithProviders(<AgentCard agent={mockAgent} viewMode="grid" />)
-    // 98 * 243 = 23,814
-    const expected = (98 * 243).toLocaleString()
-    expect(screen.getByText(expected)).toBeInTheDocument()
+    expect(screen.getByText((1234).toLocaleString())).toBeInTheDocument()
+  })
+
+  it('falls back to 0 when usage_count is missing', () => {
+    const agent = { ...mockAgent, usage_count: undefined }
+    renderWithProviders(<AgentCard agent={agent} viewMode="grid" />)
+    expect(screen.getByText('0')).toBeInTheDocument()
   })
 
   it('shows category slug', () => {

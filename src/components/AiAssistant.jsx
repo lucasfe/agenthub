@@ -901,6 +901,125 @@ function countMissingRequired(plan, stepAnswers) {
   return count
 }
 
+// Compact dropdown that lets the user pick which agent should drive the
+// next message. Renders next to the chat input. The default ("Auto") falls
+// back to the server-side router/planner that classifies the message and
+// chooses a path. Picking a specific agent forwards `selectedAgentId` to
+// the orchestration session, which short-circuits the router on the server.
+function AgentSelector({ agents, selectedAgentId, onChange, disabled }) {
+  const [open, setOpen] = useState(false)
+  const buttonRef = useRef(null)
+  const menuRef = useRef(null)
+
+  const sortedAgents = useMemo(() => {
+    if (!Array.isArray(agents)) return []
+    return [...agents].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+  }, [agents])
+
+  const selected = useMemo(
+    () => sortedAgents.find((a) => a.id === selectedAgentId) || null,
+    [sortedAgents, selectedAgentId],
+  )
+
+  useEffect(() => {
+    if (!open) return
+    const handleClickOutside = (e) => {
+      if (
+        !buttonRef.current?.contains(e.target) &&
+        !menuRef.current?.contains(e.target)
+      ) {
+        setOpen(false)
+      }
+    }
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    window.addEventListener('mousedown', handleClickOutside)
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('mousedown', handleClickOutside)
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [open])
+
+  const label = selected ? selected.name : 'Auto'
+
+  return (
+    <div className="relative shrink-0">
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        disabled={disabled}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label="Select agent"
+        title={selected ? `Agent: ${selected.name}` : 'Auto (router decides)'}
+        className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs text-text-secondary hover:text-text-primary hover:bg-bg-card border border-transparent hover:border-border-subtle transition-colors disabled:opacity-40 disabled:cursor-not-allowed max-w-[140px]"
+      >
+        <Bot size={14} />
+        <span className="truncate">{label}</span>
+        <ChevronDown size={12} className="shrink-0 opacity-70" />
+      </button>
+      {open && (
+        <div
+          ref={menuRef}
+          role="listbox"
+          aria-label="Agent options"
+          className="absolute bottom-full left-0 mb-2 w-64 max-h-72 overflow-y-auto bg-bg-sidebar border border-border-subtle rounded-xl shadow-xl z-10 py-1"
+        >
+          <button
+            type="button"
+            role="option"
+            aria-selected={selectedAgentId == null}
+            onClick={() => {
+              onChange(null)
+              setOpen(false)
+            }}
+            className={`w-full text-left px-3 py-2 text-xs hover:bg-bg-input transition-colors ${
+              selectedAgentId == null
+                ? 'text-text-primary font-medium'
+                : 'text-text-secondary'
+            }`}
+          >
+            <div>Auto</div>
+            <div className="text-[10px] text-text-muted">
+              Let the router pick the best path
+            </div>
+          </button>
+          {sortedAgents.length > 0 && (
+            <div className="my-1 mx-3 border-t border-border-subtle" />
+          )}
+          {sortedAgents.map((agent) => (
+            <button
+              key={agent.id}
+              type="button"
+              role="option"
+              aria-selected={selectedAgentId === agent.id}
+              onClick={() => {
+                onChange(agent.id)
+                setOpen(false)
+              }}
+              className={`w-full text-left px-3 py-2 text-xs hover:bg-bg-input transition-colors ${
+                selectedAgentId === agent.id
+                  ? 'text-text-primary font-medium'
+                  : 'text-text-secondary'
+              }`}
+            >
+              <div className="truncate">{agent.name}</div>
+              {agent.category && (
+                <div className="text-[10px] text-text-muted truncate">
+                  {agent.category}
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // Serialize a previous assistant tool call as a short text summary, so the
 // next outgoing request gives Claude enough context to iterate without having
 // to re-send the full tool_use block (which would require tool_result).

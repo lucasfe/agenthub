@@ -1,9 +1,28 @@
-import { describe, it, expect } from 'vitest'
-import { renderHook, act } from '@testing-library/react'
+import { describe, it, expect, vi } from 'vitest'
+import { renderHook, act, waitFor } from '@testing-library/react'
 import { StackProvider, useStack } from './StackContext'
+import { DataProvider, useData } from './DataContext'
+
+vi.mock('../lib/api', () => ({
+  fetchAgents: vi.fn().mockResolvedValue([
+    { id: 'frontend-developer', name: 'Frontend Dev', usage_count: 0 },
+    { id: 'backend-developer', name: 'Backend Dev', usage_count: 0 },
+  ]),
+  fetchTeams: vi.fn().mockResolvedValue([]),
+  fetchTools: vi.fn().mockResolvedValue([]),
+  trackAgentUsage: vi.fn().mockResolvedValue(1),
+}))
 
 function wrapper({ children }) {
   return <StackProvider>{children}</StackProvider>
+}
+
+function dataWrapper({ children }) {
+  return (
+    <DataProvider>
+      <StackProvider>{children}</StackProvider>
+    </DataProvider>
+  )
 }
 
 describe('StackContext', () => {
@@ -84,5 +103,54 @@ describe('StackContext', () => {
     act(() => result.current.addAgents(['a', 'b']))
     act(() => result.current.removeAgents(['b', 'x', 'y']))
     expect(result.current.stack).toEqual(['a'])
+  })
+
+  describe('with DataProvider — usage tracking', () => {
+    it('toggleAgent bumps usage_count once on add and not on remove', async () => {
+      const api = await import('../lib/api')
+      api.trackAgentUsage.mockClear()
+
+      const { result } = renderHook(
+        () => ({ stack: useStack(), data: useData() }),
+        { wrapper: dataWrapper },
+      )
+      await waitFor(() => expect(result.current.data.agents.length).toBeGreaterThan(0))
+
+      act(() => result.current.stack.toggleAgent('frontend-developer'))
+      expect(api.trackAgentUsage).toHaveBeenCalledTimes(1)
+      expect(api.trackAgentUsage).toHaveBeenCalledWith(
+        'frontend-developer',
+        'cart_add',
+      )
+      const bumped = result.current.data.agents.find((a) => a.id === 'frontend-developer')
+      expect(bumped?.usage_count).toBe(1)
+
+      act(() => result.current.stack.toggleAgent('frontend-developer'))
+      // Removing must not bump again.
+      expect(api.trackAgentUsage).toHaveBeenCalledTimes(1)
+    })
+
+    it('addAgents only bumps newly added IDs', async () => {
+      const api = await import('../lib/api')
+      api.trackAgentUsage.mockClear()
+
+      const { result } = renderHook(
+        () => ({ stack: useStack(), data: useData() }),
+        { wrapper: dataWrapper },
+      )
+      await waitFor(() => expect(result.current.data.agents.length).toBeGreaterThan(0))
+
+      act(() => result.current.stack.addAgents(['frontend-developer']))
+      act(() =>
+        result.current.stack.addAgents(['frontend-developer', 'backend-developer']),
+      )
+
+      // First call adds frontend-developer (1 bump). Second call adds only
+      // backend-developer (1 bump). Frontend-developer is already in the
+      // stack and must not be bumped again.
+      expect(api.trackAgentUsage).toHaveBeenCalledTimes(2)
+      expect(api.trackAgentUsage).toHaveBeenNthCalledWith(1, 'frontend-developer', 'cart_add')
+      expect(api.trackAgentUsage).toHaveBeenNthCalledWith(2, 'backend-developer', 'cart_add')
+    })
   })
 })

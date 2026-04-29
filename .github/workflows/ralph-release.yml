@@ -48,16 +48,17 @@ jobs:
     needs: release-please
     runs-on: ubuntu-latest
     steps:
-      - name: Admin-merge any open release-please Release PR
+      - name: Auto-merge any open release-please Release PR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
         run: |
           # Don't trust release-please's output — when its Release PR
           # already exists from a previous run with no new updates, it
-          # doesn't re-emit `pr_number`. Instead, query open PRs whose
-          # head branch matches the release-please naming convention.
+          # doesn't re-emit `pr_number`. Query open PRs whose head
+          # branch matches the release-please naming convention instead.
           PR_NUMBER=$(gh pr list \
-            --repo "${{ github.repository }}" \
+            --repo "$REPO" \
             --state open \
             --base main \
             --json number,headRefName \
@@ -68,14 +69,24 @@ jobs:
             exit 0
           fi
 
-          echo "Found open release-please PR #$PR_NUMBER — admin-squash-merging."
-          # Use --admin so the merge bypasses required checks that may
-          # not have fired (release-please PRs created via GITHUB_TOKEN
-          # historically don't trigger downstream workflows).
+          echo "Found open release-please PR #$PR_NUMBER."
+
+          # release-please's PR was created via GITHUB_TOKEN, so the
+          # required `PR Title` check never fired on it. We can't admin-
+          # bypass with GITHUB_TOKEN (no admin override perms). Instead,
+          # close + reopen to emit a `pull_request: reopened` event,
+          # which DOES trigger downstream workflows (the `pr-title` job
+          # runs on that event type and will pass — release-please's
+          # titles are valid Conventional Commits like `chore(main):
+          # release ralph X.Y.Z`).
+          gh pr close "$PR_NUMBER" --repo "$REPO"
+          gh pr reopen "$PR_NUMBER" --repo "$REPO"
+
+          # Enable auto-merge so GitHub merges once required checks pass.
           gh pr merge "$PR_NUMBER" \
-            --repo "${{ github.repository }}" \
+            --repo "$REPO" \
             --squash \
-            --admin
+            --auto
 
   publish:
     name: Publish @lucasfe/ralph to npm (match-publish safety net)

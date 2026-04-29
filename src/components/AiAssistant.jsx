@@ -434,6 +434,7 @@ export default function AiAssistant({ open, onClose }) {
       messages: outgoing,
       agents,
       tools,
+      selectedAgentId,
     })
     sessionRef.current = { session, messageIdx: assistantIdx }
     subscribeSession(session, assistantIdx)

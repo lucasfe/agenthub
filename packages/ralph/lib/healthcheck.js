@@ -13,7 +13,6 @@ export async function pingSuccess({
 export async function pingFail({
   url,
   failUrl,
-  message: _message,
   fetch: fetchImpl = typeof globalThis.fetch === 'function' ? globalThis.fetch : null,
   timeoutMs = DEFAULT_TIMEOUT_MS,
 } = {}) {

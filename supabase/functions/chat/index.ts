@@ -816,9 +816,13 @@ Deno.serve(async (req: Request) => {
         }
 
         // Router: classify the latest user message unless this is a refinement
-        // call (which is always a task re-plan by definition).
+        // call (which is always a task re-plan by definition). When the user
+        // explicitly picked an agent next to the chat bar, skip the router
+        // entirely and force the chat branch with that agent's persona.
         let classification: 'chat' | 'crud' | 'task'
-        if (isRefinement) {
+        if (selectedAgent) {
+          classification = 'chat'
+        } else if (isRefinement) {
           classification = 'task'
         } else if (lastUser) {
           classification = await classifyIntent(lastUser.content, apiKey)
@@ -826,14 +830,16 @@ Deno.serve(async (req: Request) => {
           classification = 'chat'
         }
         console.log(
-          `[router] session=${sessionId} mode=${mode} classified=${classification} refinement=${isRefinement}`,
+          `[router] session=${sessionId} mode=${mode} classified=${classification} refinement=${isRefinement} selected_agent=${selectedAgent?.id ?? 'none'}`,
         )
         emit('router.classified', { mode: classification })
 
         // Route: task → planner, everything else → chat branch.
         // `mode: 'planned'` forces the planner regardless of classification.
+        // An explicit agent selection always wins — never go to the planner.
         const goPlanner =
-          mode === 'planned' || classification === 'task' || isRefinement
+          !selectedAgent &&
+          (mode === 'planned' || classification === 'task' || isRefinement)
 
         if (goPlanner) {
           await runPlannerBranch(emit, {

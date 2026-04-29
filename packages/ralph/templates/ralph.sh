@@ -176,6 +176,12 @@ fi
 # Stdout always — visible to anyone running `tmux attach`.
 echo "$msg"
 
+# In --once mode (called from `ralph cycle`), the parent owns notifications +
+# lifetime. Skip end-of-run notify and tmux teardown.
+if [ -n "$RALPH_ONCE_MODE" ]; then
+  exit 0
+fi
+
 # Re-source .env.local so credentials added mid-run are picked up.
 if [ -f ./.env.local ]; then
   set -a

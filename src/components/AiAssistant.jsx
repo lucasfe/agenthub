@@ -23,6 +23,9 @@ export default function AiAssistant({ open, onClose }) {
   const [input, setInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
+  // null means "Auto" (let the router classify and pick the best path).
+  // A string is the explicit agent.id the user wants to drive the conversation.
+  const [selectedAgentId, setSelectedAgentId] = useState(null)
   // Which assistant message (by index) is currently opened in the side
   // review panel. null means no panel is open. One panel at a time.
   const [reviewPanelMsgIdx, setReviewPanelMsgIdx] = useState(null)

@@ -816,14 +816,38 @@ Deno.serve(async (req: Request) => {
           return
         }
 
-        // Router: classify the latest user message unless this is a refinement
-        // call (which is always a task re-plan by definition). When the user
-        // explicitly picked an agent next to the chat bar, skip the router
-        // entirely and force the chat branch with that agent's persona.
-        let classification: 'chat' | 'crud' | 'task'
+        // Selected-agent mode: when the user explicitly picks an agent next
+        // to the chat bar, proxy the prompt directly to that agent — no
+        // classifier call, no planner, no orchestration hop. The chosen
+        // agent drives the conversation end-to-end with its own persona and
+        // tools. The router.classified event still fires (with the agent id
+        // attached) so consumers see the routing decision, but the bypass
+        // itself is unconditional and cannot fall through to the planner or
+        // the hub chat branch.
         if (selectedAgent) {
-          classification = 'chat'
-        } else if (isRefinement) {
+          console.log(
+            `[router] session=${sessionId} mode=${mode} direct=true selected_agent=${selectedAgent.id}`,
+          )
+          emit('router.classified', {
+            mode: 'chat',
+            selected_agent_id: selectedAgent.id,
+          })
+          await runSelectedAgentBranch(emit, {
+            agent: selectedAgent,
+            messages: cleanMessages,
+            systemPrompt,
+            agentsContext: agentsContextRaw,
+            toolsContext: toolsContextRaw,
+            apiKey,
+            userId,
+          })
+          return
+        }
+
+        // Router: classify the latest user message unless this is a refinement
+        // call (which is always a task re-plan by definition).
+        let classification: 'chat' | 'crud' | 'task'
+        if (isRefinement) {
           classification = 'task'
         } else if (lastUser) {
           classification = await classifyIntent(lastUser.content, apiKey)
@@ -831,20 +855,14 @@ Deno.serve(async (req: Request) => {
           classification = 'chat'
         }
         console.log(
-          `[router] session=${sessionId} mode=${mode} classified=${classification} refinement=${isRefinement} selected_agent=${selectedAgent?.id ?? 'none'}`,
+          `[router] session=${sessionId} mode=${mode} classified=${classification} refinement=${isRefinement}`,
         )
         emit('router.classified', { mode: classification })
 
         // Route: task → planner, everything else → chat branch.
         // `mode: 'planned'` forces the planner regardless of classification.
-        // An explicit agent selection always wins — never go to the planner.
-        // It also wins over the legacy chat branch: the selected-agent branch
-        // wires up the agent's own tools and runs them server-side, instead of
-        // exposing the hub-assistant tools (draft_agent / update_agent) to a
-        // persona that doesn't know what to do with them.
         const goPlanner =
-          !selectedAgent &&
-          (mode === 'planned' || classification === 'task' || isRefinement)
+          mode === 'planned' || classification === 'task' || isRefinement
 
         if (goPlanner) {
           await runPlannerBranch(emit, {
@@ -854,16 +872,6 @@ Deno.serve(async (req: Request) => {
             refinement: body.refinement,
             originalTask: lastUser?.content || '',
             apiKey,
-          })
-        } else if (selectedAgent) {
-          await runSelectedAgentBranch(emit, {
-            agent: selectedAgent,
-            messages: cleanMessages,
-            systemPrompt,
-            agentsContext: agentsContextRaw,
-            toolsContext: toolsContextRaw,
-            apiKey,
-            userId,
           })
         } else {
           await runChatBranch(emit, {

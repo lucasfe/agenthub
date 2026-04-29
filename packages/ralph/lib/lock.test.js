@@ -6,7 +6,9 @@ import { acquireLock, lockPathFor, peekLock, releaseLock } from './lock.js'
 const REPO = '/Users/me/repos/agenthub'
 
 function vol(initial = {}) {
-  return Volume.fromJSON(initial, '/')
+  const v = Volume.fromJSON(initial, '/')
+  v.mkdirSync('/tmp', { recursive: true })
+  return v
 }
 
 function expectedLockPath(repoPath, tmpDir = '/tmp') {

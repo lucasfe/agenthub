@@ -59,9 +59,9 @@ export async function cycleCommand({
   }
 
   const env = loadEnvIfExists(exists, loadEnv, resolve(root, '.env.local'))
-  const callmebotKey = env.CALLMEBOT_KEY ?? process.env.CALLMEBOT_KEY ?? ''
-  const whatsappPhone = env.WHATSAPP_PHONE ?? process.env.WHATSAPP_PHONE ?? ''
-  const healthcheckUrl = env.HEALTHCHECK_URL ?? process.env.HEALTHCHECK_URL ?? ''
+  const callmebotKey = env.CALLMEBOT_KEY ?? processEnv.CALLMEBOT_KEY ?? ''
+  const whatsappPhone = env.WHATSAPP_PHONE ?? processEnv.WHATSAPP_PHONE ?? ''
+  const healthcheckUrl = env.HEALTHCHECK_URL ?? processEnv.HEALTHCHECK_URL ?? ''
   const repoSlug = await resolveRepoSlug(exec, root)
 
   const notify = async (message) => {

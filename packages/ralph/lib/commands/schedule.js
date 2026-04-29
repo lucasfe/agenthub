@@ -321,7 +321,7 @@ export async function scheduleStatusCommand({
     const lock = agent.workingDirectory
       ? safePeekLock(peekLock, agent.workingDirectory)
       : null
-    reports.push({ agent, state, status, lock })
+    reports.push({ ...agent, state, status, lock })
     printAgentReport(out, { agent, state, status, lock, now })
   }
 

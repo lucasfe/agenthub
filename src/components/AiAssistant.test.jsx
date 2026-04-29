@@ -20,6 +20,7 @@ vi.mock('../lib/api', () => ({
   fetchTools: vi.fn().mockResolvedValue([]),
   createAgent: vi.fn().mockResolvedValue({ id: 'mock' }),
   updateAgent: vi.fn().mockResolvedValue({ id: 'frontend-developer' }),
+  trackAgentUsage: vi.fn().mockResolvedValue(null),
 }))
 
 // Controllable mock of the orchestration engine. The fake Session drains a

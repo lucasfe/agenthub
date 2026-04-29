@@ -224,6 +224,21 @@ export async function startCommand({
   out('   Listar:         tmux ls')
   out(`   Matar:          tmux kill-session -t ${TMUX_SESSION}`)
   out('   Logs:           logs/ralph-issue-*.log')
+
+  // Startup notification — best effort, never blocks startup or surfaces stack traces.
+  if (callmebotKey && whatsappPhone) {
+    const waResult = await sendWa({
+      phone: whatsappPhone,
+      apiKey: callmebotKey,
+      message: startupMessage,
+    })
+    if (waResult?.ok) {
+      out('📲 Notificação WhatsApp de startup enviada.')
+    } else {
+      out(`⚠️  Notificação WhatsApp de startup falhou: ${waResult?.reason ?? 'unknown'}.`)
+    }
+  }
+
   return { exitCode: 0, started: true, count: Number(count) }
 }
 

@@ -4,11 +4,26 @@ import { isAllowed } from '../lib/auth'
 
 const AuthContext = createContext()
 
+const E2E_BYPASS = import.meta.env.VITE_E2E_AUTH_BYPASS === 'true'
+
 function unauthorizedMessage(email) {
   return `Your account ${email} is not authorized to access this site.`
 }
 
 export function AuthProvider({ children }) {
+  if (E2E_BYPASS) {
+    const fake = {
+      user: { id: 'e2e-test-user', email: 'e2e@test.local' },
+      session: { user: { id: 'e2e-test-user', email: 'e2e@test.local' }, access_token: 'e2e-test-token' },
+      loading: false,
+      error: null,
+      isAuthorized: true,
+      signInWithGoogle: async () => {},
+      signOut: async () => {},
+    }
+    return <AuthContext.Provider value={fake}>{children}</AuthContext.Provider>
+  }
+
   const [user, setUser] = useState(null)
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)

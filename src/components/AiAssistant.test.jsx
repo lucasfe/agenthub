@@ -235,6 +235,7 @@ describe('AiAssistant', () => {
     expect(call.selectedAgentId).toBe('frontend-developer')
   })
 
+<<<<<<< HEAD
   it('renders tool-call chips when the selected-agent branch emits chat.tool_call_start/done', async () => {
     scriptSession([
       { type: 'router.classified', mode: 'chat' },
@@ -268,6 +269,8 @@ describe('AiAssistant', () => {
     expect(screen.getByText(/Found a few repos for you/)).toBeInTheDocument()
   })
 
+=======
+>>>>>>> main
   it('defaults selectedAgentId to null when the user keeps "Auto"', async () => {
     scriptSession([
       { type: 'chat.text', value: 'auto reply' },

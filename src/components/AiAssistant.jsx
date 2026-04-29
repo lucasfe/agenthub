@@ -1065,6 +1065,7 @@ function AgentSelector({ agents, selectedAgentId, onChange, disabled }) {
   )
 }
 
+<<<<<<< HEAD
 // Compact chip rendered inside the assistant bubble for each tool call the
 // selected agent runs. Shows the tool name, a status dot, and the optional
 // summary or error returned by the tool handler.
@@ -1091,6 +1092,8 @@ function AgentToolChip({ call }) {
   )
 }
 
+=======
+>>>>>>> main
 // Serialize a previous assistant tool call as a short text summary, so the
 // next outgoing request gives Claude enough context to iterate without having
 // to re-send the full tool_use block (which would require tool_result).

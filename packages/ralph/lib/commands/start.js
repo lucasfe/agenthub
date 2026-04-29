@@ -11,10 +11,12 @@ import { checkDeps } from '../deps.js'
 import { detectPlatform } from '../platform.js'
 import { readState, writeState } from '../state.js'
 import { checkForUpdate } from '../update-check.js'
+import { sendWhatsappMessage } from '../utils/whatsapp.js'
 
 const TMUX_SESSION = 'ralph'
 const SEARCH_QUERY =
   'state:open -label:claude-working -label:claude-failed -label:do-not-ralph'
+const DEFAULT_STARTUP_MESSAGE = '🟢 Ralph started and is active.'
 
 class StartAbort extends Error {
   constructor(message, exitCode = 1) {

@@ -8,6 +8,7 @@ vi.mock('../lib/api', () => ({
   fetchAgents: vi.fn().mockResolvedValue([]),
   fetchTeams: vi.fn().mockResolvedValue([]),
   fetchTools: vi.fn().mockResolvedValue([]),
+  trackAgentUsage: vi.fn().mockResolvedValue(null),
 }))
 
 const mockAgent = {
@@ -19,6 +20,7 @@ const mockAgent = {
   icon: 'Monitor',
   color: 'blue',
   popularity: 98,
+  usage_count: 1234,
 }
 
 describe('AgentCard', () => {

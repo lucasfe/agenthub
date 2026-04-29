@@ -95,6 +95,7 @@ export async function streamOrchestration({
         plan: plan || undefined,
         original_task: originalTask || undefined,
         step_answers: stepAnswers || undefined,
+        selected_agent_id: selectedAgentId || undefined,
       }),
       signal,
     })

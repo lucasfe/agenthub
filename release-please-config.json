@@ -1,0 +1,17 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "bootstrap-sha": "37ce82f9ef7ce2b23f75f803a6dc0e6705c63fe6",
+  "separate-pull-requests": true,
+  "packages": {
+    "packages/ralph": {
+      "release-type": "node",
+      "package-name": "@lucasfe/ralph",
+      "component": "ralph",
+      "include-component-in-tag": true,
+      "include-v-in-tag": true,
+      "prerelease": false,
+      "bump-minor-pre-major": true,
+      "bump-patch-for-minor-pre-major": false
+    }
+  }
+}

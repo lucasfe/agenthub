@@ -319,7 +319,16 @@ describe('startCommand', () => {
         stderr: '',
       },
     })
-    await startCommand({ ...deps, cwd })
+    const savedKey = process.env.CALLMEBOT_KEY
+    const savedPhone = process.env.WHATSAPP_PHONE
+    delete process.env.CALLMEBOT_KEY
+    delete process.env.WHATSAPP_PHONE
+    try {
+      await startCommand({ ...deps, cwd })
+    } finally {
+      if (savedKey !== undefined) process.env.CALLMEBOT_KEY = savedKey
+      if (savedPhone !== undefined) process.env.WHATSAPP_PHONE = savedPhone
+    }
     expect(waCalled).toBe(false)
     expect(deps.stdout.output()).toContain('notificações WhatsApp serão puladas')
   })

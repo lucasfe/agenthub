@@ -9,6 +9,7 @@ vi.mock('../lib/api', () => ({
   ]),
   fetchTeams: vi.fn().mockResolvedValue([]),
   fetchTools: vi.fn().mockResolvedValue([]),
+  trackAgentUsage: vi.fn().mockResolvedValue(null),
 }))
 
 const mockTeam = {

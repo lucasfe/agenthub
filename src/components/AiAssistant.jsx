@@ -18,7 +18,7 @@ const WELCOME_MESSAGE = {
 const INITIAL_MESSAGES = [WELCOME_MESSAGE]
 
 export default function AiAssistant({ open, onClose }) {
-  const { agents, tools } = useData()
+  const { agents, tools, bumpAgentUsage } = useData()
   const [messages, setMessages] = useState(INITIAL_MESSAGES)
   const [input, setInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
@@ -464,6 +464,10 @@ export default function AiAssistant({ open, onClose }) {
     setInput('')
     setIsStreaming(true)
 
+    if (selectedAgentId) {
+      bumpAgentUsage?.(selectedAgentId, 'orchestrator_invoke')
+    }
+
     const session = startSession({
       mode: 'chat',
       messages: outgoing,
@@ -522,6 +526,15 @@ export default function AiAssistant({ open, onClose }) {
       runError: null,
     })
     setIsStreaming(true)
+
+    // Bump every unique agent referenced in the plan once the user approves.
+    // We bump on approval rather than per-step start because the executor is
+    // server-side and approval is the authoritative "this run is happening"
+    // signal we have on the client.
+    const planAgents = Array.isArray(target.plan?.steps)
+      ? [...new Set(target.plan.steps.map((s) => s?.agent_id).filter(Boolean))]
+      : []
+    planAgents.forEach((id) => bumpAgentUsage?.(id, 'orchestrator_invoke'))
 
     const session = startSession({
       mode: 'execute',

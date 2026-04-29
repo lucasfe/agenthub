@@ -34,6 +34,7 @@ vi.mock('../lib/api', () => ({
   fetchTeams: vi.fn().mockResolvedValue([]),
   fetchTools: vi.fn().mockResolvedValue(mockTools),
   createAgent: vi.fn().mockResolvedValue({ id: 'test-agent' }),
+  trackAgentUsage: vi.fn().mockResolvedValue(null),
 }))
 
 const { createAgent } = await import('../lib/api')

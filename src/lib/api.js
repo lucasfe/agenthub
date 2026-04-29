@@ -10,11 +10,33 @@ export async function fetchAgents() {
   requireSupabase()
   const { data, error } = await supabase
     .from('agents')
-    .select('id, name, category, description, tags, icon, color, featured, popularity, tools, model, capabilities, content')
+    .select('id, name, category, description, tags, icon, color, featured, popularity, tools, model, capabilities, content, usage_count')
     .order('popularity', { ascending: false })
 
   if (error) throw error
   return data
+}
+
+// Fire-and-forget: bumps the persistent usage counter for an agent. The
+// `event` label is currently advisory (both events bump the same counter) but
+// is forwarded so it shows up in Supabase's request logs for ad-hoc analytics.
+// Resolves with the new count on success and `null` on failure — callers
+// should not block UI on this and should not surface the error to the user.
+export async function trackAgentUsage(agentId, event) {
+  if (!agentId || !supabase) return null
+  try {
+    const { data, error } = await supabase.rpc('increment_agent_usage', {
+      p_agent_id: agentId,
+    })
+    if (error) {
+      console.warn(`[trackAgentUsage] ${event || 'unknown'} for ${agentId} failed:`, error.message)
+      return null
+    }
+    return typeof data === 'number' ? data : null
+  } catch (err) {
+    console.warn(`[trackAgentUsage] ${event || 'unknown'} for ${agentId} threw:`, err)
+    return null
+  }
 }
 
 export async function fetchAgent(id) {

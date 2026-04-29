@@ -63,6 +63,23 @@ program
   })
 
 program
+  .command('cycle')
+  .description(
+    'Run one queue-processing cycle: preflight, lock, drain, notify. Designed for launchd / cron schedules.',
+  )
+  .action(async () => {
+    try {
+      const result = await cycleCommand()
+      process.exit(result.exitCode ?? 0)
+    } catch (e) {
+      if (e instanceof CycleAbort) {
+        process.exit(e.exitCode ?? 1)
+      }
+      throw e
+    }
+  })
+
+program
   .command('doctor')
   .description('Check required system deps and print install commands for missing ones')
   .action(async () => {

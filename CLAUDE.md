@@ -407,6 +407,33 @@ GitHub Actions reserves the `GITHUB_` secret/variable prefix, so the keys here a
 - **CI pipeline** (`.github/workflows/ci.yml`): Lint → Test → Build on every push, plus a `pr-title` job that gates `dev → main` PRs on a Conventional Commits title
 - **Auto-PR** (`.github/workflows/auto-pr.yml`): Creates/updates a single PR from `dev → main` on every push
 
+### Branch protection on `main`
+
+The `main` branch is protected by a GitHub branch protection rule that requires the `PR Title` status check (produced by the `pr-title` job in `.github/workflows/ci.yml`) to pass before merge. This is what guarantees every squash-merge into `main` carries a Conventional Commits title — the precondition release-please relies on to bump the right SemVer segment.
+
+The rule is configured manually (one-time) under **Settings → Branches → Branch protection rules → `main`**:
+
+1. Branch name pattern: `main`.
+2. Enable **Require status checks to pass before merging**.
+3. Add `PR Title` to the list of required status checks (it appears once the `pr-title` job has run at least once on a PR).
+4. Leave **Require branches to be up to date before merging** OFF (no need to force-rebase before merge).
+5. Save.
+
+Equivalent one-shot via the API (requires admin token):
+
+```bash
+gh api -X PUT repos/lucasfe/agenthub/branches/main/protection --input - <<'JSON'
+{
+  "required_status_checks": { "strict": false, "contexts": ["PR Title"] },
+  "enforce_admins": false,
+  "required_pull_request_reviews": null,
+  "restrictions": null
+}
+JSON
+```
+
+To verify the rule is in place: `gh api repos/lucasfe/agenthub/branches/main/protection --jq '.required_status_checks.contexts'` should return `["PR Title"]`.
+
 ## Releasing Ralph
 
 `@lucasfe/ralph` (the `packages/ralph/` package) is published to npm by an automated [release-please](https://github.com/googleapis/release-please) pipeline. There is no manual version bump, no manual `CHANGELOG.md` edit, and no manual `git tag`. The flow is:

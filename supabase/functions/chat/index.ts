@@ -703,6 +703,7 @@ Deno.serve(async (req: Request) => {
     plan?: { steps?: unknown[] }
     original_task?: string
     step_answers?: Record<string, Record<string, string>>
+    selected_agent_id?: string
   }
   try {
     body = await req.json()

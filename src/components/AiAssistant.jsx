@@ -868,6 +868,13 @@ function MessageBubble({
             updates={toolCall.input?.updates}
           />
         )}
+        {hasAgentTools && (
+          <div className="mt-2 flex flex-wrap gap-1.5" aria-label="Tool calls">
+            {agentToolCalls.map((tc) => (
+              <AgentToolChip key={tc.id} call={tc} />
+            ))}
+          </div>
+        )}
         {plan && (
           <PlanCard
             plan={plan}

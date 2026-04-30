@@ -2,13 +2,16 @@ import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import {
   Plus, GripVertical, X, MoreHorizontal, Trash2, ChevronDown,
   Loader2, AlertCircle, CheckCircle2, Clock, Play, Square, Eye, RefreshCw, Bookmark,
+  LayoutTemplate,
 } from 'lucide-react'
 import Header from './Header'
 import { supabase } from '../lib/supabase'
 import { useData } from '../context/DataContext'
 import { useTaskOrchestration } from '../lib/taskOrchestration'
 import { insertTemplate } from '../lib/templatesApi'
+import { cloneTemplateToTask } from '../lib/templates'
 import SaveAsTemplateModal from './SaveAsTemplateModal'
+import TemplateSelectorModal from './TemplateSelectorModal'
 import {
   StepRow,
   formatDuration,

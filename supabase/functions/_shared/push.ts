@@ -351,12 +351,12 @@ async function hkdfExtract(
 ): Promise<Uint8Array> {
   const key = await crypto.subtle.importKey(
     'raw',
-    salt,
+    bs(salt),
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign'],
   )
-  return new Uint8Array(await crypto.subtle.sign('HMAC', key, ikm))
+  return new Uint8Array(await crypto.subtle.sign('HMAC', key, bs(ikm)))
 }
 
 async function hkdfExpand(
@@ -366,7 +366,7 @@ async function hkdfExpand(
 ): Promise<Uint8Array> {
   const key = await crypto.subtle.importKey(
     'raw',
-    prk,
+    bs(prk),
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign'],
@@ -379,7 +379,7 @@ async function hkdfExpand(
     data.set(t, 0)
     data.set(info, t.length)
     data[data.length - 1] = counter
-    t = new Uint8Array(await crypto.subtle.sign('HMAC', key, data))
+    t = new Uint8Array(await crypto.subtle.sign('HMAC', key, bs(data)))
     okm = concatBytes(okm, t)
     counter += 1
   }

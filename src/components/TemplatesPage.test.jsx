@@ -49,6 +49,12 @@ describe('TemplatesPage', () => {
   })
 
   it('renders one card per template, each showing name and step count', async () => {
+    // Seed every referenced agent so the missing-agent pill does not appear
+    // and the only "2 steps" text on the card is the plan-summary label.
+    fetchAgents.mockResolvedValueOnce([
+      { id: 'a', name: 'Agent A' },
+      { id: 'b', name: 'Agent B' },
+    ])
     fetchTemplates.mockResolvedValue([
       {
         id: 'tpl-1',

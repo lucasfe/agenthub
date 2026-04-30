@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import TemplatesPage from './TemplatesPage'
 import { renderWithProviders } from '../test/test-utils'
 
@@ -26,7 +27,7 @@ vi.mock('../context/AuthContext', () => ({
   AuthProvider: ({ children }) => children,
 }))
 
-import { fetchTemplates } from '../lib/templatesApi'
+import { fetchTemplates, insertTemplate } from '../lib/templatesApi'
 
 beforeEach(() => {
   vi.clearAllMocks()

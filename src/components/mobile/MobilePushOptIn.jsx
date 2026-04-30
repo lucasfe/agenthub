@@ -142,6 +142,10 @@ function reasonToText(reason) {
       return 'Notifications are not supported on this browser.'
     case 'network-error':
       return 'Could not reach the server. Try again.'
+    case 'no-vapid-key':
+      return 'Push is not configured on this deployment (missing VAPID public key).'
+    case 'subscribe-failed':
+      return 'Could not subscribe to push. The browser rejected the request.'
     default:
       return 'Could not enable notifications. Try again.'
   }

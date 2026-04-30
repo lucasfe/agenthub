@@ -775,6 +775,250 @@ describe('AiAssistant', () => {
     clickSpy.mockRestore()
   })
 
+  describe('Kanban board sync (issue #239)', () => {
+    const planFixture = {
+      steps: [
+        {
+          id: 1,
+          agent_id: 'frontend-developer',
+          agent_name: 'Frontend Developer',
+          agent_color: 'blue',
+          agent_icon: 'Monitor',
+          task: 'Sketch the landing page',
+          inputs: ['original_task'],
+          tools_used: [],
+        },
+      ],
+    }
+
+    it('creates a board task with status todo when a plan is proposed', async () => {
+      scriptSession([
+        { type: 'router.classified', mode: 'task' },
+        { type: 'plan.proposing' },
+        { type: 'plan.proposed', plan: planFixture },
+      ])
+
+      const user = userEvent.setup()
+      renderWithProviders(<AiAssistant open={true} onClose={() => {}} />)
+
+      await user.type(screen.getByPlaceholderText('Type a message...'), 'build a landing page')
+      await user.click(screen.getByLabelText('Send message'))
+
+      await waitFor(() => {
+        expect(planTaskSyncMock.createTaskFromPlan).toHaveBeenCalledTimes(1)
+      })
+      const arg = planTaskSyncMock.createTaskFromPlan.mock.calls[0][1]
+      expect(arg).toMatchObject({
+        plan: planFixture,
+        originalTask: 'build a landing page',
+      })
+      // Task is created BEFORE the user approves — they can already see it on
+      // the board in the To Do column.
+      expect(planTaskSyncMock.markTaskApproved).not.toHaveBeenCalled()
+    })
+
+    it('marks the board task approved when the user approves the plan', async () => {
+      scriptSession([{ type: 'plan.proposed', plan: planFixture }])
+
+      const user = userEvent.setup()
+      renderWithProviders(<AiAssistant open={true} onClose={() => {}} />)
+
+      await user.type(screen.getByPlaceholderText('Type a message...'), 'do a thing')
+      await user.click(screen.getByLabelText('Send message'))
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /quick approve/i })).toBeInTheDocument()
+      })
+      await waitFor(() => {
+        expect(planTaskSyncMock.createTaskFromPlan).toHaveBeenCalledTimes(1)
+      })
+
+      // Arm the executor session so approving streams a real run.
+      scriptSession([
+        { type: 'run.started', run_id: 'run-approved' },
+        { type: 'step.started', step_id: 1 },
+        { type: 'step.done', step_id: 1, duration_ms: 100 },
+        { type: 'run.done', run_id: 'run-approved', duration_ms: 200 },
+      ])
+
+      await user.click(screen.getByRole('button', { name: /quick approve/i }))
+
+      await waitFor(() => {
+        expect(planTaskSyncMock.markTaskApproved).toHaveBeenCalledWith(
+          expect.anything(),
+          'sync-task-1',
+        )
+      })
+    })
+
+    it('marks the board task done when the run completes', async () => {
+      scriptSession([{ type: 'plan.proposed', plan: planFixture }])
+
+      const user = userEvent.setup()
+      renderWithProviders(<AiAssistant open={true} onClose={() => {}} />)
+
+      await user.type(screen.getByPlaceholderText('Type a message...'), 'do a thing')
+      await user.click(screen.getByLabelText('Send message'))
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /quick approve/i })).toBeInTheDocument()
+      })
+      await waitFor(() => {
+        expect(planTaskSyncMock.createTaskFromPlan).toHaveBeenCalled()
+      })
+
+      scriptSession([
+        { type: 'run.started', run_id: 'run-done' },
+        { type: 'step.started', step_id: 1 },
+        { type: 'step.done', step_id: 1, duration_ms: 100 },
+        { type: 'run.done', run_id: 'run-done', duration_ms: 200 },
+      ])
+
+      await user.click(screen.getByRole('button', { name: /quick approve/i }))
+
+      await waitFor(() => {
+        expect(screen.getByText('Plan completed')).toBeInTheDocument()
+      })
+
+      await waitFor(() => {
+        expect(planTaskSyncMock.markTaskDone).toHaveBeenCalledWith(
+          expect.anything(),
+          'sync-task-1',
+        )
+      })
+    })
+
+    it('marks the board task cancelled when the user cancels the plan', async () => {
+      scriptSession([{ type: 'plan.proposed', plan: planFixture }])
+
+      const user = userEvent.setup()
+      renderWithProviders(<AiAssistant open={true} onClose={() => {}} />)
+
+      await user.type(screen.getByPlaceholderText('Type a message...'), 'maybe later')
+      await user.click(screen.getByLabelText('Send message'))
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /cancel plan/i })).toBeInTheDocument()
+      })
+      await waitFor(() => {
+        expect(planTaskSyncMock.createTaskFromPlan).toHaveBeenCalled()
+      })
+
+      await user.click(screen.getByRole('button', { name: /cancel plan/i }))
+
+      await waitFor(() => {
+        expect(planTaskSyncMock.markTaskCancelled).toHaveBeenCalledWith(
+          expect.anything(),
+          'sync-task-1',
+        )
+      })
+    })
+
+    it('marks the board task with error status when execution fails', async () => {
+      scriptSession([{ type: 'plan.proposed', plan: planFixture }])
+
+      const user = userEvent.setup()
+      renderWithProviders(<AiAssistant open={true} onClose={() => {}} />)
+
+      await user.type(screen.getByPlaceholderText('Type a message...'), 'risky task')
+      await user.click(screen.getByLabelText('Send message'))
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /quick approve/i })).toBeInTheDocument()
+      })
+      await waitFor(() => {
+        expect(planTaskSyncMock.createTaskFromPlan).toHaveBeenCalled()
+      })
+
+      scriptSession([
+        { type: 'run.started', run_id: 'run-err' },
+        { type: 'step.started', step_id: 1 },
+        { type: 'step.error', step_id: 1, error: 'kaboom' },
+        { type: 'run.error', run_id: 'run-err', error: 'kaboom', failed_step_id: 1 },
+      ])
+
+      await user.click(screen.getByRole('button', { name: /quick approve/i }))
+
+      await waitFor(() => {
+        expect(planTaskSyncMock.markTaskError).toHaveBeenCalledWith(
+          expect.anything(),
+          'sync-task-1',
+          'kaboom',
+        )
+      })
+    })
+
+    it('updates the existing board task plan when the user refines the plan', async () => {
+      scriptSession([{ type: 'plan.proposed', plan: planFixture }])
+
+      const user = userEvent.setup()
+      renderWithProviders(<AiAssistant open={true} onClose={() => {}} />)
+
+      await user.type(screen.getByPlaceholderText('Type a message...'), 'plan that I will refine')
+      await user.click(screen.getByLabelText('Send message'))
+
+      await waitFor(() => {
+        expect(screen.getByText('Plan proposed')).toBeInTheDocument()
+      })
+      await waitFor(() => {
+        expect(planTaskSyncMock.createTaskFromPlan).toHaveBeenCalledTimes(1)
+      })
+
+      // Open review panel to access refine input.
+      await user.click(screen.getByRole('button', { name: /review & approve/i }))
+      await waitFor(() => {
+        expect(screen.getByText('Sketch the landing page')).toBeInTheDocument()
+      })
+
+      const refinedPlan = {
+        steps: [
+          {
+            ...planFixture.steps[0],
+            task: 'Sketch the landing page (refined)',
+          },
+        ],
+      }
+      scriptSession([{ type: 'plan.proposed', plan: refinedPlan }])
+
+      const refineInput = screen.getByPlaceholderText(/refine plan/i)
+      fireEvent.change(refineInput, { target: { value: 'tighten step 1' } })
+      await user.click(screen.getByLabelText('Refine plan'))
+
+      await waitFor(() => {
+        expect(planTaskSyncMock.updateTaskPlan).toHaveBeenCalledWith(
+          expect.anything(),
+          'sync-task-1',
+          refinedPlan,
+        )
+      })
+      // Refinement should reuse the existing task — not insert a new one.
+      expect(planTaskSyncMock.createTaskFromPlan).toHaveBeenCalledTimes(1)
+    })
+
+    it('does not create a board task when the planner falls back without a plan', async () => {
+      scriptSession([
+        { type: 'router.classified', mode: 'task' },
+        {
+          type: 'plan.fallback',
+          reason: 'No suitable agent for legal contract review',
+          suggested_agent_type: 'legal analyst',
+        },
+      ])
+
+      const user = userEvent.setup()
+      renderWithProviders(<AiAssistant open={true} onClose={() => {}} />)
+
+      await user.type(screen.getByPlaceholderText('Type a message...'), 'analyze this contract')
+      await user.click(screen.getByLabelText('Send message'))
+
+      await waitFor(() => {
+        expect(screen.getByText('No suitable agent')).toBeInTheDocument()
+      })
+      // Fallback path doesn't yield a plan, so nothing to sync.
+      expect(planTaskSyncMock.createTaskFromPlan).not.toHaveBeenCalled()
+    })
+  })
+
   it('surfaces a step error during execution', async () => {
     scriptSession([
       {

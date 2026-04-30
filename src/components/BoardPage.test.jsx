@@ -500,7 +500,7 @@ describe('BoardPage From template action', () => {
     const trigger = await waitForBoard()
     const user = userEvent.setup()
     await user.click(trigger)
-    await user.click(await screen.findByText('Blank starter'))
+    await screen.findByRole('button', { name: /Blank starter/i })
     await user.click(screen.getByRole('button', { name: /use template/i }))
 
     await waitFor(() => {

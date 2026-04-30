@@ -527,6 +527,7 @@ export default function BoardPage() {
   const [loading, setLoading] = useState(true)
   const [, setDraggingId] = useState(null)
   const [selectedTaskId, setSelectedTaskId] = useState(null)
+  const [templateSelectorOpen, setTemplateSelectorOpen] = useState(false)
   const { agents, tools } = useData()
 
   const selectedTask = selectedTaskId ? tasks.find((t) => t.id === selectedTaskId) : null

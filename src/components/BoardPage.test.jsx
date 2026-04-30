@@ -428,7 +428,7 @@ describe('BoardPage From template action', () => {
   })
 
   it('opens the template selector modal and lists fetched templates on click', async () => {
-    fetchTemplates.mockResolvedValue([
+    fetchTemplates.mockResolvedValueOnce([
       makeTemplate({ id: 'tpl-a', name: 'First template' }),
       makeTemplate({ id: 'tpl-b', name: 'Second template' }),
     ])
@@ -436,10 +436,8 @@ describe('BoardPage From template action', () => {
     await userEvent.setup().click(trigger)
 
     expect(await screen.findByRole('heading', { name: /use a template/i })).toBeInTheDocument()
-    await new Promise((r) => setTimeout(r, 50))
-    screen.debug(undefined, 200000)
-    expect(await screen.findByText('First template')).toBeInTheDocument()
-    expect(screen.getByText('Second template')).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /First template/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Second template/i })).toBeInTheDocument()
   })
 
   it('shows the read-only preview pane when a template is selected', async () => {

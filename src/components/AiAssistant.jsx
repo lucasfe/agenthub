@@ -522,7 +522,7 @@ export default function AiAssistant({ open, onClose }) {
       selectedAgentId,
     })
     sessionRef.current = { session, messageIdx: assistantIdx }
-    subscribeSession(session, assistantIdx)
+    subscribeSession(session, assistantIdx, text)
   }
 
   const handleRefinePlan = (messageIdx, instructions) => {

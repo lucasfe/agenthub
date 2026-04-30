@@ -7,16 +7,20 @@
 // SPA fallback was lost or the rewrite regex over-excluded paths" — can
 // only be observed against a live deployment.
 //
-// Run via `npm run test:functions:integration`. Auto-skips when
-// `DEPLOY_URL` is not set, so unit-test-only environments stay green.
-// Default for CI/manual runs: https://agenthub.lucasfe.com.
+// Run via `npm run test:functions:integration`. Opt-in: this test
+// suite hits the LIVE deployment and stays skipped unless `DEPLOY_URL`
+// is explicitly set. That way CI on `dev` does not red-flag the suite
+// while a fix is mid-flight (the prod deploy happens after `main`
+// merges), and unit-test-only environments stay green.
+//
+// To run: `DEPLOY_URL=https://agenthub.lucasfe.com npm run test:functions:integration`.
 
 import { assert, assertEquals, assertStringIncludes } from 'https://deno.land/std@0.224.0/assert/mod.ts'
 
-const DEPLOY_URL = Deno.env.get('DEPLOY_URL') || 'https://agenthub.lucasfe.com'
-const SKIP = Deno.env.get('SKIP_DEPLOY_TESTS') === '1'
+const DEPLOY_URL = Deno.env.get('DEPLOY_URL')
+const SKIP = !DEPLOY_URL
 
-const skipReason = 'SKIP_DEPLOY_TESTS=1 — skipping live SPA fallback tests.'
+const skipReason = 'DEPLOY_URL not set — skipping live SPA fallback tests.'
 if (SKIP) console.warn(`[integration] ${skipReason}`)
 
 async function head(path: string) {

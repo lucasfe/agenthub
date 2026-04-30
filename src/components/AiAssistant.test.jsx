@@ -58,6 +58,19 @@ const orchestrationMock = vi.hoisted(() => {
 
 vi.mock('../lib/orchestration', () => orchestrationMock)
 
+// Mock the plan↔board sync layer so we can assert it gets called at the
+// right lifecycle moments without touching Supabase.
+const planTaskSyncMock = vi.hoisted(() => ({
+  createTaskFromPlan: vi.fn(),
+  updateTaskPlan: vi.fn(),
+  markTaskApproved: vi.fn(),
+  markTaskDone: vi.fn(),
+  markTaskCancelled: vi.fn(),
+  markTaskError: vi.fn(),
+}))
+
+vi.mock('../lib/planTaskSync', () => planTaskSyncMock)
+
 // Respond to startSession() by returning a session that will emit `events`
 // once something subscribes to it.
 function scriptSession(events) {
@@ -70,6 +83,12 @@ describe('AiAssistant', () => {
   beforeEach(() => {
     orchestrationMock.isOrchestrationConfigured.mockReturnValue(true)
     orchestrationMock.startSession.mockReset()
+    planTaskSyncMock.createTaskFromPlan.mockReset().mockResolvedValue({ id: 'sync-task-1' })
+    planTaskSyncMock.updateTaskPlan.mockReset().mockResolvedValue(undefined)
+    planTaskSyncMock.markTaskApproved.mockReset().mockResolvedValue(undefined)
+    planTaskSyncMock.markTaskDone.mockReset().mockResolvedValue(undefined)
+    planTaskSyncMock.markTaskCancelled.mockReset().mockResolvedValue(undefined)
+    planTaskSyncMock.markTaskError.mockReset().mockResolvedValue(undefined)
   })
 
   it('does not render when closed', () => {

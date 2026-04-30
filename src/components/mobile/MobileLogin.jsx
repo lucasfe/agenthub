@@ -36,7 +36,7 @@ export default function MobileLogin() {
         )}
 
         <button
-          onClick={signInWithGoogle}
+          onClick={() => signInWithGoogle({ redirectTo: '/mobile/chat' })}
           className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-white text-gray-800 font-medium text-sm hover:bg-gray-50 transition-colors border border-gray-200 shadow-sm"
         >
           <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">

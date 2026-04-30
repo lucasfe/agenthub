@@ -1,4 +1,5 @@
-import { LayoutTemplate } from 'lucide-react'
+import { AlertTriangle, LayoutTemplate } from 'lucide-react'
+import { findMissingAgents } from '../lib/templates'
 
 function describePlan(plan) {
   if (!plan || !Array.isArray(plan.steps) || plan.steps.length === 0) {
@@ -8,8 +9,16 @@ function describePlan(plan) {
   return `${count} ${count === 1 ? 'step' : 'steps'}`
 }
 
-export default function TemplateCard({ template, onClick }) {
+function countStepsWithMissingAgents(plan, missingAgentIds) {
+  if (!plan || !Array.isArray(plan.steps) || missingAgentIds.length === 0) return 0
+  const missingSet = new Set(missingAgentIds)
+  return plan.steps.filter((step) => missingSet.has(step?.agent_id)).length
+}
+
+export default function TemplateCard({ template, agents = [], onClick }) {
   const planLabel = describePlan(template.plan)
+  const missingAgents = findMissingAgents(template.plan, agents)
+  const stepsNeedingAttention = countStepsWithMissingAgents(template.plan, missingAgents)
 
   return (
     <button
@@ -32,6 +41,13 @@ export default function TemplateCard({ template, onClick }) {
         <p className="text-xs leading-relaxed text-text-secondary mb-4 flex-1 line-clamp-3">
           {template.description}
         </p>
+      )}
+
+      {stepsNeedingAttention > 0 && (
+        <div className="mb-3 inline-flex items-center self-start gap-1.5 px-2 py-1 rounded-md bg-amber-500/10 border border-amber-500/20 text-[10px] font-medium text-amber-300">
+          <AlertTriangle size={11} />
+          {stepsNeedingAttention} {stepsNeedingAttention === 1 ? 'step needs' : 'steps need'} attention
+        </div>
       )}
 
       <div className="mt-auto pt-3 border-t border-border-subtle/50 flex items-center justify-between text-xs text-text-muted">

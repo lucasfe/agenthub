@@ -473,6 +473,39 @@ release-please is configured in manifest mode with a single entry for `packages/
 
 The previous manual flow (`.github/workflows/ralph-publish.yml`, triggered by pushing a `ralph-v*` git tag) is removed. release-please now owns the tag, so do not push `ralph-v*` tags by hand — the new workflow has no listener for them.
 
+## AI Assistant ↔ Kanban board sync
+
+Plans created inside the AI Assistant chat (the planner branch that emits `plan.proposed`) are mirrored as rows in the Supabase `tasks` table so the user sees the same work on the `/board` page. The mirror is one-directional and stateless: chat is the source of truth, the board reflects whatever the chat last reported.
+
+### Lifecycle mapping
+
+| Chat event                              | Board task field update                              | Board column   |
+|----------------------------------------|------------------------------------------------------|----------------|
+| `plan.proposed` (first time)            | `INSERT { status: 'todo', plan, title, description }` | Todo           |
+| `plan.proposed` (refinement)            | `UPDATE { plan }` on the same row                     | (unchanged)    |
+| User clicks Approve in chat             | `UPDATE { status: 'executing', error_message: null }` | In Progress    |
+| `run.done`                              | `UPDATE { status: 'done' }`                           | Done           |
+| User clicks Cancel in chat              | `UPDATE { status: 'cancelled', error_message }`       | Done           |
+| `run.error`                             | `UPDATE { status: 'error', error_message }`           | Done           |
+| `plan.fallback` / `plan.error` (no plan)| (no row created — there is nothing to mirror)         | —              |
+
+The title is derived from the first line of the user's original chat message (truncated to 80 characters with an ellipsis); the description is the full original message verbatim. The `plan` field stores the full planner payload (steps, agent metadata, tools), so the board's task detail panel can render the exact same plan the chat user saw.
+
+### Module layout
+
+- `src/lib/planTaskSync.js` — pure async helpers: `createTaskFromPlan`, `updateTaskPlan`, `markTaskApproved`, `markTaskDone`, `markTaskCancelled`, `markTaskError`, `deriveTitle`. Each takes the Supabase client as the first argument so it can be unit-tested with a mock and tolerates a `null` client (no-ops, matching the `BoardPage.jsx` helpers).
+- `src/components/AiAssistant.jsx` — calls the helpers from the lifecycle event handlers in `subscribeSession`, `handleApprovePlan`, and `handleCancelPlan`. Uses a `boardTaskRef` map keyed by message index that holds the in-flight `Promise<taskId>`. Holding a promise (not the resolved ID) avoids a race when the user approves or cancels before the initial insert has completed.
+
+### Race handling
+
+If the user clicks Approve or Cancel before `createTaskFromPlan` has resolved, the helper `withBoardTaskId(messageIdx, fn)` awaits the in-flight promise and only then runs the update. The board never sees a stuck "todo" task because the deferred update fires as soon as the insert completes.
+
+### What this is NOT
+
+- The board does not push state back into the chat. Dragging a chat-created task in the board does not pause the chat run, and the chat does not refetch the task row.
+- Refining a plan multiple times keeps a single row — there is no per-revision history.
+- Clearing the chat (the "Clear" button) drops the in-memory `boardTaskRef` map but leaves the rows in Supabase intact, so prior conversations still appear on the board.
+
 ## Adding a New Agent
 
 1. Add entry to `src/data/agents.json` following the schema above

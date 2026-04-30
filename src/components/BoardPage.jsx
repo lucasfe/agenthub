@@ -1,12 +1,17 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import {
   Plus, GripVertical, X, MoreHorizontal, Trash2, ChevronDown,
-  Loader2, AlertCircle, CheckCircle2, Clock, Play, Square, Eye,
+  Loader2, AlertCircle, CheckCircle2, Clock, Play, Square, Eye, RefreshCw, Bookmark,
+  LayoutTemplate,
 } from 'lucide-react'
 import Header from './Header'
 import { supabase } from '../lib/supabase'
 import { useData } from '../context/DataContext'
 import { useTaskOrchestration } from '../lib/taskOrchestration'
+import { insertTemplate } from '../lib/templatesApi'
+import { cloneTemplateToTask, findMissingAgents, findMissingTools } from '../lib/templates'
+import SaveAsTemplateModal from './SaveAsTemplateModal'
+import TemplateSelectorModal from './TemplateSelectorModal'
 import {
   StepRow,
   formatDuration,
@@ -180,6 +185,7 @@ function TaskDetailPanel({ task, agents, tools, onUpdate, onDelete, onClose }) {
   const [description, setDescription] = useState(task.description)
   const [statusOpen, setStatusOpen] = useState(false)
   const [stepAnswers, setStepAnswers] = useState({})
+  const [saveTemplateOpen, setSaveTemplateOpen] = useState(false)
   const statusRef = useRef(null)
 
   const orch = useTaskOrchestration({ task, agents, tools, onTaskUpdate: onUpdate })
@@ -236,6 +242,8 @@ function TaskDetailPanel({ task, agents, tools, onUpdate, onDelete, onClose }) {
   const isExecutionPhase = ['planning', 'awaiting_approval', 'executing', 'done', 'error', 'cancelled'].includes(task.status)
   const plan = task.plan
   const missingRequired = plan ? countMissingRequired(plan, stepAnswers) : 0
+  const missingAgents = plan ? findMissingAgents(plan, agents) : []
+  const missingTools = plan ? findMissingTools(plan, tools) : []
   const downloadableSteps = plan ? collectDownloadableSteps(plan, orch.stepStates) : []
   const badge = STATUS_BADGES[task.status]
 
@@ -290,6 +298,35 @@ function TaskDetailPanel({ task, agents, tools, onUpdate, onDelete, onClose }) {
             <div className="px-4 py-3 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-start gap-3">
               <AlertCircle size={14} className="text-rose-400 shrink-0 mt-0.5" />
               <p className="text-sm text-rose-300">{task.error_message}</p>
+            </div>
+          )}
+
+          {/* Missing-reference warnings */}
+          {isExecutionPhase && plan && (missingAgents.length > 0 || missingTools.length > 0) && (
+            <div className="px-4 py-3 rounded-lg bg-amber-500/10 border border-amber-500/20 space-y-2">
+              {missingAgents.length > 0 && (
+                <div className="flex items-start gap-2">
+                  <AlertCircle size={14} className="text-amber-400 shrink-0 mt-0.5" />
+                  <div className="text-xs text-amber-200 leading-relaxed">
+                    <p className="font-medium">
+                      Missing agent{missingAgents.length === 1 ? '' : 's'}:{' '}
+                      <span className="font-mono">{missingAgents.join(', ')}</span>
+                    </p>
+                    <p className="text-amber-200/80 mt-0.5">
+                      Edit each step's agent or click Re-plan to refresh the plan against the current catalog.
+                    </p>
+                  </div>
+                </div>
+              )}
+              {missingTools.length > 0 && (
+                <div className="flex items-start gap-2 text-[11px] text-amber-200/80">
+                  <span className="shrink-0 mt-0.5">·</span>
+                  <p>
+                    Missing tool{missingTools.length === 1 ? '' : 's'} (run will continue without):{' '}
+                    <span className="font-mono">{missingTools.join(', ')}</span>
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -379,7 +416,7 @@ function TaskDetailPanel({ task, agents, tools, onUpdate, onDelete, onClose }) {
           {task.status === 'awaiting_approval' && (
             <button
               onClick={() => orch.approve(stepAnswers)}
-              disabled={missingRequired > 0}
+              disabled={missingRequired > 0 || missingAgents.length > 0}
               className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium text-white bg-blue-500 hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Play size={12} />
@@ -395,7 +432,24 @@ function TaskDetailPanel({ task, agents, tools, onUpdate, onDelete, onClose }) {
               Cancel
             </button>
           )}
+          {['awaiting_approval', 'done', 'error', 'cancelled'].includes(task.status) && (
+            <button
+              onClick={() => orch.replan()}
+              disabled={orch.replanInFlight}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium text-text-secondary border border-border-subtle hover:bg-white/5 hover:text-text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <RefreshCw size={12} className={orch.replanInFlight ? 'animate-spin' : ''} />
+              Re-plan
+            </button>
+          )}
           <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={() => setSaveTemplateOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-text-secondary hover:text-text-primary hover:bg-white/5 border border-border-subtle transition-colors"
+            >
+              <Bookmark size={12} />
+              Save as template
+            </button>
             <button
               onClick={() => { onDelete(task.id); onClose() }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-rose-400 hover:bg-rose-500/10 border border-rose-500/20 transition-colors"
@@ -409,13 +463,21 @@ function TaskDetailPanel({ task, agents, tools, onUpdate, onDelete, onClose }) {
           </div>
         </div>
       </div>
+
+      {saveTemplateOpen && (
+        <SaveAsTemplateModal
+          task={task}
+          onClose={() => setSaveTemplateOpen(false)}
+          onSave={insertTemplate}
+        />
+      )}
     </>
   )
 }
 
 // ─── Column ───────────────────────────────────────────────────────────────
 
-function Column({ column, tasks, onAddTask, onDeleteTask, onDragStart, onDrop, onClickTask }) {
+function Column({ column, tasks, onAddTask, onDeleteTask, onDragStart, onDrop, onClickTask, onOpenTemplateSelector }) {
   const [showForm, setShowForm] = useState(false)
   const [dragOver, setDragOver] = useState(false)
 
@@ -466,13 +528,22 @@ function Column({ column, tasks, onAddTask, onDeleteTask, onDragStart, onDrop, o
               onCancel={() => setShowForm(false)}
             />
           ) : (
-            <button
-              onClick={() => setShowForm(true)}
-              className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-text-muted hover:text-text-secondary hover:bg-white/5 transition-colors"
-            >
-              <Plus size={14} />
-              Add task
-            </button>
+            <div className="space-y-1">
+              <button
+                onClick={() => setShowForm(true)}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-text-muted hover:text-text-secondary hover:bg-white/5 transition-colors"
+              >
+                <Plus size={14} />
+                Add task
+              </button>
+              <button
+                onClick={onOpenTemplateSelector}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-text-muted hover:text-text-secondary hover:bg-white/5 transition-colors"
+              >
+                <LayoutTemplate size={14} />
+                From template
+              </button>
+            </div>
           )
         )}
       </div>
@@ -487,6 +558,7 @@ export default function BoardPage() {
   const [loading, setLoading] = useState(true)
   const [, setDraggingId] = useState(null)
   const [selectedTaskId, setSelectedTaskId] = useState(null)
+  const [templateSelectorOpen, setTemplateSelectorOpen] = useState(false)
   const { agents, tools } = useData()
 
   const selectedTask = selectedTaskId ? tasks.find((t) => t.id === selectedTaskId) : null
@@ -498,6 +570,15 @@ export default function BoardPage() {
   const handleAddTask = useCallback(async (data) => {
     const row = await insertTask({ title: data.title, description: data.description, status: 'todo' })
     if (row) setTasks((prev) => [...prev, row])
+  }, [])
+
+  const handleUseTemplate = useCallback(async (template) => {
+    const row = await insertTask(cloneTemplateToTask(template))
+    if (row) {
+      setTasks((prev) => [...prev, row])
+      setSelectedTaskId(row.id)
+    }
+    setTemplateSelectorOpen(false)
   }, [])
 
   const handleDeleteTask = useCallback(async (taskId) => {
@@ -572,6 +653,7 @@ export default function BoardPage() {
               onDragStart={setDraggingId}
               onDrop={handleDrop}
               onClickTask={setSelectedTaskId}
+              onOpenTemplateSelector={() => setTemplateSelectorOpen(true)}
             />
           ))}
         </div>
@@ -585,6 +667,13 @@ export default function BoardPage() {
           onUpdate={handleUpdateTask}
           onDelete={handleDeleteTask}
           onClose={() => setSelectedTaskId(null)}
+        />
+      )}
+
+      {templateSelectorOpen && (
+        <TemplateSelectorModal
+          onClose={() => setTemplateSelectorOpen(false)}
+          onUseTemplate={handleUseTemplate}
         />
       )}
     </>

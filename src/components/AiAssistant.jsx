@@ -8,6 +8,15 @@ import PlanCard from './orchestration/PlanCard'
 import PlanReviewPanel from './orchestration/PlanReviewPanel'
 import PlanFallbackCard from './orchestration/PlanFallbackCard'
 import { useData } from '../context/DataContext'
+import { supabase } from '../lib/supabase'
+import {
+  createTaskFromPlan,
+  updateTaskPlan,
+  markTaskApproved,
+  markTaskDone,
+  markTaskCancelled,
+  markTaskError,
+} from '../lib/planTaskSync'
 
 const WELCOME_MESSAGE = {
   role: 'assistant',
@@ -33,6 +42,21 @@ export default function AiAssistant({ open, onClose }) {
   const listRef = useRef(null)
   // Tracks the currently running session and which message index it writes to.
   const sessionRef = useRef(null)
+  // Per-message-index promise that resolves to the synced board task ID.
+  // Holding a promise (not the ID) avoids races when the user approves or
+  // cancels before the create-task call has resolved.
+  const boardTaskRef = useRef(new Map())
+
+  // Wait for the board-sync task to finish being created, then run a callback
+  // with its ID. Returns silently when there is no synced task (e.g. Supabase
+  // is not configured, or the message never reached `plan.proposed`).
+  const withBoardTaskId = useCallback(async (messageIdx, fn) => {
+    const promise = boardTaskRef.current.get(messageIdx)
+    if (!promise) return
+    const id = await promise
+    if (!id) return
+    await fn(id)
+  }, [])
 
   // Focus the input when the panel opens
   useEffect(() => {
@@ -101,7 +125,9 @@ export default function AiAssistant({ open, onClose }) {
   // Generic event dispatcher bound to a specific message slot. Returns an
   // unsubscribe-friendly handler that closes itself when a terminal event
   // arrives (done / error / cancelled).
-  const subscribeSession = useCallback((session, messageIdx) => {
+  // `originalTask` is passed explicitly because the closure captures the
+  // initial render's `messages`, which never has the new message in it.
+  const subscribeSession = useCallback((session, messageIdx, originalTask = '') => {
     const unsubscribe = session.subscribe((event) => {
       switch (event.type) {
         case 'router.classified':
@@ -168,7 +194,7 @@ export default function AiAssistant({ open, onClose }) {
         case 'plan.analyzing_requirements':
           patchMessageAt(messageIdx, { planStatus: 'analyzing' })
           break
-        case 'plan.proposed':
+        case 'plan.proposed': {
           patchMessageAt(messageIdx, (msg) => ({
             ...msg,
             plan: event.plan,
@@ -177,10 +203,26 @@ export default function AiAssistant({ open, onClose }) {
             refineError: null,
             stepAnswers: seedStepAnswers(event.plan, msg.stepAnswers),
           }))
+          // Mirror to the Kanban board. First proposal: insert a new task in
+          // the "todo" column. Subsequent re-proposals (refinements) update
+          // the existing task's plan field instead of creating a duplicate.
+          const existing = boardTaskRef.current.get(messageIdx)
+          if (existing) {
+            existing.then((id) => {
+              if (id) updateTaskPlan(supabase, id, event.plan)
+            })
+          } else {
+            const promise = createTaskFromPlan(supabase, {
+              plan: event.plan,
+              originalTask,
+            }).then((task) => task?.id ?? null)
+            boardTaskRef.current.set(messageIdx, promise)
+          }
           setIsStreaming(false)
           sessionRef.current = null
           unsubscribe()
           break
+        }
         case 'plan.fallback':
           patchMessageAt(messageIdx, (msg) => ({
             ...msg,
@@ -369,6 +411,7 @@ export default function AiAssistant({ open, onClose }) {
               tokens_out: event.total_tokens_out,
             },
           }))
+          withBoardTaskId(messageIdx, (id) => markTaskDone(supabase, id))
           setIsStreaming(false)
           sessionRef.current = null
           unsubscribe()
@@ -398,6 +441,9 @@ export default function AiAssistant({ open, onClose }) {
               failedStepId: event.failed_step_id,
             }
           })
+          withBoardTaskId(messageIdx, (id) =>
+            markTaskError(supabase, id, event.error),
+          )
           setIsStreaming(false)
           sessionRef.current = null
           unsubscribe()
@@ -476,7 +522,7 @@ export default function AiAssistant({ open, onClose }) {
       selectedAgentId,
     })
     sessionRef.current = { session, messageIdx: assistantIdx }
-    subscribeSession(session, assistantIdx)
+    subscribeSession(session, assistantIdx, text)
   }
 
   const handleRefinePlan = (messageIdx, instructions) => {
@@ -503,7 +549,7 @@ export default function AiAssistant({ open, onClose }) {
       },
     })
     sessionRef.current = { session, messageIdx }
-    subscribeSession(session, messageIdx)
+    subscribeSession(session, messageIdx, target.originalTask || '')
   }
 
   const handleApprovePlan = (messageIdx) => {
@@ -546,7 +592,10 @@ export default function AiAssistant({ open, onClose }) {
       stepAnswers: target.stepAnswers || {},
     })
     sessionRef.current = { session, messageIdx }
-    subscribeSession(session, messageIdx)
+    subscribeSession(session, messageIdx, target.originalTask || '')
+    // Mirror "user approved" onto the synced board task — moves it from
+    // To Do into the In Progress column.
+    withBoardTaskId(messageIdx, (id) => markTaskApproved(supabase, id))
   }
 
   const handleAnswerChange = (messageIdx, stepId, key, value) => {
@@ -586,15 +635,19 @@ export default function AiAssistant({ open, onClose }) {
 
   const handleCancelPlan = (messageIdx) => {
     const target = messages[messageIdx]
-    if (target?.planStatus === 'executing') {
+    const wasExecuting = target?.planStatus === 'executing'
+    if (wasExecuting) {
       sessionRef.current?.session?.cancel('user')
     }
     patchMessageAt(messageIdx, { planStatus: 'cancelled' })
+    const reason = wasExecuting ? 'Stopped by user during run' : 'Cancelled by user'
+    withBoardTaskId(messageIdx, (id) => markTaskCancelled(supabase, id, reason))
   }
 
   const handleClear = () => {
     sessionRef.current?.session?.cancel('clear')
     sessionRef.current = null
+    boardTaskRef.current.clear()
     setIsStreaming(false)
     setMessages(INITIAL_MESSAGES)
   }

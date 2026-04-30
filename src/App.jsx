@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import { Routes, Route } from 'react-router'
 import Sidebar from './components/Sidebar'
 import Header from './components/Header'
@@ -15,10 +15,13 @@ import LoginPage from './components/LoginPage'
 import BoardPage from './components/BoardPage'
 import SkillsPage from './components/SkillsPage'
 import SkillDetailPage from './components/SkillDetailPage'
+import TemplatesPage from './components/TemplatesPage'
 import RequireAuth from './components/RequireAuth'
 import StackButton from './components/StackButton'
 import { StackProvider } from './context/StackContext'
 import { useData } from './context/DataContext'
+
+const MobileApp = lazy(() => import('./MobileApp'))
 
 function AgentListPage() {
   const { agents, loading, error } = useData()
@@ -186,6 +189,7 @@ function ProtectedShell() {
             <Route path="/board" element={<BoardPage />} />
             <Route path="/skills" element={<SkillsPage />} />
             <Route path="/skills/:slug" element={<SkillDetailPage />} />
+            <Route path="/templates" element={<TemplatesPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Routes>
         </main>
@@ -195,10 +199,26 @@ function ProtectedShell() {
   )
 }
 
+function MobileFallback() {
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-bg-primary">
+      <div className="text-text-muted">Loading...</div>
+    </div>
+  )
+}
+
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/mobile/*"
+        element={
+          <Suspense fallback={<MobileFallback />}>
+            <MobileApp />
+          </Suspense>
+        }
+      />
       <Route
         path="/*"
         element={

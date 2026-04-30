@@ -88,11 +88,47 @@ create table if not exists runs (
 create index if not exists idx_runs_status on runs(status);
 create index if not exists idx_runs_created_at on runs(created_at desc);
 
+-- Task templates (reusable Kanban-board ticket blueprints). A template
+-- snapshots a ticket's title, description, and the full execution plan
+-- so the planner cost is paid once and the resulting plan can be
+-- instantiated as new tickets. See PRD #246 / issue #247.
+create table if not exists task_templates (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  description text,
+  task_title text not null,
+  task_description text,
+  plan jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_task_templates_created_at
+  on task_templates (created_at desc);
+
+-- Web Push subscriptions for the mobile shell at /mobile. Owned by the
+-- push-subscribe / push-unsubscribe Edge Functions. RLS scopes every
+-- operation to the row's owner.
+create table if not exists push_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  endpoint text not null,
+  p256dh text not null,
+  auth text not null,
+  created_at timestamptz not null default now(),
+  unique (user_id, endpoint)
+);
+
+create index if not exists idx_push_subscriptions_user_id
+  on push_subscriptions (user_id);
+
 -- Enable Row Level Security (for future auth)
 alter table agents enable row level security;
 alter table teams enable row level security;
 alter table tools enable row level security;
 alter table runs enable row level security;
+alter table task_templates enable row level security;
+alter table push_subscriptions enable row level security;
 
 -- For now, allow public read access (no auth yet)
 create policy "Public read access for agents" on agents
@@ -124,3 +160,27 @@ create policy "Public read access for runs" on runs
 
 create policy "Public insert access for runs" on runs
   for insert with check (true);
+
+create policy "Public read access for task_templates" on task_templates
+  for select using (true);
+
+create policy "Public insert access for task_templates" on task_templates
+  for insert with check (true);
+
+create policy "Public update access for task_templates" on task_templates
+  for update using (true) with check (true);
+
+create policy "Public delete access for task_templates" on task_templates
+  for delete using (true);
+
+-- Push subscription policies: a row belongs to its user_id. The Edge
+-- Functions never touch other users' rows, so we don't expose any update or
+-- service-role policy here.
+create policy "Users can read own push_subscriptions" on push_subscriptions
+  for select using (auth.uid() = user_id);
+
+create policy "Users can insert own push_subscriptions" on push_subscriptions
+  for insert with check (auth.uid() = user_id);
+
+create policy "Users can delete own push_subscriptions" on push_subscriptions
+  for delete using (auth.uid() = user_id);

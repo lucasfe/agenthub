@@ -1,4 +1,4 @@
-import { defineConfig } from '@playwright/test'
+import { defineConfig, devices } from '@playwright/test'
 
 const isPreview = !!process.env.PLAYWRIGHT_BASE_URL
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5173'
@@ -25,6 +25,21 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { browserName: 'chromium' },
+      // Desktop suite owns the top-level e2e/*.spec.js files; mobile specs
+      // live under e2e/mobile/ and must run only in the iPhone-sized project.
+      testIgnore: '**/mobile/**',
+    },
+    {
+      name: 'mobile',
+      // iPhone 13 device descriptor: 390x844 viewport, mobile Safari UA,
+      // isMobile + hasTouch. We override browserName to chromium because CI
+      // installs only the chromium browser; the viewport + UA + touch are what
+      // actually gate the mobile UI in the app.
+      use: {
+        ...devices['iPhone 13'],
+        browserName: 'chromium',
+      },
+      testMatch: '**/mobile/**/*.spec.js',
     },
   ],
   // Only start local dev server when not testing against a preview URL

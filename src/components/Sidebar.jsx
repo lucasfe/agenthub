@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bot, Users, Columns3, LogIn, LogOut, Settings, ChevronsLeft, ChevronsRight, Wand2 } from 'lucide-react'
+import { Bot, Users, Columns3, LogIn, LogOut, Settings, ChevronsLeft, ChevronsRight, Wand2, LayoutTemplate } from 'lucide-react'
 import { Link, useLocation } from 'react-router'
 import { useData } from '../context/DataContext'
 import { useAuth } from '../context/AuthContext'
@@ -12,6 +12,7 @@ export default function Sidebar() {
 
   const browseItems = [
     { icon: Columns3, label: 'Board', path: '/board' },
+    { icon: LayoutTemplate, label: 'Templates', path: '/templates' },
     { icon: Bot, label: 'Agents', count: agents.length, path: '/' },
     { icon: Users, label: 'Teams', count: teams.length, path: '/teams' },
     { icon: Wand2, label: 'Skills', path: '/skills' },

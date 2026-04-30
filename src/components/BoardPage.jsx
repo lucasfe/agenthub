@@ -416,7 +416,7 @@ function TaskDetailPanel({ task, agents, tools, onUpdate, onDelete, onClose }) {
           {task.status === 'awaiting_approval' && (
             <button
               onClick={() => orch.approve(stepAnswers)}
-              disabled={missingRequired > 0}
+              disabled={missingRequired > 0 || missingAgents.length > 0}
               className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium text-white bg-blue-500 hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Play size={12} />

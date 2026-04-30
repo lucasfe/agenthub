@@ -324,16 +324,16 @@ export async function defaultEncryptPayload(
 
   const cekKey = await crypto.subtle.importKey(
     'raw',
-    cek,
+    bs(cek),
     { name: 'AES-GCM' },
     false,
     ['encrypt'],
   )
   const ciphertext = new Uint8Array(
     await crypto.subtle.encrypt(
-      { name: 'AES-GCM', iv: nonce },
+      { name: 'AES-GCM', iv: bs(nonce) },
       cekKey,
-      padded,
+      bs(padded),
     ),
   )
 

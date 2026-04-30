@@ -9,6 +9,7 @@ import { initCommand, InitAbort } from '../lib/commands/init.js'
 import { doctorCommand, DoctorAbort } from '../lib/commands/doctor.js'
 import { cycleCommand, CycleAbort } from '../lib/commands/cycle.js'
 import {
+  scheduleHeartbeatCommand,
   scheduleInstallCommand,
   schedulePauseCommand,
   scheduleResumeCommand,

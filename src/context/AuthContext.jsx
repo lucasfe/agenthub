@@ -71,13 +71,14 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (opts = {}) => {
     if (!supabase) throw new Error('Supabase not configured')
     setError(null)
+    const path = opts.redirectTo ?? '/'
     const { error: err } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/`,
+        redirectTo: `${window.location.origin}${path}`,
       },
     })
     if (err) throw err

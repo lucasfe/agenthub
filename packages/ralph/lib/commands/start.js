@@ -12,6 +12,7 @@ import { detectPlatform } from '../platform.js'
 import { readState, writeState } from '../state.js'
 import { checkForUpdate } from '../update-check.js'
 import { sendWhatsappMessage } from '../utils/whatsapp.js'
+import { peekLock as defaultPeekLock } from '../lock.js'
 
 const TMUX_SESSION = 'ralph'
 const SEARCH_QUERY =

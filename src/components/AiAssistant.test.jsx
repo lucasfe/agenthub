@@ -898,13 +898,13 @@ describe('AiAssistant', () => {
       await user.click(screen.getByLabelText('Send message'))
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /cancel plan/i })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /^cancel$/i })).toBeInTheDocument()
       })
       await waitFor(() => {
         expect(planTaskSyncMock.createTaskFromPlan).toHaveBeenCalled()
       })
 
-      await user.click(screen.getByRole('button', { name: /cancel plan/i }))
+      await user.click(screen.getByRole('button', { name: /^cancel$/i }))
 
       await waitFor(() => {
         expect(planTaskSyncMock.markTaskCancelled).toHaveBeenCalledWith(

@@ -555,3 +555,75 @@ describe('BoardPage From template action', () => {
     expect(supabaseHolder.inserts.length).toBe(0)
   })
 })
+
+describe('BoardPage missing-agent and missing-tool warnings', () => {
+  function makeTaskWithTools(overrides = {}) {
+    return makeTask({
+      status: 'awaiting_approval',
+      plan: {
+        steps: [
+          {
+            id: 's1',
+            agent_id: 'frontend-developer',
+            agent_name: 'Frontend Developer',
+            agent_color: 'blue',
+            agent_icon: 'Monitor',
+            task: 'Implement the UI',
+            tools_used: ['create_github_issue'],
+          },
+        ],
+      },
+      ...overrides,
+    })
+  }
+
+  it('renders a banner listing missing agent_ids when the plan references an unknown agent', async () => {
+    // Agents catalog is empty, so frontend-developer is missing.
+    await openTaskDetail(makeTask({ status: 'awaiting_approval' }))
+
+    expect(await screen.findByText(/missing agent/i)).toBeInTheDocument()
+    expect(screen.getByText(/frontend-developer/)).toBeInTheDocument()
+  })
+
+  it('does not render the missing-agent banner when every agent in the plan resolves', async () => {
+    fetchAgents.mockResolvedValueOnce([
+      { id: 'frontend-developer', name: 'Frontend Developer' },
+    ])
+
+    await openTaskDetail(makeTask({ status: 'awaiting_approval' }))
+    await screen.findByRole('button', { name: /approve & run/i })
+
+    expect(screen.queryByText(/missing agent/i)).not.toBeInTheDocument()
+  })
+
+  it('disables Approve & run while any step references a missing agent_id', async () => {
+    await openTaskDetail(makeTask({ status: 'awaiting_approval' }))
+
+    const approve = await screen.findByRole('button', { name: /approve & run/i })
+    expect(approve).toBeDisabled()
+  })
+
+  it('keeps Approve & run enabled when only a tool is missing from the catalog', async () => {
+    fetchAgents.mockResolvedValueOnce([
+      { id: 'frontend-developer', name: 'Frontend Developer' },
+    ])
+    fetchTools.mockResolvedValueOnce([])
+
+    await openTaskDetail(makeTaskWithTools())
+
+    const approve = await screen.findByRole('button', { name: /approve & run/i })
+    expect(approve).toBeEnabled()
+  })
+
+  it('renders a softer, separate warning listing missing tool ids', async () => {
+    fetchAgents.mockResolvedValueOnce([
+      { id: 'frontend-developer', name: 'Frontend Developer' },
+    ])
+    fetchTools.mockResolvedValueOnce([])
+
+    await openTaskDetail(makeTaskWithTools())
+
+    expect(await screen.findByText(/missing tool/i)).toBeInTheDocument()
+    expect(screen.getByText(/create_github_issue/)).toBeInTheDocument()
+  })
+})

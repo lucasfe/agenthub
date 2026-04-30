@@ -624,6 +624,8 @@ describe('BoardPage missing-agent and missing-tool warnings', () => {
     await openTaskDetail(makeTaskWithTools())
 
     expect(await screen.findByText(/missing tool/i)).toBeInTheDocument()
-    expect(screen.getByText(/create_github_issue/)).toBeInTheDocument()
+    // "create_github_issue" appears in the per-step tool chip too, so just
+    // assert the warning region adds (at least) one more occurrence.
+    expect(screen.getAllByText(/create_github_issue/).length).toBeGreaterThanOrEqual(2)
   })
 })

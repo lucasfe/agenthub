@@ -186,6 +186,14 @@ export async function cycleCommand({
       }
     }
 
+    emitEvent({
+      status,
+      ok: successes.length,
+      failed: failures.length,
+      durationMin,
+      processed: successes.length + failures.length,
+    })
+
     return {
       exitCode: 0,
       status,

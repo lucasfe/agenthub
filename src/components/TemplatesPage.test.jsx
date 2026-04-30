@@ -11,6 +11,8 @@ vi.mock('../lib/api', () => ({
   trackAgentUsage: vi.fn().mockResolvedValue(null),
 }))
 
+import { fetchAgents } from '../lib/api'
+
 vi.mock('../lib/templatesApi', () => ({
   fetchTemplates: vi.fn(),
   insertTemplate: vi.fn(),

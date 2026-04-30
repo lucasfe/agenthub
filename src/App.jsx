@@ -197,10 +197,26 @@ function ProtectedShell() {
   )
 }
 
+function MobileFallback() {
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-bg-primary">
+      <div className="text-text-muted">Loading...</div>
+    </div>
+  )
+}
+
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/mobile/*"
+        element={
+          <Suspense fallback={<MobileFallback />}>
+            <MobileApp />
+          </Suspense>
+        }
+      />
       <Route
         path="/*"
         element={

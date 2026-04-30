@@ -622,6 +622,7 @@ export default function BoardPage() {
               onDragStart={setDraggingId}
               onDrop={handleDrop}
               onClickTask={setSelectedTaskId}
+              onOpenTemplateSelector={() => setTemplateSelectorOpen(true)}
             />
           ))}
         </div>

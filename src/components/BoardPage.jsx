@@ -446,7 +446,7 @@ function TaskDetailPanel({ task, agents, tools, onUpdate, onDelete, onClose }) {
 
 // ─── Column ───────────────────────────────────────────────────────────────
 
-function Column({ column, tasks, onAddTask, onDeleteTask, onDragStart, onDrop, onClickTask }) {
+function Column({ column, tasks, onAddTask, onDeleteTask, onDragStart, onDrop, onClickTask, onOpenTemplateSelector }) {
   const [showForm, setShowForm] = useState(false)
   const [dragOver, setDragOver] = useState(false)
 

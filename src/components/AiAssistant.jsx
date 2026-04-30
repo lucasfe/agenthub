@@ -8,6 +8,15 @@ import PlanCard from './orchestration/PlanCard'
 import PlanReviewPanel from './orchestration/PlanReviewPanel'
 import PlanFallbackCard from './orchestration/PlanFallbackCard'
 import { useData } from '../context/DataContext'
+import { supabase } from '../lib/supabase'
+import {
+  createTaskFromPlan,
+  updateTaskPlan,
+  markTaskApproved,
+  markTaskDone,
+  markTaskCancelled,
+  markTaskError,
+} from '../lib/planTaskSync'
 
 const WELCOME_MESSAGE = {
   role: 'assistant',

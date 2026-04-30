@@ -9,7 +9,7 @@ import { supabase } from '../lib/supabase'
 import { useData } from '../context/DataContext'
 import { useTaskOrchestration } from '../lib/taskOrchestration'
 import { insertTemplate } from '../lib/templatesApi'
-import { cloneTemplateToTask } from '../lib/templates'
+import { cloneTemplateToTask, findMissingAgents, findMissingTools } from '../lib/templates'
 import SaveAsTemplateModal from './SaveAsTemplateModal'
 import TemplateSelectorModal from './TemplateSelectorModal'
 import {

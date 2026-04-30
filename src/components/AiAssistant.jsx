@@ -592,7 +592,10 @@ export default function AiAssistant({ open, onClose }) {
       stepAnswers: target.stepAnswers || {},
     })
     sessionRef.current = { session, messageIdx }
-    subscribeSession(session, messageIdx)
+    subscribeSession(session, messageIdx, target.originalTask || '')
+    // Mirror "user approved" onto the synced board task — moves it from
+    // To Do into the In Progress column.
+    withBoardTaskId(messageIdx, (id) => markTaskApproved(supabase, id))
   }
 
   const handleAnswerChange = (messageIdx, stepId, key, value) => {

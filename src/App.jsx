@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import { Routes, Route } from 'react-router'
 import Sidebar from './components/Sidebar'
 import Header from './components/Header'

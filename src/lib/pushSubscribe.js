@@ -24,6 +24,10 @@ export async function subscribe({
 } = {}) {
   if (!isSupported()) return { subscribed: false, reason: 'not-supported' }
 
+  if (!vapidPublicKey || typeof vapidPublicKey !== 'string' || !vapidPublicKey.trim()) {
+    return { subscribed: false, reason: 'no-vapid-key' }
+  }
+
   const registration = await getRegistration()
   if (!registration) return { subscribed: false, reason: 'no-sw' }
 
@@ -36,8 +40,11 @@ export async function subscribe({
       userVisibleOnly: true,
       applicationServerKey: toApplicationServerKey(vapidPublicKey),
     })
-  } catch {
-    return { subscribed: false, reason: 'permission-denied' }
+  } catch (err) {
+    if (err?.name === 'NotAllowedError') {
+      return { subscribed: false, reason: 'permission-denied' }
+    }
+    return { subscribed: false, reason: 'subscribe-failed', error: err?.message || String(err) }
   }
 
   const posted = await postSubscription({

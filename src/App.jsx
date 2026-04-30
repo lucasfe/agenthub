@@ -20,6 +20,8 @@ import StackButton from './components/StackButton'
 import { StackProvider } from './context/StackContext'
 import { useData } from './context/DataContext'
 
+const MobileApp = lazy(() => import('./MobileApp'))
+
 function AgentListPage() {
   const { agents, loading, error } = useData()
   const [searchQuery, setSearchQuery] = useState('')

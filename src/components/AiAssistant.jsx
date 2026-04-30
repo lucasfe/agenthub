@@ -635,15 +635,19 @@ export default function AiAssistant({ open, onClose }) {
 
   const handleCancelPlan = (messageIdx) => {
     const target = messages[messageIdx]
-    if (target?.planStatus === 'executing') {
+    const wasExecuting = target?.planStatus === 'executing'
+    if (wasExecuting) {
       sessionRef.current?.session?.cancel('user')
     }
     patchMessageAt(messageIdx, { planStatus: 'cancelled' })
+    const reason = wasExecuting ? 'Stopped by user during run' : 'Cancelled by user'
+    withBoardTaskId(messageIdx, (id) => markTaskCancelled(supabase, id, reason))
   }
 
   const handleClear = () => {
     sessionRef.current?.session?.cancel('clear')
     sessionRef.current = null
+    boardTaskRef.current.clear()
     setIsStreaming(false)
     setMessages(INITIAL_MESSAGES)
   }

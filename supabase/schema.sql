@@ -141,3 +141,15 @@ create policy "Public read access for runs" on runs
 
 create policy "Public insert access for runs" on runs
   for insert with check (true);
+
+-- Push subscription policies: a row belongs to its user_id. The Edge
+-- Functions never touch other users' rows, so we don't expose any update or
+-- service-role policy here.
+create policy "Users can read own push_subscriptions" on push_subscriptions
+  for select using (auth.uid() = user_id);
+
+create policy "Users can insert own push_subscriptions" on push_subscriptions
+  for insert with check (auth.uid() = user_id);
+
+create policy "Users can delete own push_subscriptions" on push_subscriptions
+  for delete using (auth.uid() = user_id);

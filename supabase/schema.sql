@@ -161,6 +161,18 @@ create policy "Public read access for runs" on runs
 create policy "Public insert access for runs" on runs
   for insert with check (true);
 
+create policy "Public read access for task_templates" on task_templates
+  for select using (true);
+
+create policy "Public insert access for task_templates" on task_templates
+  for insert with check (true);
+
+create policy "Public update access for task_templates" on task_templates
+  for update using (true) with check (true);
+
+create policy "Public delete access for task_templates" on task_templates
+  for delete using (true);
+
 -- Push subscription policies: a row belongs to its user_id. The Edge
 -- Functions never touch other users' rows, so we don't expose any update or
 -- service-role policy here.

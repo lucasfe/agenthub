@@ -8,13 +8,15 @@ function describePlan(plan) {
   return `${count} ${count === 1 ? 'step' : 'steps'}`
 }
 
-export default function TemplateCard({ template }) {
+export default function TemplateCard({ template, onClick }) {
   const planLabel = describePlan(template.plan)
 
   return (
-    <article
+    <button
+      type="button"
+      onClick={onClick}
       aria-label={template.name}
-      className="group relative p-5 bg-bg-card border border-border-subtle rounded-2xl card-glow transition-all duration-200 flex flex-col"
+      className="group relative p-5 bg-bg-card border border-border-subtle rounded-2xl card-glow transition-all duration-200 flex flex-col text-left w-full hover:border-border-hover focus:outline-none focus:border-border-hover"
     >
       <div className="flex items-start justify-between mb-3">
         <div className="card-icon w-11 h-11 rounded-xl bg-gradient-to-br from-purple-500/15 to-purple-600/5 flex items-center justify-center">
@@ -35,6 +37,6 @@ export default function TemplateCard({ template }) {
       <div className="mt-auto pt-3 border-t border-border-subtle/50 flex items-center justify-between text-xs text-text-muted">
         <span>{planLabel}</span>
       </div>
-    </article>
+    </button>
   )
 }

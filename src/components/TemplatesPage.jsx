@@ -3,13 +3,20 @@ import { LayoutTemplate, Plus } from 'lucide-react'
 import Header from './Header'
 import TemplateCard from './TemplateCard'
 import CreateTemplateModal from './CreateTemplateModal'
-import { fetchTemplates, insertTemplate } from '../lib/templatesApi'
+import TemplateEditDrawer from './TemplateEditDrawer'
+import {
+  fetchTemplates,
+  insertTemplate,
+  updateTemplate,
+  deleteTemplate,
+} from '../lib/templatesApi'
 
 export default function TemplatesPage() {
   const [templates, setTemplates] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [createOpen, setCreateOpen] = useState(false)
+  const [selectedId, setSelectedId] = useState(null)
 
   useEffect(() => {
     let cancelled = false
@@ -34,6 +41,24 @@ export default function TemplatesPage() {
     const inserted = await insertTemplate(payload)
     if (inserted) setTemplates((prev) => [...prev, inserted])
   }
+
+  const handleSave = async (id, updates) => {
+    const updated = await updateTemplate(id, updates)
+    if (updated) {
+      setTemplates((prev) => prev.map((tpl) => (tpl.id === id ? updated : tpl)))
+    } else {
+      setTemplates((prev) =>
+        prev.map((tpl) => (tpl.id === id ? { ...tpl, ...updates } : tpl)),
+      )
+    }
+  }
+
+  const handleDelete = async (id) => {
+    await deleteTemplate(id)
+    setTemplates((prev) => prev.filter((tpl) => tpl.id !== id))
+  }
+
+  const selected = templates.find((tpl) => tpl.id === selectedId) || null
 
   return (
     <>
@@ -80,7 +105,11 @@ export default function TemplatesPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {templates.map((template) => (
-              <TemplateCard key={template.id} template={template} />
+              <TemplateCard
+                key={template.id}
+                template={template}
+                onClick={() => setSelectedId(template.id)}
+              />
             ))}
           </div>
         )}
@@ -90,6 +119,16 @@ export default function TemplatesPage() {
         <CreateTemplateModal
           onClose={() => setCreateOpen(false)}
           onCreate={handleCreate}
+        />
+      )}
+
+      {selected && (
+        <TemplateEditDrawer
+          key={selected.id}
+          template={selected}
+          onClose={() => setSelectedId(null)}
+          onSave={(updates) => handleSave(selected.id, updates)}
+          onDelete={() => handleDelete(selected.id)}
         />
       )}
     </>

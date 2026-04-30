@@ -180,6 +180,7 @@ export default function MobileChat() {
       }
     })
     return unsubscribe
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const buildOutgoing = (allMessages) =>

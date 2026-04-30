@@ -181,6 +181,23 @@ schedule
     }
   })
 
+schedule
+  .command('heartbeat')
+  .description(
+    'Internal: aggregate the last 24h of cycle logs and send the daily summary via WhatsApp',
+  )
+  .action(async () => {
+    try {
+      const result = await scheduleHeartbeatCommand()
+      process.exit(result.exitCode ?? 0)
+    } catch (e) {
+      if (e instanceof ScheduleAbort) {
+        process.exit(e.exitCode ?? 1)
+      }
+      throw e
+    }
+  })
+
 program
   .command('doctor')
   .description('Check required system deps and print install commands for missing ones')

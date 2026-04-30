@@ -18,7 +18,9 @@ export function useTaskOrchestration({ task, agents, tools, onTaskUpdate }) {
   const [runSummary, setRunSummary] = useState(null)
   const [runError, setRunError] = useState(null)
   const [failedStepId, setFailedStepId] = useState(null)
+  const [replanInFlight, setReplanInFlight] = useState(false)
   const abortRef = useRef(null)
+  const replanAbortRef = useRef(null)
 
   const taskId = task?.id
   const patch = useCallback(

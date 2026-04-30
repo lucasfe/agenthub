@@ -89,6 +89,14 @@ export async function cycleCommand({
   if (!preflight.ok) {
     err(`❌ ralph cycle: pré-checagem falhou (${preflight.reason}).`)
     await notify(`🔴 ralph cycle abortado em ${repoSlug}: ${preflight.reason}`)
+    emitEvent({
+      status: 'preflight-failed',
+      ok: 0,
+      failed: 0,
+      durationMin: 0,
+      processed: 0,
+      reason: preflight.reason,
+    })
     return {
       exitCode: 1,
       status: 'preflight-failed',

@@ -4,6 +4,7 @@ import { useAuth } from './context/AuthContext'
 import { register } from './lib/serviceWorker'
 import MobileLogin from './components/mobile/MobileLogin'
 import MobileChat from './components/mobile/MobileChat'
+import MobileSettings from './components/mobile/MobileSettings'
 
 function MobileGate({ children }) {
   const { user, isAuthorized, loading } = useAuth()
@@ -21,15 +22,6 @@ function MobileGate({ children }) {
   }
 
   return children
-}
-
-function MobileSettings() {
-  return (
-    <div className="flex flex-col min-h-screen bg-bg-primary p-4">
-      <h1 className="text-xl font-bold text-text-primary">Settings</h1>
-      <p className="text-sm text-text-muted mt-2">Mobile settings coming soon.</p>
-    </div>
-  )
 }
 
 export default function MobileApp() {

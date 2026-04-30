@@ -6,6 +6,7 @@ import { startRecognition } from '../../lib/voice'
 import MobileAgentPicker from './MobileAgentPicker'
 import MobileApprovalCard from './MobileApprovalCard'
 import MobilePlanCard from './MobilePlanCard'
+import MobilePushOptIn from './MobilePushOptIn'
 
 const INITIAL_MESSAGES = []
 
@@ -344,6 +345,8 @@ export default function MobileChat() {
           New chat
         </button>
       </header>
+
+      <MobilePushOptIn />
 
       <main ref={listRef} className="flex-1 overflow-y-auto px-4 py-6">
         {messages.length === 0 ? (

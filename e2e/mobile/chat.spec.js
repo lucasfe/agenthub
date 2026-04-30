@@ -52,7 +52,9 @@ test.describe('Mobile chat', () => {
     page,
   }) => {
     await page.goto('/mobile/chat')
-    await expect(page.getByLabel('Message')).toBeVisible({ timeout: MOBILE_TIMEOUT })
+    await expect(page.getByRole('textbox', { name: 'Message' })).toBeVisible({
+      timeout: MOBILE_TIMEOUT,
+    })
 
     await page.getByRole('button', { name: 'Select agent' }).click()
     const sheet = page.getByRole('dialog', { name: 'Pick an agent' })

@@ -175,53 +175,82 @@ describe('scheduleInstallCommand — existing plist', () => {
 })
 
 describe('scheduleInstallCommand — happy path', () => {
-  it('computes slug from repo basename and installs the launchd agent', async () => {
-    let installArgs = null
+  function trackInstalls() {
+    const calls = []
+    const installAgent = async (args) => {
+      calls.push(args)
+      const kind = args.kind ?? 'cycle'
+      const label =
+        kind === 'cycle'
+          ? `com.lucasfe.ralph.cycle.${args.slug}`
+          : `com.lucasfe.ralph.heartbeat.${args.slug}`
+      const plistPath = `${HOME}/Library/LaunchAgents/${label}.plist`
+      return { plistPath, label, kind, loadResult: { exitCode: 0 } }
+    }
+    installAgent.calls = calls
+    return installAgent
+  }
+
+  it('computes slug from repo basename and installs both cycle and heartbeat agents', async () => {
+    const installAgent = trackInstalls()
     const deps = baseDeps({
       exists: (p) => !p.endsWith('.plist'), // no existing plist
-      installAgent: async (args) => {
-        installArgs = args
-        return { plistPath: PLIST_PATH, label: LABEL, loadResult: { exitCode: 0 } }
-      },
+      installAgent,
     })
     const result = await scheduleInstallCommand(deps)
     expect(result.exitCode).toBe(0)
     expect(result.slug).toBe(SLUG)
-    expect(installArgs.slug).toBe(SLUG)
-    expect(installArgs.workingDirectory).toBe(REPO)
-    expect(installArgs.command).toBe('/usr/local/bin/ralph')
-    expect(installArgs.args).toEqual(['cycle'])
-    expect(installArgs.intervalSeconds).toBe(14400)
-    expect(installArgs.logDir).toBe(`${REPO}/logs`)
+    expect(installAgent.calls).toHaveLength(2)
+    const cycleCall = installAgent.calls.find((c) => c.kind === 'cycle')
+    const heartbeatCall = installAgent.calls.find((c) => c.kind === 'heartbeat')
+    expect(cycleCall).toBeDefined()
+    expect(cycleCall.slug).toBe(SLUG)
+    expect(cycleCall.workingDirectory).toBe(REPO)
+    expect(cycleCall.command).toBe('/usr/local/bin/ralph')
+    expect(cycleCall.args).toEqual(['cycle'])
+    expect(cycleCall.intervalSeconds).toBe(14400)
+    expect(cycleCall.logDir).toBe(`${REPO}/logs`)
+    expect(heartbeatCall).toBeDefined()
+    expect(heartbeatCall.args).toEqual(['schedule', 'heartbeat'])
+    expect(heartbeatCall.startCalendarInterval).toEqual({ hour: 9, minute: 0 })
+    expect(result.heartbeat.label).toBe(`com.lucasfe.ralph.heartbeat.${SLUG}`)
   })
 
-  it('honors a custom --interval flag', async () => {
-    let installArgs = null
+  it('honors a custom --interval flag for the cycle plist', async () => {
+    const installAgent = trackInstalls()
     const deps = baseDeps({
       exists: (p) => !p.endsWith('.plist'),
       interval: '30m',
-      installAgent: async (args) => {
-        installArgs = args
-        return { plistPath: PLIST_PATH, label: LABEL, loadResult: { exitCode: 0 } }
-      },
+      installAgent,
     })
     await scheduleInstallCommand(deps)
-    expect(installArgs.intervalSeconds).toBe(1800)
+    const cycleCall = installAgent.calls.find((c) => c.kind === 'cycle')
+    expect(cycleCall.intervalSeconds).toBe(1800)
   })
 
-  it('prints a success summary on stdout', async () => {
+  it('honors RALPH_DAILY_SUMMARY_TIME for the heartbeat plist', async () => {
+    const installAgent = trackInstalls()
     const deps = baseDeps({
       exists: (p) => !p.endsWith('.plist'),
-      installAgent: async () => ({
-        plistPath: PLIST_PATH,
-        label: LABEL,
-        loadResult: { exitCode: 0 },
-      }),
+      processEnv: { RALPH_DAILY_SUMMARY_TIME: '07:30' },
+      installAgent,
+    })
+    await scheduleInstallCommand(deps)
+    const heartbeatCall = installAgent.calls.find((c) => c.kind === 'heartbeat')
+    expect(heartbeatCall.startCalendarInterval).toEqual({ hour: 7, minute: 30 })
+  })
+
+  it('prints a success summary on stdout listing both plists', async () => {
+    const deps = baseDeps({
+      exists: (p) => !p.endsWith('.plist'),
+      installAgent: trackInstalls(),
     })
     await scheduleInstallCommand(deps)
     const output = deps.stdout.output()
     expect(output).toMatch(/installed|✅/i)
-    expect(output).toContain(LABEL)
+    expect(output).toContain(`com.lucasfe.ralph.cycle.${SLUG}`)
+    expect(output).toContain(`com.lucasfe.ralph.heartbeat.${SLUG}`)
+    expect(output).toMatch(/daily at 09:00/i)
   })
 })
 

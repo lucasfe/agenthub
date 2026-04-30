@@ -441,18 +441,23 @@ describe('BoardPage From template action', () => {
   })
 
   it('shows the read-only preview pane when a template is selected', async () => {
-    fetchTemplates.mockResolvedValueOnce([makeTemplate()])
+    fetchTemplates.mockResolvedValueOnce([
+      makeTemplate({ id: 'tpl-a', name: 'First option', task_title: 'Wrong preview' }),
+      makeTemplate({ id: 'tpl-b', name: 'Bug fix recipe' }),
+    ])
     const trigger = await waitForBoard()
     const user = userEvent.setup()
     await user.click(trigger)
 
-    await user.click(await screen.findByText('Bug fix recipe'))
+    await user.click(await screen.findByRole('button', { name: /Bug fix recipe/i }))
 
-    // Preview surfaces both ticket fields and plan step content.
-    expect(screen.getAllByText('Fix the bug').length).toBeGreaterThan(0)
+    // Preview surfaces ticket fields and plan step content.
+    expect(screen.getByText('Fix the bug')).toBeInTheDocument()
     expect(screen.getByText('Describe how to reproduce')).toBeInTheDocument()
     expect(screen.getByText('Investigate the failing component')).toBeInTheDocument()
-    // Preview must be read-only — no editable inputs.
+    // The wrong template's title must NOT leak into the preview.
+    expect(screen.queryByText('Wrong preview')).not.toBeInTheDocument()
+    // Preview must be read-only — no editable inputs anywhere on the page yet.
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
 

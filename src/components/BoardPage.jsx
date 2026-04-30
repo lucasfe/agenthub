@@ -301,6 +301,35 @@ function TaskDetailPanel({ task, agents, tools, onUpdate, onDelete, onClose }) {
             </div>
           )}
 
+          {/* Missing-reference warnings */}
+          {isExecutionPhase && plan && (missingAgents.length > 0 || missingTools.length > 0) && (
+            <div className="px-4 py-3 rounded-lg bg-amber-500/10 border border-amber-500/20 space-y-2">
+              {missingAgents.length > 0 && (
+                <div className="flex items-start gap-2">
+                  <AlertCircle size={14} className="text-amber-400 shrink-0 mt-0.5" />
+                  <div className="text-xs text-amber-200 leading-relaxed">
+                    <p className="font-medium">
+                      Missing agent{missingAgents.length === 1 ? '' : 's'}:{' '}
+                      <span className="font-mono">{missingAgents.join(', ')}</span>
+                    </p>
+                    <p className="text-amber-200/80 mt-0.5">
+                      Edit each step's agent or click Re-plan to refresh the plan against the current catalog.
+                    </p>
+                  </div>
+                </div>
+              )}
+              {missingTools.length > 0 && (
+                <div className="flex items-start gap-2 text-[11px] text-amber-200/80">
+                  <span className="shrink-0 mt-0.5">·</span>
+                  <p>
+                    Missing tool{missingTools.length === 1 ? '' : 's'} (run will continue without):{' '}
+                    <span className="font-mono">{missingTools.join(', ')}</span>
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Plan section */}
           {isExecutionPhase && plan && (
             <div>

@@ -484,4 +484,42 @@ describe('TemplatesPage', () => {
       expect(await screen.findByRole('button', { name: /^delete template$/i })).toBeInTheDocument()
     })
   })
+
+  describe('Missing-agent pill on template cards', () => {
+    const templateWithMissingAgent = {
+      id: 'tpl-broken',
+      name: 'Broken template',
+      description: 'Plan refs a missing agent',
+      task_title: 'Do work',
+      task_description: '',
+      plan: {
+        steps: [
+          { id: 1, agent_id: 'ghost-agent', agent_name: 'Ghost', task: 'A' },
+          { id: 2, agent_id: 'frontend-developer', agent_name: 'Frontend Dev', task: 'B' },
+        ],
+      },
+    }
+
+    it('renders a "needs attention" pill when a template plan references a missing agent', async () => {
+      fetchAgents.mockResolvedValueOnce([
+        { id: 'frontend-developer', name: 'Frontend Developer' },
+      ])
+      fetchTemplates.mockResolvedValue([templateWithMissingAgent])
+      renderWithProviders(<TemplatesPage />)
+
+      expect(await screen.findByText(/needs? attention/i)).toBeInTheDocument()
+    })
+
+    it('does not render the pill when every agent referenced by the plan resolves', async () => {
+      fetchAgents.mockResolvedValueOnce([
+        { id: 'frontend-developer', name: 'Frontend Developer' },
+        { id: 'ghost-agent', name: 'Ghost' },
+      ])
+      fetchTemplates.mockResolvedValue([templateWithMissingAgent])
+      renderWithProviders(<TemplatesPage />)
+
+      await screen.findByText('Broken template')
+      expect(screen.queryByText(/needs? attention/i)).not.toBeInTheDocument()
+    })
+  })
 })

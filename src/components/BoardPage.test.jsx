@@ -50,25 +50,37 @@ vi.mock('../lib/templatesApi', () => ({
 }))
 
 // In-memory mock of the supabase tasks table. Tests can seed it via
-// `setMockTasks([...])` before rendering.
+// `setMockTasks([...])` before rendering. `inserts` accumulates every row
+// passed to `.insert()` so new tests can assert what was written.
 const supabaseHolder = vi.hoisted(() => ({
   tasks: [],
+  inserts: [],
   set(tasks) {
     this.tasks = tasks
+    this.inserts = []
   },
 }))
 
 vi.mock('../lib/supabase', () => {
   const makeQuery = () => {
-    const result = { data: supabaseHolder.tasks, error: null }
+    let pendingInsert = null
     const chain = {
       select: vi.fn(() => chain),
-      order: vi.fn(() => Promise.resolve(result)),
-      insert: vi.fn(() => chain),
+      order: vi.fn(() => Promise.resolve({ data: supabaseHolder.tasks, error: null })),
+      insert: vi.fn((row) => {
+        pendingInsert = row
+        supabaseHolder.inserts.push(row)
+        return chain
+      }),
       update: vi.fn(() => chain),
       delete: vi.fn(() => chain),
       eq: vi.fn(() => Promise.resolve({ error: null })),
-      single: vi.fn(() => Promise.resolve({ data: supabaseHolder.tasks[0] || null, error: null })),
+      single: vi.fn(() => {
+        const data = pendingInsert
+          ? { id: `task-new-${supabaseHolder.inserts.length}`, ...pendingInsert }
+          : (supabaseHolder.tasks[0] || null)
+        return Promise.resolve({ data, error: null })
+      }),
     }
     return chain
   }

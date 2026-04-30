@@ -1,21 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { X, Loader2 } from 'lucide-react'
-
-function deepCopy(value) {
-  if (value == null) return value
-  if (typeof structuredClone === 'function') return structuredClone(value)
-  return JSON.parse(JSON.stringify(value))
-}
-
-function buildSnapshot(task, name, description) {
-  return {
-    name: name.trim(),
-    description: description.trim() ? description.trim() : null,
-    task_title: task.title ?? '',
-    task_description: task.description ?? '',
-    plan: task.plan == null ? null : deepCopy(task.plan),
-  }
-}
+import { buildTemplateSnapshot } from '../lib/templates'
 
 export default function SaveAsTemplateModal({ task, onClose, onSave }) {
   const [name, setName] = useState(task.title ?? '')

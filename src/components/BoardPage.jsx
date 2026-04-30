@@ -242,6 +242,8 @@ function TaskDetailPanel({ task, agents, tools, onUpdate, onDelete, onClose }) {
   const isExecutionPhase = ['planning', 'awaiting_approval', 'executing', 'done', 'error', 'cancelled'].includes(task.status)
   const plan = task.plan
   const missingRequired = plan ? countMissingRequired(plan, stepAnswers) : 0
+  const missingAgents = plan ? findMissingAgents(plan, agents) : []
+  const missingTools = plan ? findMissingTools(plan, tools) : []
   const downloadableSteps = plan ? collectDownloadableSteps(plan, orch.stepStates) : []
   const badge = STATUS_BADGES[task.status]
 

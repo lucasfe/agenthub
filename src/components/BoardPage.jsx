@@ -182,6 +182,7 @@ function TaskDetailPanel({ task, agents, tools, onUpdate, onDelete, onClose }) {
   const [description, setDescription] = useState(task.description)
   const [statusOpen, setStatusOpen] = useState(false)
   const [stepAnswers, setStepAnswers] = useState({})
+  const [saveTemplateOpen, setSaveTemplateOpen] = useState(false)
   const statusRef = useRef(null)
 
   const orch = useTaskOrchestration({ task, agents, tools, onTaskUpdate: onUpdate })

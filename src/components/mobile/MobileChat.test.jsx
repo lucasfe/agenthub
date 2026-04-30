@@ -171,16 +171,6 @@ describe('MobileChat', () => {
   })
 
   it('renders an approval card when chat.tool_call has requires_approval and approve dispatches', async () => {
-    scriptSession([
-      {
-        type: 'chat.tool_call',
-        name: 'create_github_issue',
-        input: { repo: 'lucasfe/agenthub', title: 'Test', body: 'body' },
-        requires_approval: true,
-        tool_call_id: 'tu-approval-1',
-      },
-    ])
-
     const onApprove = vi.fn()
     orchestrationMock.startSession.mockImplementationOnce(() => {
       const session = orchestrationMock._createFakeSession([

@@ -24,6 +24,8 @@ test.describe('Mobile auth gate', () => {
     )
     await page.goto('/mobile/chat')
     await expect(page).toHaveURL(/\/mobile\/chat/)
-    await expect(page.getByLabel('Message')).toBeVisible({ timeout: MOBILE_TIMEOUT })
+    await expect(page.getByRole('textbox', { name: 'Message' })).toBeVisible({
+      timeout: MOBILE_TIMEOUT,
+    })
   })
 })

@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react'
-import { LayoutTemplate } from 'lucide-react'
+import { LayoutTemplate, Plus } from 'lucide-react'
 import Header from './Header'
 import TemplateCard from './TemplateCard'
-import { fetchTemplates } from '../lib/templatesApi'
+import CreateTemplateModal from './CreateTemplateModal'
+import { fetchTemplates, insertTemplate } from '../lib/templatesApi'
 
 export default function TemplatesPage() {
   const [templates, setTemplates] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [createOpen, setCreateOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -28,6 +30,11 @@ export default function TemplatesPage() {
     return () => { cancelled = true }
   }, [])
 
+  const handleCreate = async (payload) => {
+    const inserted = await insertTemplate(payload)
+    if (inserted) setTemplates((prev) => [...prev, inserted])
+  }
+
   return (
     <>
       <Header />
@@ -42,6 +49,14 @@ export default function TemplatesPage() {
               Reusable Kanban tickets you can spin up in one click
             </p>
           </div>
+          <button
+            type="button"
+            onClick={() => setCreateOpen(true)}
+            className="flex items-center gap-2 px-5 py-2.5 bg-accent-blue text-white text-sm font-medium rounded-xl hover:bg-accent-blue/90 transition-colors"
+          >
+            <Plus size={16} />
+            New template
+          </button>
         </div>
       </section>
 
@@ -70,6 +85,13 @@ export default function TemplatesPage() {
           </div>
         )}
       </div>
+
+      {createOpen && (
+        <CreateTemplateModal
+          onClose={() => setCreateOpen(false)}
+          onCreate={handleCreate}
+        />
+      )}
     </>
   )
 }

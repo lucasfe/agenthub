@@ -41,6 +41,8 @@ export async function startCommand({
   readSt = readState,
   writeSt = writeState,
   sendWa = sendWhatsappMessage,
+  peekLock = defaultPeekLock,
+  now = Date.now,
 } = {}) {
   const out = (msg) => stdout.write(msg + '\n')
   const err = (msg) => stderr.write(msg + '\n')
@@ -55,6 +57,17 @@ export async function startCommand({
       out(`   Matar:  tmux kill-session -t ${TMUX_SESSION}`)
       throw new StartAbort('tmux session already exists', 1)
     }
+  }
+
+  // 1.5. ralph cycle coexistence — abort if a live cycle holds the lock.
+  // Stale lock holders fall through silently so a crashed cycle doesn't block start.
+  const lockState = peekLock(cwd)
+  if (lockState && lockState.alive) {
+    const ageH = ageInHours(now(), lockState.holder?.startedAt)
+    err(
+      `⏸️ Cycle in progress (PID ${lockState.holder?.pid} for ${ageH}h) — wait or run \`ralph schedule pause\` first`,
+    )
+    throw new StartAbort('cycle lock held', 1)
   }
 
   // 2. Required commands (shared dep check)

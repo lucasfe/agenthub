@@ -53,7 +53,14 @@ export async function subscribe({
     getAccessToken,
     subscription,
   })
-  if (!posted) return { subscribed: false, reason: 'network-error' }
+  if (!posted) {
+    // Roll back the browser-side subscription so the next attempt starts
+    // from a clean slate. Without this, isSubscribed() returns true on
+    // every reload and the opt-in card silently hides — even though the
+    // backend never received the row.
+    await safeCall(() => subscription.unsubscribe())
+    return { subscribed: false, reason: 'network-error' }
+  }
 
   return { subscribed: true, subscription }
 }

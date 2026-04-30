@@ -638,6 +638,13 @@ export default function BoardPage() {
           onClose={() => setSelectedTaskId(null)}
         />
       )}
+
+      {templateSelectorOpen && (
+        <TemplateSelectorModal
+          onClose={() => setTemplateSelectorOpen(false)}
+          onUseTemplate={handleUseTemplate}
+        />
+      )}
     </>
   )
 }

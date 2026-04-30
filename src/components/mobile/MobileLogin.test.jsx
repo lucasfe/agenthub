@@ -46,10 +46,11 @@ describe('MobileLogin', () => {
     ).toBeInTheDocument()
   })
 
-  it('calls signInWithGoogle when the button is clicked', () => {
+  it('calls signInWithGoogle with /mobile/chat redirect when the button is clicked', () => {
     renderLogin()
     fireEvent.click(screen.getByRole('button', { name: /continue with google/i }))
     expect(authState.value.signInWithGoogle).toHaveBeenCalledTimes(1)
+    expect(authState.value.signInWithGoogle).toHaveBeenCalledWith({ redirectTo: '/mobile/chat' })
   })
 
   it('renders an inline error banner when the auth context exposes an error', () => {

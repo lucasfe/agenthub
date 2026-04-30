@@ -154,6 +154,54 @@ describe('buildPlist', () => {
     )
     expect(xml).toContain('<plist version="1.0">')
   })
+
+  describe('kind: heartbeat', () => {
+    const heartbeatInput = {
+      slug: SLUG,
+      command: '/usr/local/bin/ralph',
+      args: ['schedule', 'heartbeat'],
+      startCalendarInterval: { hour: 9, minute: 0 },
+      workingDirectory: '/Users/me/repos/agenthub',
+      logDir: '/Users/me/repos/agenthub/logs',
+      environment: { PATH: '/usr/bin' },
+      kind: 'heartbeat',
+    }
+
+    it('uses the heartbeat label prefix', () => {
+      const xml = buildPlist(heartbeatInput)
+      expect(xml).toContain(
+        `<string>com.lucasfe.ralph.heartbeat.${SLUG}</string>`,
+      )
+    })
+
+    it('emits StartCalendarInterval with Hour and Minute integers', () => {
+      const xml = buildPlist(heartbeatInput)
+      expect(xml).toMatch(/<key>StartCalendarInterval<\/key>/)
+      expect(xml).toMatch(/<key>Hour<\/key>\s*<integer>9<\/integer>/)
+      expect(xml).toMatch(/<key>Minute<\/key>\s*<integer>0<\/integer>/)
+    })
+
+    it('does NOT emit StartInterval when startCalendarInterval is set', () => {
+      const xml = buildPlist(heartbeatInput)
+      expect(xml).not.toMatch(/<key>StartInterval<\/key>/)
+    })
+
+    it('writes log files under ralph-heartbeat.{out,err}.log', () => {
+      const xml = buildPlist(heartbeatInput)
+      expect(xml).toContain(
+        '<string>/Users/me/repos/agenthub/logs/ralph-heartbeat.out.log</string>',
+      )
+      expect(xml).toContain(
+        '<string>/Users/me/repos/agenthub/logs/ralph-heartbeat.err.log</string>',
+      )
+    })
+
+    it('throws when startCalendarInterval is missing valid hour/minute', () => {
+      expect(() =>
+        buildPlist({ ...heartbeatInput, startCalendarInterval: { hour: 'noon' } }),
+      ).toThrow(/startCalendarInterval/i)
+    })
+  })
 })
 
 describe('installAgent', () => {

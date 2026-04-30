@@ -467,7 +467,7 @@ describe('BoardPage From template action', () => {
     const trigger = await waitForBoard()
     const user = userEvent.setup()
     await user.click(trigger)
-    await user.click(await screen.findByText('Bug fix recipe'))
+    await screen.findByRole('button', { name: /Bug fix recipe/i })
     await user.click(screen.getByRole('button', { name: /use template/i }))
 
     await waitFor(() => {

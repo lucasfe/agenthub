@@ -449,6 +449,18 @@ export default function AgentDetailPage() {
         </div>
       </div>
 
+      {/* References warning modal — shown before type-to-confirm when the
+          agent is still referenced by templates or active tickets. */}
+      {showReferencesModal && (
+        <AgentReferencesModal
+          agentName={agent.name}
+          templates={referencingTemplates}
+          tasks={referencingTasks}
+          onCancel={handleReferencesCancel}
+          onConfirm={handleReferencesConfirm}
+        />
+      )}
+
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
         <>

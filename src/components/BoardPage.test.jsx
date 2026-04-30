@@ -542,12 +542,12 @@ describe('BoardPage From template action', () => {
     const trigger = await waitForBoard()
     const user = userEvent.setup()
     await user.click(trigger)
-    await screen.findByText('Bug fix recipe')
+    await screen.findByRole('button', { name: /Bug fix recipe/i })
 
     await user.click(screen.getByRole('button', { name: /^cancel$/i }))
 
     await waitFor(() => {
-      expect(screen.queryByText('Bug fix recipe')).not.toBeInTheDocument()
+      expect(screen.queryByRole('heading', { name: /use a template/i })).not.toBeInTheDocument()
     })
     expect(supabaseHolder.inserts.length).toBe(0)
   })

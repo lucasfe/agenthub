@@ -497,13 +497,22 @@ function Column({ column, tasks, onAddTask, onDeleteTask, onDragStart, onDrop, o
               onCancel={() => setShowForm(false)}
             />
           ) : (
-            <button
-              onClick={() => setShowForm(true)}
-              className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-text-muted hover:text-text-secondary hover:bg-white/5 transition-colors"
-            >
-              <Plus size={14} />
-              Add task
-            </button>
+            <div className="space-y-1">
+              <button
+                onClick={() => setShowForm(true)}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-text-muted hover:text-text-secondary hover:bg-white/5 transition-colors"
+              >
+                <Plus size={14} />
+                Add task
+              </button>
+              <button
+                onClick={onOpenTemplateSelector}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-text-muted hover:text-text-secondary hover:bg-white/5 transition-colors"
+              >
+                <LayoutTemplate size={14} />
+                From template
+              </button>
+            </div>
           )
         )}
       </div>

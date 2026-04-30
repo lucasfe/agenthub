@@ -142,6 +142,13 @@ export async function cycleCommand({
     const queueCount = await getQueueCount(exec, root)
     if (queueCount === 0) {
       out('ℹ️  ralph cycle: fila vazia, encerrando.')
+      emitEvent({
+        status: 'queue-empty',
+        ok: 0,
+        failed: 0,
+        durationMin: 0,
+        processed: 0,
+      })
       return {
         exitCode: 0,
         status: 'queue-empty',

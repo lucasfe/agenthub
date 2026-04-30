@@ -10,7 +10,10 @@ import MobilePlanCard from './MobilePlanCard'
 const INITIAL_MESSAGES = []
 
 export default function MobileChat() {
-  const { agents, tools, bumpAgentUsage } = useData()
+  const data = useData() || {}
+  const agents = data.agents || []
+  const tools = data.tools || []
+  const bumpAgentUsage = data.bumpAgentUsage
   const [messages, setMessages] = useState(INITIAL_MESSAGES)
   const [input, setInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)

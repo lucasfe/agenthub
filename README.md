@@ -75,3 +75,41 @@ Per-iteration logs land in `logs/ralph-issue-N.log` (gitignored). They are never
 ### Excluding issues from Ralph
 
 Add the label `claude-working` or `claude-failed` to any issue manually to make Ralph skip it. Remove the label later if you want it back in the queue.
+
+## Push notifications setup
+
+The mobile shell at `/mobile` (PRD #224) uses Web Push to notify users when long-running agent runs need approval, finish, or error. Push delivery is handled by the `sendPush` helper in `supabase/functions/_shared/push.ts`, which signs each request with VAPID. Keys are generated **once** and never rotated unless compromised.
+
+### One-time VAPID key generation
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+Output:
+
+```
+=======================================
+Public Key:
+B...long-base64url-string...
+
+Private Key:
+...shorter-base64url-string...
+=======================================
+```
+
+### Where the keys go
+
+| Variable | Scope | Set in | Notes |
+|---|---|---|---|
+| `VITE_VAPID_PUBLIC_KEY` | Frontend bundle | Vercel project env vars (and `.env.local` for local dev) | Shipped to the browser so `pushManager.subscribe` can include it as `applicationServerKey`. Not a secret. |
+| `VAPID_PRIVATE_KEY` | Edge Function only | `supabase secrets set VAPID_PRIVATE_KEY=...` | **Secret.** Used by `sendPush` to sign each Web Push request. Never expose to the frontend. |
+| `VAPID_SUBJECT` | Edge Function only | `supabase secrets set VAPID_SUBJECT=mailto:lucasfe@gmail.com` | Required by VAPID. Use a `mailto:` URL the push provider can contact about delivery issues. |
+
+### Behaviour without keys
+
+`sendPush` is fail-safe: if any of the three values is missing it logs an error and returns `{ sent: 0, deleted: 0 }` without crashing the caller. The chat function (slice 8) can therefore be deployed before the keys are provisioned and will simply skip notifications until they exist.
+
+### Rotation
+
+If the keys leak, regenerate with `npx web-push generate-vapid-keys` and update both the Vercel `VITE_VAPID_PUBLIC_KEY` and the Supabase `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` secrets. The new public key invalidates every existing subscription — clients will re-subscribe on next visit.

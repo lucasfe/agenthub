@@ -91,9 +91,6 @@ export default function TemplateSelectorModal({ onClose, onUseTemplate }) {
   const [error, setError] = useState(null)
   const [selectedId, setSelectedId] = useState(null)
   const [using, setUsing] = useState(false)
-  const closeRef = useRef(onClose)
-
-  useEffect(() => { closeRef.current = onClose }, [onClose])
 
   useEffect(() => {
     let cancelled = false
@@ -113,10 +110,10 @@ export default function TemplateSelectorModal({ onClose, onUseTemplate }) {
   }, [])
 
   useEffect(() => {
-    const handleKey = (e) => { if (e.key === 'Escape' && !using) closeRef.current?.() }
+    const handleKey = (e) => { if (e.key === 'Escape' && !using) onClose() }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [using])
+  }, [using, onClose])
 
   const selected = useMemo(
     () => templates.find((tpl) => tpl.id === selectedId) || null,

@@ -371,8 +371,8 @@ async function hkdfExpand(
     false,
     ['sign'],
   )
-  let t = new Uint8Array(0)
-  let okm = new Uint8Array(0)
+  let t: Uint8Array = new Uint8Array(0)
+  let okm: Uint8Array = new Uint8Array(0)
   let counter = 1
   while (okm.length < length) {
     const data = new Uint8Array(t.length + info.length + 1)

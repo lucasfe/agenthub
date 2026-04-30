@@ -4,6 +4,7 @@ import Header from './Header'
 import TemplateCard from './TemplateCard'
 import CreateTemplateModal from './CreateTemplateModal'
 import TemplateEditDrawer from './TemplateEditDrawer'
+import { useData } from '../context/DataContext'
 import {
   fetchTemplates,
   insertTemplate,
@@ -17,6 +18,7 @@ export default function TemplatesPage() {
   const [error, setError] = useState(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [selectedId, setSelectedId] = useState(null)
+  const { agents } = useData()
 
   useEffect(() => {
     let cancelled = false

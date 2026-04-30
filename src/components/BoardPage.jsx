@@ -9,7 +9,7 @@ import { supabase } from '../lib/supabase'
 import { useData } from '../context/DataContext'
 import { useTaskOrchestration } from '../lib/taskOrchestration'
 import { insertTemplate } from '../lib/templatesApi'
-import { cloneTemplateToTask } from '../lib/templates'
+import { cloneTemplateToTask, findMissingAgents, findMissingTools } from '../lib/templates'
 import SaveAsTemplateModal from './SaveAsTemplateModal'
 import TemplateSelectorModal from './TemplateSelectorModal'
 import {
@@ -242,6 +242,8 @@ function TaskDetailPanel({ task, agents, tools, onUpdate, onDelete, onClose }) {
   const isExecutionPhase = ['planning', 'awaiting_approval', 'executing', 'done', 'error', 'cancelled'].includes(task.status)
   const plan = task.plan
   const missingRequired = plan ? countMissingRequired(plan, stepAnswers) : 0
+  const missingAgents = plan ? findMissingAgents(plan, agents) : []
+  const missingTools = plan ? findMissingTools(plan, tools) : []
   const downloadableSteps = plan ? collectDownloadableSteps(plan, orch.stepStates) : []
   const badge = STATUS_BADGES[task.status]
 
@@ -296,6 +298,35 @@ function TaskDetailPanel({ task, agents, tools, onUpdate, onDelete, onClose }) {
             <div className="px-4 py-3 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-start gap-3">
               <AlertCircle size={14} className="text-rose-400 shrink-0 mt-0.5" />
               <p className="text-sm text-rose-300">{task.error_message}</p>
+            </div>
+          )}
+
+          {/* Missing-reference warnings */}
+          {isExecutionPhase && plan && (missingAgents.length > 0 || missingTools.length > 0) && (
+            <div className="px-4 py-3 rounded-lg bg-amber-500/10 border border-amber-500/20 space-y-2">
+              {missingAgents.length > 0 && (
+                <div className="flex items-start gap-2">
+                  <AlertCircle size={14} className="text-amber-400 shrink-0 mt-0.5" />
+                  <div className="text-xs text-amber-200 leading-relaxed">
+                    <p className="font-medium">
+                      Missing agent{missingAgents.length === 1 ? '' : 's'}:{' '}
+                      <span className="font-mono">{missingAgents.join(', ')}</span>
+                    </p>
+                    <p className="text-amber-200/80 mt-0.5">
+                      Edit each step's agent or click Re-plan to refresh the plan against the current catalog.
+                    </p>
+                  </div>
+                </div>
+              )}
+              {missingTools.length > 0 && (
+                <div className="flex items-start gap-2 text-[11px] text-amber-200/80">
+                  <span className="shrink-0 mt-0.5">·</span>
+                  <p>
+                    Missing tool{missingTools.length === 1 ? '' : 's'} (run will continue without):{' '}
+                    <span className="font-mono">{missingTools.join(', ')}</span>
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -385,7 +416,7 @@ function TaskDetailPanel({ task, agents, tools, onUpdate, onDelete, onClose }) {
           {task.status === 'awaiting_approval' && (
             <button
               onClick={() => orch.approve(stepAnswers)}
-              disabled={missingRequired > 0}
+              disabled={missingRequired > 0 || missingAgents.length > 0}
               className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium text-white bg-blue-500 hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Play size={12} />

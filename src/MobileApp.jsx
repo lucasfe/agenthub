@@ -4,6 +4,7 @@ import { useAuth } from './context/AuthContext'
 import { register } from './lib/serviceWorker'
 import MobileLogin from './components/mobile/MobileLogin'
 import MobileChat from './components/mobile/MobileChat'
+import MobileSettings from './components/mobile/MobileSettings'
 
 function MobileGate({ children }) {
   const { user, isAuthorized, loading } = useAuth()

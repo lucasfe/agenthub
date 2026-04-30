@@ -82,7 +82,7 @@ test.describe('Mobile chat', () => {
     })
 
     await page.goto('/mobile/chat')
-    await page.getByLabel('Message').fill('File an issue')
+    await page.getByRole('textbox', { name: 'Message' }).fill('File an issue')
     await page.getByRole('button', { name: 'Send message' }).click()
 
     const approveBtn = page.getByRole('button', { name: 'Approve', exact: true })

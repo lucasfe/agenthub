@@ -370,14 +370,17 @@ describe('parsePlistMetadata', () => {
     expect(parsePlistMetadata('')).toEqual({
       workingDirectory: null,
       intervalSeconds: null,
+      startCalendarInterval: null,
     })
     expect(parsePlistMetadata(null)).toEqual({
       workingDirectory: null,
       intervalSeconds: null,
+      startCalendarInterval: null,
     })
     expect(parsePlistMetadata('<plist/>')).toEqual({
       workingDirectory: null,
       intervalSeconds: null,
+      startCalendarInterval: null,
     })
   })
 

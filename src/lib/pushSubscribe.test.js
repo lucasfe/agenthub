@@ -229,7 +229,7 @@ describe('subscribe', () => {
     expect(result).toEqual({ subscribed: true, subscription })
   })
 
-  it('returns network-error when the backend POST throws and does NOT roll back the local subscription', async () => {
+  it('returns network-error when the backend POST throws AND rolls back the local subscription', async () => {
     setNotification(makeNotification({ permission: 'granted' }))
     const localUnsubscribe = vi.fn().mockResolvedValue(true)
     const subscription = makeSubscription({ unsubscribeImpl: localUnsubscribe })
@@ -250,7 +250,10 @@ describe('subscribe', () => {
     })
 
     expect(result).toEqual({ subscribed: false, reason: 'network-error' })
-    expect(localUnsubscribe).not.toHaveBeenCalled()
+    // The local subscription must be rolled back so isSubscribed() returns
+    // false on the next reload; otherwise the opt-in card would silently
+    // hide and the user would never get a chance to retry.
+    expect(localUnsubscribe).toHaveBeenCalledTimes(1)
   })
 
   it('returns network-error when the backend responds with a non-2xx status', async () => {

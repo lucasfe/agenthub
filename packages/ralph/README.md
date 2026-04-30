@@ -73,6 +73,38 @@ after). TDD is skipped only for changes with zero behavioral impact:
 pure documentation, plain configuration, or dependency bumps without
 logic changes — and the skip is justified in the PR body.
 
+## Scheduling Ralph (macOS launchd)
+
+Beyond the manual `ralph start` flow, Ralph can run on a launchd
+timer so it processes the queue without human intervention. This is
+macOS-only; on Linux / WSL use cron or systemd.
+
+```bash
+ralph schedule install            # cycle every 4h + heartbeat at 09:00 (defaults)
+ralph schedule install --interval 30m --heartbeat-time 07:30
+ralph schedule status             # state of every Ralph agent on this machine
+ralph schedule status --here      # only the agent for the current repo
+ralph schedule pause              # unload without deleting the plists
+ralph schedule resume             # reload after a pause
+ralph schedule remove             # unload + delete plists for this repo
+ralph schedule remove --all       # unload + delete every Ralph plist (with confirm)
+```
+
+`install` writes two property lists under `~/Library/LaunchAgents/`:
+
+| Plist | Schedule | Purpose |
+| --- | --- | --- |
+| `com.lucasfe.ralph.cycle.<slug>.plist` | `StartInterval` (default 4h) | Runs `ralph cycle` — one queue-processing pass. |
+| `com.lucasfe.ralph.heartbeat.<slug>.plist` | `StartCalendarInterval` (default 09:00) | Sends the daily 24h summary. |
+
+`<slug>` is the basename of the repo's working tree, so multiple
+repos can each have their own pair of agents on the same user account.
+`pause`, `resume`, `remove`, and `status` operate on both plists
+transparently — there is no separate `ralph schedule heartbeat
+install`. The `ralph schedule heartbeat` subcommand exists, but it is
+the entry point launchd invokes when the heartbeat plist fires; you
+will not normally call it by hand.
+
 ## What survives an update
 
 `ralph init` and any future Ralph update mechanism (`npm i -g

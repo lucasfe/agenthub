@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router'
 import * as Icons from 'lucide-react'
-import { fetchAgent, deleteAgent, updateAgent } from '../lib/api'
+import { fetchAgent, deleteAgent, updateAgent, fetchAllTasks } from '../lib/api'
+import { fetchTemplates } from '../lib/templatesApi'
+import { findReferencingTemplates, findReferencingActiveTasks } from '../lib/templates'
 import { useData } from '../context/DataContext'
 import Markdown from '../lib/markdown'
+import AgentReferencesModal from './AgentReferencesModal'
 
 const colorMap = {
   blue: { bg: 'from-blue-500/15 to-blue-600/5', border: 'border-blue-500/20', icon: 'text-blue-400', tag: 'bg-blue-500/10 text-blue-300' },

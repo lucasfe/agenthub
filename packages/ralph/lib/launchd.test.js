@@ -41,9 +41,19 @@ function makeExec(handlers = {}) {
 }
 
 describe('labelFor', () => {
-  it('builds com.lucasfe.ralph.cycle.<slug>', () => {
+  it('builds com.lucasfe.ralph.cycle.<slug> by default', () => {
     expect(labelFor('agenthub')).toBe('com.lucasfe.ralph.cycle.agenthub')
     expect(labelFor('my-app')).toBe('com.lucasfe.ralph.cycle.my-app')
+  })
+
+  it('builds com.lucasfe.ralph.heartbeat.<slug> when kind is "heartbeat"', () => {
+    expect(labelFor('agenthub', 'heartbeat')).toBe(
+      'com.lucasfe.ralph.heartbeat.agenthub',
+    )
+  })
+
+  it('throws on unknown kind', () => {
+    expect(() => labelFor('agenthub', 'banana')).toThrow(/banana/)
   })
 })
 
@@ -54,6 +64,12 @@ describe('plistPathFor', () => {
 
   it('differs per slug', () => {
     expect(plistPathFor('a', HOME)).not.toBe(plistPathFor('b', HOME))
+  })
+
+  it('returns the heartbeat plist path when kind is "heartbeat"', () => {
+    expect(plistPathFor('agenthub', HOME, 'heartbeat')).toBe(
+      `${HOME}/Library/LaunchAgents/com.lucasfe.ralph.heartbeat.agenthub.plist`,
+    )
   })
 })
 

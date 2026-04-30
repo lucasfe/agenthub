@@ -88,11 +88,28 @@ create table if not exists runs (
 create index if not exists idx_runs_status on runs(status);
 create index if not exists idx_runs_created_at on runs(created_at desc);
 
+-- Web Push subscriptions for the mobile shell at /mobile. Owned by the
+-- push-subscribe / push-unsubscribe Edge Functions. RLS scopes every
+-- operation to the row's owner.
+create table if not exists push_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  endpoint text not null,
+  p256dh text not null,
+  auth text not null,
+  created_at timestamptz not null default now(),
+  unique (user_id, endpoint)
+);
+
+create index if not exists idx_push_subscriptions_user_id
+  on push_subscriptions (user_id);
+
 -- Enable Row Level Security (for future auth)
 alter table agents enable row level security;
 alter table teams enable row level security;
 alter table tools enable row level security;
 alter table runs enable row level security;
+alter table push_subscriptions enable row level security;
 
 -- For now, allow public read access (no auth yet)
 create policy "Public read access for agents" on agents

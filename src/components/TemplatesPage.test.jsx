@@ -27,7 +27,7 @@ vi.mock('../context/AuthContext', () => ({
   AuthProvider: ({ children }) => children,
 }))
 
-import { fetchTemplates, insertTemplate } from '../lib/templatesApi'
+import { fetchTemplates, insertTemplate, updateTemplate, deleteTemplate } from '../lib/templatesApi'
 
 beforeEach(() => {
   vi.clearAllMocks()

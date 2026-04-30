@@ -910,6 +910,7 @@ describe('AiAssistant', () => {
         expect(planTaskSyncMock.markTaskCancelled).toHaveBeenCalledWith(
           expect.anything(),
           'sync-task-1',
+          'Cancelled by user',
         )
       })
     })

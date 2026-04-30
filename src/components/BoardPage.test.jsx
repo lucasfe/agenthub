@@ -246,3 +246,134 @@ describe('BoardPage Re-plan button', () => {
     })
   })
 })
+
+describe('BoardPage Save as template action', () => {
+  it.each([
+    ['todo'],
+    ['awaiting_approval'],
+    ['executing'],
+    ['done'],
+    ['error'],
+    ['cancelled'],
+  ])('renders the Save as template button when status is %s', async (status) => {
+    await openTaskDetail(makeTask({ status }))
+
+    expect(
+      await screen.findByRole('button', { name: /save as template/i }),
+    ).toBeInTheDocument()
+  })
+
+  it('opens a modal pre-filled with the ticket title on click', async () => {
+    await openTaskDetail(makeTask({ status: 'done' }))
+    const trigger = await screen.findByRole('button', { name: /save as template/i })
+
+    await userEvent.setup().click(trigger)
+
+    const nameInput = await screen.findByLabelText(/template name/i)
+    expect(nameInput).toHaveValue('Build login screen')
+    expect(screen.getByLabelText(/template description/i)).toBeInTheDocument()
+  })
+
+  it('inserts a snapshot row with the chosen name and the source ticket fields', async () => {
+    await openTaskDetail(makeTask({ status: 'done' }))
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: /save as template/i }))
+
+    const nameInput = await screen.findByLabelText(/template name/i)
+    await user.clear(nameInput)
+    await user.type(nameInput, 'My new template')
+    const descInput = screen.getByLabelText(/template description/i)
+    await user.type(descInput, 'A reusable bug-fix recipe')
+
+    await user.click(screen.getByRole('button', { name: /^save$/i }))
+
+    await waitFor(() => {
+      expect(insertTemplate).toHaveBeenCalledTimes(1)
+    })
+    const arg = insertTemplate.mock.calls[0][0]
+    expect(arg.name).toBe('My new template')
+    expect(arg.description).toBe('A reusable bug-fix recipe')
+    expect(arg.task_title).toBe('Build login screen')
+    expect(arg.task_description).toBe('with Google OAuth')
+    expect(arg.plan).toEqual(makeTask().plan)
+    expect(arg).not.toHaveProperty('status')
+    expect(arg).not.toHaveProperty('run_id')
+    expect(arg).not.toHaveProperty('error_message')
+    expect(arg).not.toHaveProperty('artifacts')
+    expect(arg).not.toHaveProperty('id')
+  })
+
+  it('inserts a null description when the user leaves the field blank', async () => {
+    await openTaskDetail(makeTask({ status: 'done' }))
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: /save as template/i }))
+
+    await screen.findByLabelText(/template name/i)
+    await user.click(screen.getByRole('button', { name: /^save$/i }))
+
+    await waitFor(() => {
+      expect(insertTemplate).toHaveBeenCalledTimes(1)
+    })
+    expect(insertTemplate.mock.calls[0][0].description).toBeNull()
+  })
+
+  it('inserts a null plan when the source ticket has no plan', async () => {
+    await openTaskDetail(makeTask({ status: 'todo', plan: null }))
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: /save as template/i }))
+
+    await screen.findByLabelText(/template name/i)
+    await user.click(screen.getByRole('button', { name: /^save$/i }))
+
+    await waitFor(() => {
+      expect(insertTemplate).toHaveBeenCalledTimes(1)
+    })
+    expect(insertTemplate.mock.calls[0][0].plan).toBeNull()
+  })
+
+  it('deep-copies the plan so mutating the snapshot does not affect the source ticket', async () => {
+    const sourceTask = makeTask({ status: 'done' })
+    await openTaskDetail(sourceTask)
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: /save as template/i }))
+
+    await screen.findByLabelText(/template name/i)
+    await user.click(screen.getByRole('button', { name: /^save$/i }))
+
+    await waitFor(() => {
+      expect(insertTemplate).toHaveBeenCalledTimes(1)
+    })
+    const insertedPlan = insertTemplate.mock.calls[0][0].plan
+    insertedPlan.steps[0].task = 'mutated'
+    expect(sourceTask.plan.steps[0].task).toBe('Existing plan step')
+  })
+
+  it('closes the modal on cancel without calling insertTemplate', async () => {
+    await openTaskDetail(makeTask({ status: 'done' }))
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: /save as template/i }))
+
+    expect(await screen.findByLabelText(/template name/i)).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', { name: /^cancel$/i }),
+    )
+
+    await waitFor(() => {
+      expect(screen.queryByLabelText(/template name/i)).not.toBeInTheDocument()
+    })
+    expect(insertTemplate).not.toHaveBeenCalled()
+  })
+
+  it('closes the modal automatically after a successful insert', async () => {
+    await openTaskDetail(makeTask({ status: 'done' }))
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: /save as template/i }))
+
+    await screen.findByLabelText(/template name/i)
+    await user.click(screen.getByRole('button', { name: /^save$/i }))
+
+    await waitFor(() => {
+      expect(screen.queryByLabelText(/template name/i)).not.toBeInTheDocument()
+    })
+  })
+})

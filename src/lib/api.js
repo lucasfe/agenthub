@@ -86,6 +86,21 @@ export async function deleteAgent(id) {
   if (error) throw error
 }
 
+// Lightweight fetch for cross-cutting checks (e.g. agent-deletion warnings).
+// Selects only what callers need to inspect plans + status. The Kanban
+// board still reads `select('*')` from its own internal helper because it
+// also needs run/error fields.
+export async function fetchAllTasks() {
+  requireSupabase()
+  const { data, error } = await supabase
+    .from('tasks')
+    .select('id, title, status, plan')
+    .order('created_at', { ascending: true })
+
+  if (error) throw error
+  return data || []
+}
+
 // ── Teams ───────────────────────────────────────────
 
 export async function fetchTeams() {

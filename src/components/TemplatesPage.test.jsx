@@ -86,4 +86,142 @@ describe('TemplatesPage', () => {
     expect(await screen.findByText(/failed to load templates/i)).toBeInTheDocument()
     expect(screen.getByText(/network down/i)).toBeInTheDocument()
   })
+
+  describe('+ New template flow', () => {
+    it('shows a "+ New template" button on the page', async () => {
+      fetchTemplates.mockResolvedValue([])
+      renderWithProviders(<TemplatesPage />)
+      expect(
+        await screen.findByRole('button', { name: /new template/i }),
+      ).toBeInTheDocument()
+    })
+
+    it('opens the create modal when the "+ New template" button is clicked', async () => {
+      fetchTemplates.mockResolvedValue([])
+      const user = userEvent.setup()
+      renderWithProviders(<TemplatesPage />)
+
+      await user.click(
+        await screen.findByRole('button', { name: /new template/i }),
+      )
+
+      expect(
+        screen.getByRole('heading', { name: /new template/i }),
+      ).toBeInTheDocument()
+      expect(screen.getByLabelText(/^template name$/i)).toBeInTheDocument()
+      expect(screen.getByLabelText(/^task title$/i)).toBeInTheDocument()
+      expect(screen.getByLabelText(/template description/i)).toBeInTheDocument()
+      expect(screen.getByLabelText(/task description/i)).toBeInTheDocument()
+    })
+
+    it('cancel closes the modal without calling insertTemplate', async () => {
+      fetchTemplates.mockResolvedValue([])
+      const user = userEvent.setup()
+      renderWithProviders(<TemplatesPage />)
+
+      await user.click(
+        await screen.findByRole('button', { name: /new template/i }),
+      )
+      expect(
+        screen.getByRole('heading', { name: /new template/i }),
+      ).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: /cancel/i }))
+
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('heading', { name: /new template/i }),
+        ).not.toBeInTheDocument(),
+      )
+      expect(insertTemplate).not.toHaveBeenCalled()
+    })
+
+    it('blocks submit when name or task title is empty', async () => {
+      fetchTemplates.mockResolvedValue([])
+      const user = userEvent.setup()
+      renderWithProviders(<TemplatesPage />)
+
+      await user.click(
+        await screen.findByRole('button', { name: /new template/i }),
+      )
+
+      const submit = screen.getByRole('button', { name: /^create$/i })
+      expect(submit).toBeDisabled()
+
+      await user.type(screen.getByLabelText(/^template name$/i), 'My template')
+      expect(submit).toBeDisabled()
+
+      await user.type(screen.getByLabelText(/^task title$/i), 'Do the work')
+      expect(submit).toBeEnabled()
+    })
+
+    it('submits and calls insertTemplate with plan:null and the user-provided fields', async () => {
+      fetchTemplates.mockResolvedValue([])
+      insertTemplate.mockResolvedValue({
+        id: 'tpl-new',
+        name: 'My template',
+        description: 'When to use',
+        task_title: 'Do the work',
+        task_description: 'More detail',
+        plan: null,
+      })
+      const user = userEvent.setup()
+      renderWithProviders(<TemplatesPage />)
+
+      await user.click(
+        await screen.findByRole('button', { name: /new template/i }),
+      )
+
+      await user.type(screen.getByLabelText(/^template name$/i), 'My template')
+      await user.type(screen.getByLabelText(/^task title$/i), 'Do the work')
+      await user.type(
+        screen.getByLabelText(/template description/i),
+        'When to use',
+      )
+      await user.type(
+        screen.getByLabelText(/task description/i),
+        'More detail',
+      )
+
+      await user.click(screen.getByRole('button', { name: /^create$/i }))
+
+      await waitFor(() => {
+        expect(insertTemplate).toHaveBeenCalledTimes(1)
+      })
+      expect(insertTemplate).toHaveBeenCalledWith({
+        name: 'My template',
+        description: 'When to use',
+        task_title: 'Do the work',
+        task_description: 'More detail',
+        plan: null,
+      })
+    })
+
+    it('renders the new card in the grid after a successful insert', async () => {
+      fetchTemplates.mockResolvedValue([])
+      insertTemplate.mockResolvedValue({
+        id: 'tpl-new',
+        name: 'Fresh template',
+        description: null,
+        task_title: 'Some title',
+        task_description: '',
+        plan: null,
+      })
+      const user = userEvent.setup()
+      renderWithProviders(<TemplatesPage />)
+
+      expect(await screen.findByText(/no templates yet/i)).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: /new template/i }))
+      await user.type(
+        screen.getByLabelText(/^template name$/i),
+        'Fresh template',
+      )
+      await user.type(screen.getByLabelText(/^task title$/i), 'Some title')
+      await user.click(screen.getByRole('button', { name: /^create$/i }))
+
+      expect(await screen.findByText('Fresh template')).toBeInTheDocument()
+      expect(screen.queryByText(/no templates yet/i)).not.toBeInTheDocument()
+    })
+  })
 })

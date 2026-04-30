@@ -194,7 +194,7 @@ export default function AiAssistant({ open, onClose }) {
         case 'plan.analyzing_requirements':
           patchMessageAt(messageIdx, { planStatus: 'analyzing' })
           break
-        case 'plan.proposed':
+        case 'plan.proposed': {
           patchMessageAt(messageIdx, (msg) => ({
             ...msg,
             plan: event.plan,
@@ -203,10 +203,26 @@ export default function AiAssistant({ open, onClose }) {
             refineError: null,
             stepAnswers: seedStepAnswers(event.plan, msg.stepAnswers),
           }))
+          // Mirror to the Kanban board. First proposal: insert a new task in
+          // the "todo" column. Subsequent re-proposals (refinements) update
+          // the existing task's plan field instead of creating a duplicate.
+          const existing = boardTaskRef.current.get(messageIdx)
+          if (existing) {
+            existing.then((id) => {
+              if (id) updateTaskPlan(supabase, id, event.plan)
+            })
+          } else {
+            const promise = createTaskFromPlan(supabase, {
+              plan: event.plan,
+              originalTask,
+            }).then((task) => task?.id ?? null)
+            boardTaskRef.current.set(messageIdx, promise)
+          }
           setIsStreaming(false)
           sessionRef.current = null
           unsubscribe()
           break
+        }
         case 'plan.fallback':
           patchMessageAt(messageIdx, (msg) => ({
             ...msg,

@@ -436,6 +436,8 @@ describe('BoardPage From template action', () => {
     await userEvent.setup().click(trigger)
 
     expect(await screen.findByRole('heading', { name: /use a template/i })).toBeInTheDocument()
+    await new Promise((r) => setTimeout(r, 50))
+    screen.debug(undefined, 200000)
     expect(await screen.findByText('First template')).toBeInTheDocument()
     expect(screen.getByText('Second template')).toBeInTheDocument()
   })

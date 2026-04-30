@@ -441,6 +441,9 @@ export default function AiAssistant({ open, onClose }) {
               failedStepId: event.failed_step_id,
             }
           })
+          withBoardTaskId(messageIdx, (id) =>
+            markTaskError(supabase, id, event.error),
+          )
           setIsStreaming(false)
           sessionRef.current = null
           unsubscribe()

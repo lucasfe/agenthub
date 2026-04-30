@@ -113,6 +113,14 @@ export async function cycleCommand({
     await notify(
       `⏭ ralph cycle skipped em ${repoSlug}: instância rodando há ${ageMin}min (PID ${lockResult.holder?.pid})`,
     )
+    emitEvent({
+      status: 'lock-held',
+      ok: 0,
+      failed: 0,
+      durationMin: 0,
+      processed: 0,
+      holderPid: lockResult.holder?.pid ?? null,
+    })
     return {
       exitCode: 0,
       status: 'lock-held',

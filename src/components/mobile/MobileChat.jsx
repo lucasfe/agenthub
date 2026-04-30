@@ -346,6 +346,8 @@ export default function MobileChat() {
         </button>
       </header>
 
+      <MobilePushOptIn />
+
       <main ref={listRef} className="flex-1 overflow-y-auto px-4 py-6">
         {messages.length === 0 ? (
           <div className="text-center text-text-muted text-sm mt-12">

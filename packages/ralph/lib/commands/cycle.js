@@ -54,8 +54,14 @@ export async function cycleCommand({
 
   const root = await resolveRepoRoot(exec, cwd)
 
+  const emitEvent = (event) => {
+    const payload = { ts: new Date(now()).toISOString(), ...event }
+    out(`${CYCLE_EVENT_TAG} ${JSON.stringify(payload)}`)
+  }
+
   const tmux = await exec('tmux', ['has-session', '-t', TMUX_SESSION], { reject: false })
   if (tmux.exitCode === 0) {
+    emitEvent({ status: 'tmux-active', ok: 0, failed: 0, durationMin: 0, processed: 0 })
     return { exitCode: 0, status: 'tmux-active', processed: 0, skipped: true }
   }
 

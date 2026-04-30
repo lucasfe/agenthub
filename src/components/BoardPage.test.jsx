@@ -102,6 +102,7 @@ vi.mock('../lib/supabase', () => {
 import BoardPage from './BoardPage'
 import { renderWithProviders } from '../test/test-utils'
 import { insertTemplate, fetchTemplates } from '../lib/templatesApi'
+import { fetchAgents, fetchTools } from '../lib/api'
 
 beforeEach(() => {
   streamMock.stream.mockClear()
@@ -110,6 +111,8 @@ beforeEach(() => {
   insertTemplate.mockClear()
   fetchTemplates.mockClear()
   fetchTemplates.mockResolvedValue([])
+  fetchAgents.mockResolvedValue([])
+  fetchTools.mockResolvedValue([])
 })
 
 function makeTask(overrides = {}) {

@@ -15,6 +15,7 @@ import LoginPage from './components/LoginPage'
 import BoardPage from './components/BoardPage'
 import SkillsPage from './components/SkillsPage'
 import SkillDetailPage from './components/SkillDetailPage'
+import TemplatesPage from './components/TemplatesPage'
 import RequireAuth from './components/RequireAuth'
 import StackButton from './components/StackButton'
 import { StackProvider } from './context/StackContext'
@@ -188,6 +189,7 @@ function ProtectedShell() {
             <Route path="/board" element={<BoardPage />} />
             <Route path="/skills" element={<SkillsPage />} />
             <Route path="/skills/:slug" element={<SkillDetailPage />} />
+            <Route path="/templates" element={<TemplatesPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Routes>
         </main>

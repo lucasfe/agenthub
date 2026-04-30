@@ -92,6 +92,41 @@ export default function AgentDetailPage() {
     }
   }
 
+  const startDeleteFlow = async () => {
+    if (referencesLoading) return
+    setReferencesLoading(true)
+    try {
+      const [templates, tasks] = await Promise.all([
+        fetchTemplates().catch(() => []),
+        fetchAllTasks().catch(() => []),
+      ])
+      const refTemplates = findReferencingTemplates(agentId, templates)
+      const refTasks = findReferencingActiveTasks(agentId, tasks)
+      if (refTemplates.length === 0 && refTasks.length === 0) {
+        setShowDeleteConfirm(true)
+      } else {
+        setReferencingTemplates(refTemplates)
+        setReferencingTasks(refTasks)
+        setShowReferencesModal(true)
+      }
+    } finally {
+      setReferencesLoading(false)
+    }
+  }
+
+  const handleReferencesCancel = () => {
+    setShowReferencesModal(false)
+    setReferencingTemplates([])
+    setReferencingTasks([])
+  }
+
+  const handleReferencesConfirm = () => {
+    setShowReferencesModal(false)
+    setReferencingTemplates([])
+    setReferencingTasks([])
+    setShowDeleteConfirm(true)
+  }
+
   const handleSaveContent = async () => {
     setIsSaving(true)
     setSaveStatus(null)

@@ -2,13 +2,16 @@ import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import {
   Plus, GripVertical, X, MoreHorizontal, Trash2, ChevronDown,
   Loader2, AlertCircle, CheckCircle2, Clock, Play, Square, Eye, RefreshCw, Bookmark,
+  LayoutTemplate,
 } from 'lucide-react'
 import Header from './Header'
 import { supabase } from '../lib/supabase'
 import { useData } from '../context/DataContext'
 import { useTaskOrchestration } from '../lib/taskOrchestration'
 import { insertTemplate } from '../lib/templatesApi'
+import { cloneTemplateToTask } from '../lib/templates'
 import SaveAsTemplateModal from './SaveAsTemplateModal'
+import TemplateSelectorModal from './TemplateSelectorModal'
 import {
   StepRow,
   formatDuration,
@@ -443,7 +446,7 @@ function TaskDetailPanel({ task, agents, tools, onUpdate, onDelete, onClose }) {
 
 // ─── Column ───────────────────────────────────────────────────────────────
 
-function Column({ column, tasks, onAddTask, onDeleteTask, onDragStart, onDrop, onClickTask }) {
+function Column({ column, tasks, onAddTask, onDeleteTask, onDragStart, onDrop, onClickTask, onOpenTemplateSelector }) {
   const [showForm, setShowForm] = useState(false)
   const [dragOver, setDragOver] = useState(false)
 
@@ -494,13 +497,22 @@ function Column({ column, tasks, onAddTask, onDeleteTask, onDragStart, onDrop, o
               onCancel={() => setShowForm(false)}
             />
           ) : (
-            <button
-              onClick={() => setShowForm(true)}
-              className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-text-muted hover:text-text-secondary hover:bg-white/5 transition-colors"
-            >
-              <Plus size={14} />
-              Add task
-            </button>
+            <div className="space-y-1">
+              <button
+                onClick={() => setShowForm(true)}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-text-muted hover:text-text-secondary hover:bg-white/5 transition-colors"
+              >
+                <Plus size={14} />
+                Add task
+              </button>
+              <button
+                onClick={onOpenTemplateSelector}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-text-muted hover:text-text-secondary hover:bg-white/5 transition-colors"
+              >
+                <LayoutTemplate size={14} />
+                From template
+              </button>
+            </div>
           )
         )}
       </div>
@@ -515,6 +527,7 @@ export default function BoardPage() {
   const [loading, setLoading] = useState(true)
   const [, setDraggingId] = useState(null)
   const [selectedTaskId, setSelectedTaskId] = useState(null)
+  const [templateSelectorOpen, setTemplateSelectorOpen] = useState(false)
   const { agents, tools } = useData()
 
   const selectedTask = selectedTaskId ? tasks.find((t) => t.id === selectedTaskId) : null
@@ -526,6 +539,15 @@ export default function BoardPage() {
   const handleAddTask = useCallback(async (data) => {
     const row = await insertTask({ title: data.title, description: data.description, status: 'todo' })
     if (row) setTasks((prev) => [...prev, row])
+  }, [])
+
+  const handleUseTemplate = useCallback(async (template) => {
+    const row = await insertTask(cloneTemplateToTask(template))
+    if (row) {
+      setTasks((prev) => [...prev, row])
+      setSelectedTaskId(row.id)
+    }
+    setTemplateSelectorOpen(false)
   }, [])
 
   const handleDeleteTask = useCallback(async (taskId) => {
@@ -600,6 +622,7 @@ export default function BoardPage() {
               onDragStart={setDraggingId}
               onDrop={handleDrop}
               onClickTask={setSelectedTaskId}
+              onOpenTemplateSelector={() => setTemplateSelectorOpen(true)}
             />
           ))}
         </div>
@@ -613,6 +636,13 @@ export default function BoardPage() {
           onUpdate={handleUpdateTask}
           onDelete={handleDeleteTask}
           onClose={() => setSelectedTaskId(null)}
+        />
+      )}
+
+      {templateSelectorOpen && (
+        <TemplateSelectorModal
+          onClose={() => setTemplateSelectorOpen(false)}
+          onUseTemplate={handleUseTemplate}
         />
       )}
     </>

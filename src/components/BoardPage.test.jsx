@@ -50,25 +50,37 @@ vi.mock('../lib/templatesApi', () => ({
 }))
 
 // In-memory mock of the supabase tasks table. Tests can seed it via
-// `setMockTasks([...])` before rendering.
+// `setMockTasks([...])` before rendering. `inserts` accumulates every row
+// passed to `.insert()` so new tests can assert what was written.
 const supabaseHolder = vi.hoisted(() => ({
   tasks: [],
+  inserts: [],
   set(tasks) {
     this.tasks = tasks
+    this.inserts = []
   },
 }))
 
 vi.mock('../lib/supabase', () => {
   const makeQuery = () => {
-    const result = { data: supabaseHolder.tasks, error: null }
+    let pendingInsert = null
     const chain = {
       select: vi.fn(() => chain),
-      order: vi.fn(() => Promise.resolve(result)),
-      insert: vi.fn(() => chain),
+      order: vi.fn(() => Promise.resolve({ data: supabaseHolder.tasks, error: null })),
+      insert: vi.fn((row) => {
+        pendingInsert = row
+        supabaseHolder.inserts.push(row)
+        return chain
+      }),
       update: vi.fn(() => chain),
       delete: vi.fn(() => chain),
       eq: vi.fn(() => Promise.resolve({ error: null })),
-      single: vi.fn(() => Promise.resolve({ data: supabaseHolder.tasks[0] || null, error: null })),
+      single: vi.fn(() => {
+        const data = pendingInsert
+          ? { id: `task-new-${supabaseHolder.inserts.length}`, ...pendingInsert }
+          : (supabaseHolder.tasks[0] || null)
+        return Promise.resolve({ data, error: null })
+      }),
     }
     return chain
   }
@@ -89,13 +101,15 @@ vi.mock('../lib/supabase', () => {
 
 import BoardPage from './BoardPage'
 import { renderWithProviders } from '../test/test-utils'
-import { insertTemplate } from '../lib/templatesApi'
+import { insertTemplate, fetchTemplates } from '../lib/templatesApi'
 
 beforeEach(() => {
   streamMock.stream.mockClear()
   streamMock.calls.length = 0
   supabaseHolder.set([])
   insertTemplate.mockClear()
+  fetchTemplates.mockClear()
+  fetchTemplates.mockResolvedValue([])
 })
 
 function makeTask(overrides = {}) {
@@ -375,5 +389,166 @@ describe('BoardPage Save as template action', () => {
     await waitFor(() => {
       expect(screen.queryByLabelText(/template name/i)).not.toBeInTheDocument()
     })
+  })
+})
+
+describe('BoardPage From template action', () => {
+  function makeTemplate(overrides = {}) {
+    return {
+      id: 'tpl-1',
+      name: 'Bug fix recipe',
+      description: 'A reusable bug-fix template',
+      task_title: 'Fix the bug',
+      task_description: 'Describe how to reproduce',
+      plan: {
+        steps: [
+          {
+            id: 's1',
+            agent_id: 'frontend-developer',
+            agent_name: 'Frontend Developer',
+            agent_color: 'blue',
+            agent_icon: 'Monitor',
+            task: 'Investigate the failing component',
+          },
+        ],
+      },
+      ...overrides,
+    }
+  }
+
+  async function waitForBoard() {
+    renderWithProviders(<BoardPage />)
+    return await screen.findByRole('button', { name: /from template/i })
+  }
+
+  it('renders the + From template button alongside + Add task in the todo column', async () => {
+    await waitForBoard()
+    expect(screen.getByRole('button', { name: /^add task$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /from template/i })).toBeInTheDocument()
+  })
+
+  it('opens the template selector modal and lists fetched templates on click', async () => {
+    fetchTemplates.mockResolvedValueOnce([
+      makeTemplate({ id: 'tpl-a', name: 'First template' }),
+      makeTemplate({ id: 'tpl-b', name: 'Second template' }),
+    ])
+    const trigger = await waitForBoard()
+    await userEvent.setup().click(trigger)
+
+    expect(await screen.findByRole('heading', { name: /use a template/i })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /First template/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Second template/i })).toBeInTheDocument()
+  })
+
+  it('shows the read-only preview pane when a template is selected', async () => {
+    fetchTemplates.mockResolvedValueOnce([
+      makeTemplate({ id: 'tpl-a', name: 'First option', task_title: 'Wrong preview' }),
+      makeTemplate({ id: 'tpl-b', name: 'Bug fix recipe' }),
+    ])
+    const trigger = await waitForBoard()
+    const user = userEvent.setup()
+    await user.click(trigger)
+
+    await user.click(await screen.findByRole('button', { name: /Bug fix recipe/i }))
+
+    // Preview surfaces ticket fields and plan step content.
+    expect(screen.getByText('Fix the bug')).toBeInTheDocument()
+    expect(screen.getByText('Describe how to reproduce')).toBeInTheDocument()
+    expect(screen.getByText('Investigate the failing component')).toBeInTheDocument()
+    // The wrong template's title must NOT leak into the preview.
+    expect(screen.queryByText('Wrong preview')).not.toBeInTheDocument()
+    // Preview must be read-only — no editable inputs anywhere on the page yet.
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+  })
+
+  it('inserts an awaiting_approval task with the cloned plan and opens the panel on click of Use template', async () => {
+    const tpl = makeTemplate()
+    fetchTemplates.mockResolvedValueOnce([tpl])
+    const trigger = await waitForBoard()
+    const user = userEvent.setup()
+    await user.click(trigger)
+    await screen.findByRole('button', { name: /Bug fix recipe/i })
+    await user.click(screen.getByRole('button', { name: /use template/i }))
+
+    await waitFor(() => {
+      expect(supabaseHolder.inserts.length).toBe(1)
+    })
+    const inserted = supabaseHolder.inserts[0]
+    expect(inserted.title).toBe('Fix the bug')
+    expect(inserted.description).toBe('Describe how to reproduce')
+    expect(inserted.status).toBe('awaiting_approval')
+    expect(inserted.plan).toEqual(tpl.plan)
+    expect(inserted.run_id).toBeNull()
+    expect(inserted.error_message).toBeNull()
+    expect(inserted.artifacts).toEqual([])
+
+    // Modal closed and the detail panel opened on the new ticket.
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /use template/i })).not.toBeInTheDocument()
+    })
+    expect(await screen.findByText('TASK')).toBeInTheDocument()
+  })
+
+  it('lands the new ticket in todo when the chosen template has no plan', async () => {
+    const tpl = makeTemplate({
+      id: 'tpl-blank',
+      name: 'Blank starter',
+      task_title: 'Blank task',
+      plan: null,
+    })
+    fetchTemplates.mockResolvedValueOnce([tpl])
+    const trigger = await waitForBoard()
+    const user = userEvent.setup()
+    await user.click(trigger)
+    await screen.findByRole('button', { name: /Blank starter/i })
+    await user.click(screen.getByRole('button', { name: /use template/i }))
+
+    await waitFor(() => {
+      expect(supabaseHolder.inserts.length).toBe(1)
+    })
+    expect(supabaseHolder.inserts[0].status).toBe('todo')
+    expect(supabaseHolder.inserts[0].plan).toBeNull()
+  })
+
+  it('does not mutate the source template plan when the new ticket plan is touched', async () => {
+    const tpl = makeTemplate()
+    fetchTemplates.mockResolvedValueOnce([tpl])
+    const trigger = await waitForBoard()
+    const user = userEvent.setup()
+    await user.click(trigger)
+    await screen.findByRole('button', { name: /Bug fix recipe/i })
+    await user.click(screen.getByRole('button', { name: /use template/i }))
+
+    await waitFor(() => {
+      expect(supabaseHolder.inserts.length).toBe(1)
+    })
+    const insertedPlan = supabaseHolder.inserts[0].plan
+    insertedPlan.steps[0].task = 'mutated copy'
+    expect(tpl.plan.steps[0].task).toBe('Investigate the failing component')
+  })
+
+  it('keeps the existing + Add task inline form unchanged', async () => {
+    const trigger = await waitForBoard()
+    expect(trigger).toBeInTheDocument()
+    const addBtn = screen.getByRole('button', { name: /^add task$/i })
+    await userEvent.setup().click(addBtn)
+
+    expect(screen.getByPlaceholderText(/task title/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /use template/i })).not.toBeInTheDocument()
+  })
+
+  it('closes the modal on cancel without inserting anything', async () => {
+    fetchTemplates.mockResolvedValueOnce([makeTemplate()])
+    const trigger = await waitForBoard()
+    const user = userEvent.setup()
+    await user.click(trigger)
+    await screen.findByRole('button', { name: /Bug fix recipe/i })
+
+    await user.click(screen.getByRole('button', { name: /^cancel$/i }))
+
+    await waitFor(() => {
+      expect(screen.queryByRole('heading', { name: /use a template/i })).not.toBeInTheDocument()
+    })
+    expect(supabaseHolder.inserts.length).toBe(0)
   })
 })

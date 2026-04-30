@@ -549,7 +549,7 @@ export default function AiAssistant({ open, onClose }) {
       },
     })
     sessionRef.current = { session, messageIdx }
-    subscribeSession(session, messageIdx)
+    subscribeSession(session, messageIdx, target.originalTask || '')
   }
 
   const handleApprovePlan = (messageIdx) => {

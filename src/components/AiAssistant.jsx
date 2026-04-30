@@ -125,7 +125,9 @@ export default function AiAssistant({ open, onClose }) {
   // Generic event dispatcher bound to a specific message slot. Returns an
   // unsubscribe-friendly handler that closes itself when a terminal event
   // arrives (done / error / cancelled).
-  const subscribeSession = useCallback((session, messageIdx) => {
+  // `originalTask` is passed explicitly because the closure captures the
+  // initial render's `messages`, which never has the new message in it.
+  const subscribeSession = useCallback((session, messageIdx, originalTask = '') => {
     const unsubscribe = session.subscribe((event) => {
       switch (event.type) {
         case 'router.classified':

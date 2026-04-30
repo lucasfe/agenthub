@@ -12,7 +12,7 @@ interface MockClientCalls {
 function makeMockClient(opts: {
   user?: { id: string } | null
   authError?: { message: string } | null
-  deleteResult?: { error: any; count?: number; data?: any }
+  deleteResult?: { error: any; count?: number | null; data?: any }
 }) {
   const calls: MockClientCalls = { from: [], delete: 0, filters: [] }
   const factory = (_url: string, _key: string, init?: any) => {

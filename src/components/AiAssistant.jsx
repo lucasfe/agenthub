@@ -42,6 +42,21 @@ export default function AiAssistant({ open, onClose }) {
   const listRef = useRef(null)
   // Tracks the currently running session and which message index it writes to.
   const sessionRef = useRef(null)
+  // Per-message-index promise that resolves to the synced board task ID.
+  // Holding a promise (not the ID) avoids races when the user approves or
+  // cancels before the create-task call has resolved.
+  const boardTaskRef = useRef(new Map())
+
+  // Wait for the board-sync task to finish being created, then run a callback
+  // with its ID. Returns silently when there is no synced task (e.g. Supabase
+  // is not configured, or the message never reached `plan.proposed`).
+  const withBoardTaskId = useCallback(async (messageIdx, fn) => {
+    const promise = boardTaskRef.current.get(messageIdx)
+    if (!promise) return
+    const id = await promise
+    if (!id) return
+    await fn(id)
+  }, [])
 
   // Focus the input when the panel opens
   useEffect(() => {

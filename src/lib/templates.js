@@ -32,6 +32,19 @@ export function cloneTemplateToTask(template) {
   }
 }
 
+export function buildTemplateSnapshot(task, { name, description } = {}) {
+  const trimmedName = (name ?? '').trim()
+  const trimmedDescription = (description ?? '').trim()
+  const plan = task?.plan ?? null
+  return {
+    name: trimmedName,
+    description: trimmedDescription ? trimmedDescription : null,
+    task_title: task?.title ?? '',
+    task_description: task?.description ?? '',
+    plan: plan == null ? null : deepCopy(plan),
+  }
+}
+
 function collectAgentIds(plan) {
   if (!plan || !Array.isArray(plan.steps)) return []
   return plan.steps

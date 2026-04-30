@@ -36,7 +36,7 @@ test.describe('Mobile chat', () => {
     })
 
     await page.goto('/mobile/chat')
-    const input = page.getByLabel('Message')
+    const input = page.getByRole('textbox', { name: 'Message' })
     await expect(input).toBeVisible({ timeout: MOBILE_TIMEOUT })
 
     await input.fill('Hi from e2e')

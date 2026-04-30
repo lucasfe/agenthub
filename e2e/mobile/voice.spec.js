@@ -71,7 +71,7 @@ test.describe('Mobile voice input', () => {
     })
 
     await page.goto('/mobile/chat')
-    const input = page.getByLabel('Message')
+    const input = page.getByRole('textbox', { name: 'Message' })
     await expect(input).toBeVisible({ timeout: MOBILE_TIMEOUT })
 
     await page.getByRole('button', { name: 'Voice input' }).click()

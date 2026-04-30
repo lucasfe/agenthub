@@ -110,6 +110,7 @@ export default function TemplatesPage() {
               <TemplateCard
                 key={template.id}
                 template={template}
+                agents={agents}
                 onClick={() => setSelectedId(template.id)}
               />
             ))}

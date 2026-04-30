@@ -9,16 +9,13 @@ function describePlan(plan) {
   return `${count} ${count === 1 ? 'step' : 'steps'}`
 }
 
-function countStepsWithMissingAgents(plan, missingAgentIds) {
-  if (!plan || !Array.isArray(plan.steps) || missingAgentIds.length === 0) return 0
-  const missingSet = new Set(missingAgentIds)
-  return plan.steps.filter((step) => missingSet.has(step?.agent_id)).length
-}
-
 export default function TemplateCard({ template, agents = [], onClick }) {
   const planLabel = describePlan(template.plan)
   const missingAgents = findMissingAgents(template.plan, agents)
-  const stepsNeedingAttention = countStepsWithMissingAgents(template.plan, missingAgents)
+  const missingSet = new Set(missingAgents)
+  const stepsNeedingAttention = (template.plan?.steps || []).filter(
+    (step) => missingSet.has(step?.agent_id),
+  ).length
 
   return (
     <button

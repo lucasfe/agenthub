@@ -395,6 +395,16 @@ function TaskDetailPanel({ task, agents, tools, onUpdate, onDelete, onClose }) {
               Cancel
             </button>
           )}
+          {['awaiting_approval', 'done', 'error', 'cancelled'].includes(task.status) && (
+            <button
+              onClick={() => orch.replan()}
+              disabled={orch.replanInFlight}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium text-text-secondary border border-border-subtle hover:bg-white/5 hover:text-text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <RefreshCw size={12} className={orch.replanInFlight ? 'animate-spin' : ''} />
+              Re-plan
+            </button>
+          )}
           <div className="ml-auto flex items-center gap-2">
             <button
               onClick={() => { onDelete(task.id); onClose() }}

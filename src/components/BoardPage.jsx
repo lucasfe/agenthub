@@ -410,6 +410,13 @@ function TaskDetailPanel({ task, agents, tools, onUpdate, onDelete, onClose }) {
           )}
           <div className="ml-auto flex items-center gap-2">
             <button
+              onClick={() => setSaveTemplateOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-text-secondary hover:text-text-primary hover:bg-white/5 border border-border-subtle transition-colors"
+            >
+              <Bookmark size={12} />
+              Save as template
+            </button>
+            <button
               onClick={() => { onDelete(task.id); onClose() }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-rose-400 hover:bg-rose-500/10 border border-rose-500/20 transition-colors"
             >
@@ -422,6 +429,14 @@ function TaskDetailPanel({ task, agents, tools, onUpdate, onDelete, onClose }) {
           </div>
         </div>
       </div>
+
+      {saveTemplateOpen && (
+        <SaveAsTemplateModal
+          task={task}
+          onClose={() => setSaveTemplateOpen(false)}
+          onSave={insertTemplate}
+        />
+      )}
     </>
   )
 }

@@ -164,8 +164,10 @@ describe('MobileChat', () => {
     renderWithProviders(<MobileChat />)
 
     await user.click(screen.getByLabelText(/Voice input/i))
-    callbacks.onError({ code: 'not-allowed', message: 'denied' })
-    callbacks.onEnd?.()
+    act(() => {
+      callbacks.onError({ code: 'not-allowed', message: 'denied' })
+      callbacks.onEnd?.()
+    })
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent(/Microphone/i)

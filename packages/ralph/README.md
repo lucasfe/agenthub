@@ -151,6 +151,36 @@ Failures sending the startup ping log a warning and never abort
 
 [callmebot]: https://www.callmebot.com/blog/free-api-whatsapp-messages/
 
+### Daily heartbeat (24h summary)
+
+When Ralph is scheduled via `ralph schedule install` (see
+[Scheduling Ralph](#scheduling-ralph-macos-launchd)), a second launchd
+agent fires once a day and posts a one-line summary of the last 24h to
+WhatsApp. This is the *positive heartbeat* — proof Ralph is alive even
+on days when no issues moved.
+
+Format:
+
+```
+📊 Ralph 24h | 6 cycles, 12 issues (10 ok, 2 fail) | lucasfe/agenthub | next 09:00
+```
+
+When the summary aggregation itself fails (corrupt logs, missing
+directories, etc.), the message degrades to
+`❌ Ralph 24h summary failed: <reason>` so silence never reads as
+healthy.
+
+The schedule defaults to `09:00` in your local timezone. Override it
+with `RALPH_DAILY_SUMMARY_TIME` in `.env.local`:
+
+```bash
+RALPH_DAILY_SUMMARY_TIME=07:30
+```
+
+The heartbeat reuses the same `CALLMEBOT_KEY` / `WHATSAPP_PHONE`
+credentials as the cycle and startup notifications. Missing credentials
+skip the WhatsApp send (the summary is still printed to the log).
+
 ### Custom hook (`ralph-notify.sh`)
 
 For Slack, Discord, email, native macOS notifications, etc., copy

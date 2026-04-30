@@ -11,7 +11,7 @@
     "test": "vitest run --reporter=verbose",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:functions": "deno test --allow-net --allow-env supabase/functions/",
+    "test:functions": "deno test --config supabase/functions/deno.json --allow-net --allow-env --allow-read --allow-write --allow-sys supabase/functions/",
     "test:functions:integration": "deno test --allow-net --allow-env supabase/integration/",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"

@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import {
   Plus, GripVertical, X, MoreHorizontal, Trash2, ChevronDown,
-  Loader2, AlertCircle, CheckCircle2, Clock, Play, Square, Eye,
+  Loader2, AlertCircle, CheckCircle2, Clock, Play, Square, Eye, RefreshCw,
 } from 'lucide-react'
 import Header from './Header'
 import { supabase } from '../lib/supabase'
@@ -393,6 +393,16 @@ function TaskDetailPanel({ task, agents, tools, onUpdate, onDelete, onClose }) {
             >
               <Square size={12} />
               Cancel
+            </button>
+          )}
+          {['awaiting_approval', 'done', 'error', 'cancelled'].includes(task.status) && (
+            <button
+              onClick={() => orch.replan()}
+              disabled={orch.replanInFlight}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium text-text-secondary border border-border-subtle hover:bg-white/5 hover:text-text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <RefreshCw size={12} className={orch.replanInFlight ? 'animate-spin' : ''} />
+              Re-plan
             </button>
           )}
           <div className="ml-auto flex items-center gap-2">

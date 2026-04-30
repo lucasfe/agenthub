@@ -18,6 +18,7 @@ export function useTaskOrchestration({ task, agents, tools, onTaskUpdate }) {
   const [runSummary, setRunSummary] = useState(null)
   const [runError, setRunError] = useState(null)
   const [failedStepId, setFailedStepId] = useState(null)
+  const [replanInFlight, setReplanInFlight] = useState(false)
   const abortRef = useRef(null)
 
   const taskId = task?.id
@@ -196,14 +197,68 @@ export function useTaskOrchestration({ task, agents, tools, onTaskUpdate }) {
     patch({ status: 'cancelled', error_message: 'Cancelled by user' })
   }, [patch])
 
+  // Re-plan: regenerate the plan against the task's current title/description
+  // without destroying the existing plan if the regeneration fails. The old
+  // plan stays in state and Supabase until `plan.proposed` arrives, at which
+  // point it is atomically replaced and the task transitions to
+  // `awaiting_approval`. If the stream errors or aborts mid-flight, the old
+  // plan and the prior status are left untouched.
+  const replan = useCallback(() => {
+    if (!task) return
+    if (replanInFlight) return
+
+    setReplanInFlight(true)
+    patch({ error_message: null })
+
+    const controller = new AbortController()
+    const taskDescription = [task.title, task.description].filter(Boolean).join('\n\n')
+
+    streamOrchestration({
+      mode: 'planned',
+      sessionId: crypto.randomUUID(),
+      messages: [{ role: 'user', content: taskDescription }],
+      agents,
+      tools,
+      signal: controller.signal,
+      onEvent: (event) => {
+        switch (event.type) {
+          case 'plan.proposed':
+            patch({ status: 'awaiting_approval', plan: event.plan })
+            setReplanInFlight(false)
+            break
+          case 'plan.fallback':
+            patch({ error_message: event.reason || 'No suitable agent found' })
+            setReplanInFlight(false)
+            break
+          case 'plan.error':
+            patch({ error_message: event.error || 'Planning failed' })
+            setReplanInFlight(false)
+            break
+          default:
+            break
+        }
+      },
+    })
+      .catch((err) => {
+        if (err.name !== 'AbortError') {
+          patch({ error_message: err.message })
+        }
+      })
+      .finally(() => {
+        setReplanInFlight(false)
+      })
+  }, [task, replanInFlight, agents, tools, patch])
+
   return {
     stepStates,
     activeStepId,
     runSummary,
     runError,
     failedStepId,
+    replanInFlight,
     startPlanning,
     approve,
     cancel,
+    replan,
   }
 }

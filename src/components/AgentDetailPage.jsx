@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router'
 import * as Icons from 'lucide-react'
-import { fetchAgent, deleteAgent, updateAgent } from '../lib/api'
+import { fetchAgent, deleteAgent, updateAgent, fetchAllTasks } from '../lib/api'
+import { fetchTemplates } from '../lib/templatesApi'
+import { findReferencingTemplates, findReferencingActiveTasks } from '../lib/templates'
 import { useData } from '../context/DataContext'
 import Markdown from '../lib/markdown'
+import AgentReferencesModal from './AgentReferencesModal'
 
 const colorMap = {
   blue: { bg: 'from-blue-500/15 to-blue-600/5', border: 'border-blue-500/20', icon: 'text-blue-400', tag: 'bg-blue-500/10 text-blue-300' },
@@ -37,6 +40,10 @@ export default function AgentDetailPage() {
   const [deleteConfirmInput, setDeleteConfirmInput] = useState('')
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState(null)
+  const [showReferencesModal, setShowReferencesModal] = useState(false)
+  const [referencingTemplates, setReferencingTemplates] = useState([])
+  const [referencingTasks, setReferencingTasks] = useState([])
+  const [referencesLoading, setReferencesLoading] = useState(false)
   const [editContent, setEditContent] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [saveStatus, setSaveStatus] = useState(null)
@@ -83,6 +90,41 @@ export default function AgentDetailPage() {
       setDeleteError(err.message)
       setIsDeleting(false)
     }
+  }
+
+  const startDeleteFlow = async () => {
+    if (referencesLoading) return
+    setReferencesLoading(true)
+    try {
+      const [templates, tasks] = await Promise.all([
+        fetchTemplates().catch(() => []),
+        fetchAllTasks().catch(() => []),
+      ])
+      const refTemplates = findReferencingTemplates(agentId, templates)
+      const refTasks = findReferencingActiveTasks(agentId, tasks)
+      if (refTemplates.length === 0 && refTasks.length === 0) {
+        setShowDeleteConfirm(true)
+      } else {
+        setReferencingTemplates(refTemplates)
+        setReferencingTasks(refTasks)
+        setShowReferencesModal(true)
+      }
+    } finally {
+      setReferencesLoading(false)
+    }
+  }
+
+  const handleReferencesCancel = () => {
+    setShowReferencesModal(false)
+    setReferencingTemplates([])
+    setReferencingTasks([])
+  }
+
+  const handleReferencesConfirm = () => {
+    setShowReferencesModal(false)
+    setReferencingTemplates([])
+    setReferencingTasks([])
+    setShowDeleteConfirm(true)
   }
 
   const handleSaveContent = async () => {
@@ -172,8 +214,9 @@ export default function AgentDetailPage() {
             </div>
           </div>
           <button
-            onClick={() => setShowDeleteConfirm(true)}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-rose-400 border border-rose-500/30 rounded-xl hover:border-rose-500/60 hover:bg-rose-500/10 transition-all duration-200 shrink-0 active:scale-95"
+            onClick={startDeleteFlow}
+            disabled={referencesLoading}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-rose-400 border border-rose-500/30 rounded-xl hover:border-rose-500/60 hover:bg-rose-500/10 transition-all duration-200 shrink-0 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Delete this agent"
           >
             <Icons.Trash2 size={14} />
@@ -405,6 +448,18 @@ export default function AgentDetailPage() {
           )}
         </div>
       </div>
+
+      {/* References warning modal — shown before type-to-confirm when the
+          agent is still referenced by templates or active tickets. */}
+      {showReferencesModal && (
+        <AgentReferencesModal
+          agentName={agent.name}
+          templates={referencingTemplates}
+          tasks={referencingTasks}
+          onCancel={handleReferencesCancel}
+          onConfirm={handleReferencesConfirm}
+        />
+      )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (

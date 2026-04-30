@@ -129,7 +129,7 @@ jobs:
             if curl -sf http://localhost:4173/ > /dev/null; then break; fi
             sleep 1
           done
-          PLAYWRIGHT_BASE_URL=http://localhost:4173 npx playwright test --project=chromium
+          PLAYWRIGHT_BASE_URL=http://localhost:4173 npx playwright test
           STATUS=$?
           kill $PREVIEW_PID 2>/dev/null || true
           exit $STATUS

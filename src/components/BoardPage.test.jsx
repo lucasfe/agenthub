@@ -42,6 +42,13 @@ vi.mock('../lib/orchestration/stream', () => ({
   isOrchestrationConfigured: () => true,
 }))
 
+vi.mock('../lib/templatesApi', () => ({
+  fetchTemplates: vi.fn().mockResolvedValue([]),
+  insertTemplate: vi.fn().mockResolvedValue({ id: 'tpl-new' }),
+  updateTemplate: vi.fn().mockResolvedValue(null),
+  deleteTemplate: vi.fn().mockResolvedValue(undefined),
+}))
+
 // In-memory mock of the supabase tasks table. Tests can seed it via
 // `setMockTasks([...])` before rendering.
 const supabaseHolder = vi.hoisted(() => ({

@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
+  parseHeartbeatTime,
   parseInterval,
+  scheduleHeartbeatCommand,
   scheduleInstallCommand,
   schedulePauseCommand,
   scheduleResumeCommand,

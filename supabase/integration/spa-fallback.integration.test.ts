@@ -24,7 +24,7 @@ const skipReason = 'DEPLOY_URL not set — skipping live SPA fallback tests.'
 if (SKIP) console.warn(`[integration] ${skipReason}`)
 
 async function head(path: string) {
-  const res = await fetch(`${DEPLOY_URL}${path}`, {
+  const res = await fetch(`${DEPLOY_URL!}${path}`, {
     method: 'GET',
     redirect: 'manual',
     headers: { Accept: 'text/html,*/*' },

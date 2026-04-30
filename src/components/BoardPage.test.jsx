@@ -428,7 +428,7 @@ describe('BoardPage From template action', () => {
   })
 
   it('opens the template selector modal and lists fetched templates on click', async () => {
-    fetchTemplates.mockResolvedValueOnce([
+    fetchTemplates.mockResolvedValue([
       makeTemplate({ id: 'tpl-a', name: 'First template' }),
       makeTemplate({ id: 'tpl-b', name: 'Second template' }),
     ])

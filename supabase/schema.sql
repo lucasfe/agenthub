@@ -88,6 +88,24 @@ create table if not exists runs (
 create index if not exists idx_runs_status on runs(status);
 create index if not exists idx_runs_created_at on runs(created_at desc);
 
+-- Task templates (reusable Kanban-board ticket blueprints). A template
+-- snapshots a ticket's title, description, and the full execution plan
+-- so the planner cost is paid once and the resulting plan can be
+-- instantiated as new tickets. See PRD #246 / issue #247.
+create table if not exists task_templates (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  description text,
+  task_title text not null,
+  task_description text,
+  plan jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_task_templates_created_at
+  on task_templates (created_at desc);
+
 -- Web Push subscriptions for the mobile shell at /mobile. Owned by the
 -- push-subscribe / push-unsubscribe Edge Functions. RLS scopes every
 -- operation to the row's owner.

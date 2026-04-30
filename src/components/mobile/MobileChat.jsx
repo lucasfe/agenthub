@@ -6,6 +6,7 @@ import { startRecognition } from '../../lib/voice'
 import MobileAgentPicker from './MobileAgentPicker'
 import MobileApprovalCard from './MobileApprovalCard'
 import MobilePlanCard from './MobilePlanCard'
+import MobilePushOptIn from './MobilePushOptIn'
 
 const INITIAL_MESSAGES = []
 

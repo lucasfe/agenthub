@@ -402,6 +402,14 @@ function jwkToUncompressedP256(jwk: JsonWebKey): Uint8Array {
   return out
 }
 
+// Cast helper: Web Crypto signatures in @types/web require BufferSource
+// (ArrayBuffer-backed views), but Deno's Uint8Array constructor returns the
+// widened `Uint8Array<ArrayBufferLike>` shape. Behaviorally this is fine —
+// the buffer is always ArrayBuffer in practice — but TypeScript needs a hint.
+function bs(view: Uint8Array): BufferSource {
+  return view as unknown as BufferSource
+}
+
 function concatBytes(...parts: Uint8Array[]): Uint8Array {
   let total = 0
   for (const p of parts) total += p.length

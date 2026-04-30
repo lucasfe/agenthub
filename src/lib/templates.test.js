@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   cloneTemplateToTask,
+  buildTemplateSnapshot,
   findMissingAgents,
   findMissingTools,
   findReferencingTemplates,
@@ -74,6 +75,78 @@ describe('cloneTemplateToTask', () => {
     expect(row).not.toHaveProperty('id')
     expect(row).not.toHaveProperty('created_at')
     expect(row).not.toHaveProperty('updated_at')
+  })
+})
+
+describe('buildTemplateSnapshot', () => {
+  const sampleTask = (overrides = {}) => ({
+    id: 'task-7',
+    title: 'Build login screen',
+    description: 'with Google OAuth',
+    status: 'done',
+    plan: samplePlan(),
+    run_id: 'run-1',
+    error_message: null,
+    artifacts: [{ name: 'a' }],
+    ...overrides,
+  })
+
+  it('snapshots only the columns persisted in task_templates', () => {
+    const snap = buildTemplateSnapshot(sampleTask(), {
+      name: 'Reusable login',
+      description: 'For OAuth integrations',
+    })
+    expect(snap).toEqual({
+      name: 'Reusable login',
+      description: 'For OAuth integrations',
+      task_title: 'Build login screen',
+      task_description: 'with Google OAuth',
+      plan: samplePlan(),
+    })
+    expect(snap).not.toHaveProperty('status')
+    expect(snap).not.toHaveProperty('run_id')
+    expect(snap).not.toHaveProperty('error_message')
+    expect(snap).not.toHaveProperty('artifacts')
+    expect(snap).not.toHaveProperty('id')
+  })
+
+  it('trims the name and description', () => {
+    const snap = buildTemplateSnapshot(sampleTask(), {
+      name: '   Padded name   ',
+      description: '   spaced description   ',
+    })
+    expect(snap.name).toBe('Padded name')
+    expect(snap.description).toBe('spaced description')
+  })
+
+  it('returns null description when blank or whitespace-only', () => {
+    expect(
+      buildTemplateSnapshot(sampleTask(), { name: 'x', description: '' }).description,
+    ).toBeNull()
+    expect(
+      buildTemplateSnapshot(sampleTask(), { name: 'x', description: '   ' }).description,
+    ).toBeNull()
+    expect(
+      buildTemplateSnapshot(sampleTask(), { name: 'x' }).description,
+    ).toBeNull()
+  })
+
+  it('passes a null plan through when the source task has none', () => {
+    const snap = buildTemplateSnapshot(sampleTask({ plan: null }), { name: 'x' })
+    expect(snap.plan).toBeNull()
+  })
+
+  it('deep-copies the plan so mutating the snapshot leaves the source ticket untouched', () => {
+    const task = sampleTask()
+    const snap = buildTemplateSnapshot(task, { name: 'x' })
+    snap.plan.steps[0].task = 'mutated'
+    expect(task.plan.steps[0].task).toBe('Build the form')
+  })
+
+  it('falls back to empty strings when the source task has no title or description', () => {
+    const snap = buildTemplateSnapshot({}, { name: 'x' })
+    expect(snap.task_title).toBe('')
+    expect(snap.task_description).toBe('')
   })
 })
 

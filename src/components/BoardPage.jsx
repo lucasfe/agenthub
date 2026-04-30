@@ -1,12 +1,14 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import {
   Plus, GripVertical, X, MoreHorizontal, Trash2, ChevronDown,
-  Loader2, AlertCircle, CheckCircle2, Clock, Play, Square, Eye, RefreshCw,
+  Loader2, AlertCircle, CheckCircle2, Clock, Play, Square, Eye, RefreshCw, Bookmark,
 } from 'lucide-react'
 import Header from './Header'
 import { supabase } from '../lib/supabase'
 import { useData } from '../context/DataContext'
 import { useTaskOrchestration } from '../lib/taskOrchestration'
+import { insertTemplate } from '../lib/templatesApi'
+import SaveAsTemplateModal from './SaveAsTemplateModal'
 import {
   StepRow,
   formatDuration,
@@ -180,6 +182,7 @@ function TaskDetailPanel({ task, agents, tools, onUpdate, onDelete, onClose }) {
   const [description, setDescription] = useState(task.description)
   const [statusOpen, setStatusOpen] = useState(false)
   const [stepAnswers, setStepAnswers] = useState({})
+  const [saveTemplateOpen, setSaveTemplateOpen] = useState(false)
   const statusRef = useRef(null)
 
   const orch = useTaskOrchestration({ task, agents, tools, onTaskUpdate: onUpdate })
@@ -407,6 +410,13 @@ function TaskDetailPanel({ task, agents, tools, onUpdate, onDelete, onClose }) {
           )}
           <div className="ml-auto flex items-center gap-2">
             <button
+              onClick={() => setSaveTemplateOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-text-secondary hover:text-text-primary hover:bg-white/5 border border-border-subtle transition-colors"
+            >
+              <Bookmark size={12} />
+              Save as template
+            </button>
+            <button
               onClick={() => { onDelete(task.id); onClose() }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-rose-400 hover:bg-rose-500/10 border border-rose-500/20 transition-colors"
             >
@@ -419,6 +429,14 @@ function TaskDetailPanel({ task, agents, tools, onUpdate, onDelete, onClose }) {
           </div>
         </div>
       </div>
+
+      {saveTemplateOpen && (
+        <SaveAsTemplateModal
+          task={task}
+          onClose={() => setSaveTemplateOpen(false)}
+          onSave={insertTemplate}
+        />
+      )}
     </>
   )
 }

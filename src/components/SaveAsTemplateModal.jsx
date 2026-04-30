@@ -29,7 +29,7 @@ export default function SaveAsTemplateModal({ task, onClose, onSave }) {
     setSaving(true)
     setError(null)
     try {
-      await onSave(buildSnapshot(task, name, description))
+      await onSave(buildTemplateSnapshot(task, { name, description }))
       onClose()
     } catch (err) {
       setError(err?.message || 'Failed to save template')

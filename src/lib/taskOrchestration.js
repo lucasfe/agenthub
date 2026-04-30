@@ -211,8 +211,6 @@ export function useTaskOrchestration({ task, agents, tools, onTaskUpdate }) {
     patch({ error_message: null })
 
     const controller = new AbortController()
-    replanAbortRef.current = controller
-
     const taskDescription = [task.title, task.description].filter(Boolean).join('\n\n')
 
     streamOrchestration({

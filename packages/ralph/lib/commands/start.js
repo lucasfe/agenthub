@@ -269,4 +269,11 @@ export async function startCommand({
   return { exitCode: 0, started: true, count: Number(count) }
 }
 
+function ageInHours(nowMs, isoStartedAt) {
+  if (!isoStartedAt) return 0
+  const startMs = Date.parse(isoStartedAt)
+  if (!Number.isFinite(startMs)) return 0
+  return Math.max(0, Math.round((nowMs - startMs) / 3600000))
+}
+
 export { StartAbort }

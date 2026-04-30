@@ -391,3 +391,158 @@ describe('BoardPage Save as template action', () => {
     })
   })
 })
+
+describe('BoardPage From template action', () => {
+  function makeTemplate(overrides = {}) {
+    return {
+      id: 'tpl-1',
+      name: 'Bug fix recipe',
+      description: 'A reusable bug-fix template',
+      task_title: 'Fix the bug',
+      task_description: 'Describe how to reproduce',
+      plan: {
+        steps: [
+          {
+            id: 's1',
+            agent_id: 'frontend-developer',
+            agent_name: 'Frontend Developer',
+            agent_color: 'blue',
+            agent_icon: 'Monitor',
+            task: 'Investigate the failing component',
+          },
+        ],
+      },
+      ...overrides,
+    }
+  }
+
+  async function waitForBoard() {
+    renderWithProviders(<BoardPage />)
+    return await screen.findByRole('button', { name: /from template/i })
+  }
+
+  it('renders the + From template button alongside + Add task in the todo column', async () => {
+    await waitForBoard()
+    expect(screen.getByRole('button', { name: /^add task$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /from template/i })).toBeInTheDocument()
+  })
+
+  it('opens the template selector modal and lists fetched templates on click', async () => {
+    fetchTemplates.mockResolvedValueOnce([
+      makeTemplate({ id: 'tpl-a', name: 'First template' }),
+      makeTemplate({ id: 'tpl-b', name: 'Second template' }),
+    ])
+    const trigger = await waitForBoard()
+    await userEvent.setup().click(trigger)
+
+    expect(await screen.findByText('First template')).toBeInTheDocument()
+    expect(screen.getByText('Second template')).toBeInTheDocument()
+  })
+
+  it('shows the read-only preview pane when a template is selected', async () => {
+    fetchTemplates.mockResolvedValueOnce([makeTemplate()])
+    const trigger = await waitForBoard()
+    const user = userEvent.setup()
+    await user.click(trigger)
+
+    await user.click(await screen.findByText('Bug fix recipe'))
+
+    // Preview surfaces both ticket fields and plan step content.
+    expect(screen.getAllByText('Fix the bug').length).toBeGreaterThan(0)
+    expect(screen.getByText('Describe how to reproduce')).toBeInTheDocument()
+    expect(screen.getByText('Investigate the failing component')).toBeInTheDocument()
+    // Preview must be read-only — no editable inputs.
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+  })
+
+  it('inserts an awaiting_approval task with the cloned plan and opens the panel on click of Use template', async () => {
+    const tpl = makeTemplate()
+    fetchTemplates.mockResolvedValueOnce([tpl])
+    const trigger = await waitForBoard()
+    const user = userEvent.setup()
+    await user.click(trigger)
+    await user.click(await screen.findByText('Bug fix recipe'))
+    await user.click(screen.getByRole('button', { name: /use template/i }))
+
+    await waitFor(() => {
+      expect(supabaseHolder.inserts.length).toBe(1)
+    })
+    const inserted = supabaseHolder.inserts[0]
+    expect(inserted.title).toBe('Fix the bug')
+    expect(inserted.description).toBe('Describe how to reproduce')
+    expect(inserted.status).toBe('awaiting_approval')
+    expect(inserted.plan).toEqual(tpl.plan)
+    expect(inserted.run_id).toBeNull()
+    expect(inserted.error_message).toBeNull()
+    expect(inserted.artifacts).toEqual([])
+
+    // Modal closed and the detail panel opened on the new ticket.
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /use template/i })).not.toBeInTheDocument()
+    })
+    expect(await screen.findByText('TASK')).toBeInTheDocument()
+  })
+
+  it('lands the new ticket in todo when the chosen template has no plan', async () => {
+    const tpl = makeTemplate({
+      id: 'tpl-blank',
+      name: 'Blank starter',
+      task_title: 'Blank task',
+      plan: null,
+    })
+    fetchTemplates.mockResolvedValueOnce([tpl])
+    const trigger = await waitForBoard()
+    const user = userEvent.setup()
+    await user.click(trigger)
+    await user.click(await screen.findByText('Blank starter'))
+    await user.click(screen.getByRole('button', { name: /use template/i }))
+
+    await waitFor(() => {
+      expect(supabaseHolder.inserts.length).toBe(1)
+    })
+    expect(supabaseHolder.inserts[0].status).toBe('todo')
+    expect(supabaseHolder.inserts[0].plan).toBeNull()
+  })
+
+  it('does not mutate the source template plan when the new ticket plan is touched', async () => {
+    const tpl = makeTemplate()
+    fetchTemplates.mockResolvedValueOnce([tpl])
+    const trigger = await waitForBoard()
+    const user = userEvent.setup()
+    await user.click(trigger)
+    await user.click(await screen.findByText('Bug fix recipe'))
+    await user.click(screen.getByRole('button', { name: /use template/i }))
+
+    await waitFor(() => {
+      expect(supabaseHolder.inserts.length).toBe(1)
+    })
+    const insertedPlan = supabaseHolder.inserts[0].plan
+    insertedPlan.steps[0].task = 'mutated copy'
+    expect(tpl.plan.steps[0].task).toBe('Investigate the failing component')
+  })
+
+  it('keeps the existing + Add task inline form unchanged', async () => {
+    const trigger = await waitForBoard()
+    expect(trigger).toBeInTheDocument()
+    const addBtn = screen.getByRole('button', { name: /^add task$/i })
+    await userEvent.setup().click(addBtn)
+
+    expect(screen.getByPlaceholderText(/task title/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /use template/i })).not.toBeInTheDocument()
+  })
+
+  it('closes the modal on cancel without inserting anything', async () => {
+    fetchTemplates.mockResolvedValueOnce([makeTemplate()])
+    const trigger = await waitForBoard()
+    const user = userEvent.setup()
+    await user.click(trigger)
+    await screen.findByText('Bug fix recipe')
+
+    await user.click(screen.getByRole('button', { name: /^cancel$/i }))
+
+    await waitFor(() => {
+      expect(screen.queryByText('Bug fix recipe')).not.toBeInTheDocument()
+    })
+    expect(supabaseHolder.inserts.length).toBe(0)
+  })
+})

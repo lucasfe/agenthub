@@ -550,8 +550,44 @@ describe('listInstalledAgents', () => {
     expect(list[0]).toMatchObject({
       slug: 'broken',
       label: 'com.lucasfe.ralph.cycle.broken',
+      kind: 'cycle',
       workingDirectory: null,
       intervalSeconds: null,
+    })
+  })
+
+  it('lists heartbeat plists with kind: "heartbeat"', () => {
+    const repo = '/Users/me/repos/agenthub'
+    const cyclePlist = makePlist('agenthub', repo, 14400)
+    const heartbeatPlist = buildPlist({
+      slug: 'agenthub',
+      command: '/usr/local/bin/ralph',
+      args: ['schedule', 'heartbeat'],
+      startCalendarInterval: { hour: 9, minute: 0 },
+      workingDirectory: repo,
+      logDir: `${repo}/logs`,
+      environment: { PATH: '/usr/bin' },
+      kind: 'heartbeat',
+    })
+    const v = vol({
+      [`${LAUNCH_DIR}/com.lucasfe.ralph.cycle.agenthub.plist`]: cyclePlist,
+      [`${LAUNCH_DIR}/com.lucasfe.ralph.heartbeat.agenthub.plist`]: heartbeatPlist,
+    })
+    const list = listInstalledAgents({ home: HOME, fsImpl: v })
+    expect(list).toHaveLength(2)
+    const cycleEntry = list.find((a) => a.kind === 'cycle')
+    const heartbeatEntry = list.find((a) => a.kind === 'heartbeat')
+    expect(cycleEntry).toMatchObject({
+      slug: 'agenthub',
+      label: 'com.lucasfe.ralph.cycle.agenthub',
+      kind: 'cycle',
+      intervalSeconds: 14400,
+    })
+    expect(heartbeatEntry).toMatchObject({
+      slug: 'agenthub',
+      label: 'com.lucasfe.ralph.heartbeat.agenthub',
+      kind: 'heartbeat',
+      startCalendarInterval: { hour: 9, minute: 0 },
     })
   })
 })

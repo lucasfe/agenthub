@@ -275,7 +275,7 @@ export async function defaultEncryptPayload(
   // Import recipient public key as ECDH peer.
   const recipientPub = await crypto.subtle.importKey(
     'raw',
-    recipientPubBytes,
+    bs(recipientPubBytes),
     { name: 'ECDH', namedCurve: 'P-256' },
     false,
     [],

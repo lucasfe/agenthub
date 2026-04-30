@@ -541,6 +541,15 @@ export default function BoardPage() {
     if (row) setTasks((prev) => [...prev, row])
   }, [])
 
+  const handleUseTemplate = useCallback(async (template) => {
+    const row = await insertTask(cloneTemplateToTask(template))
+    if (row) {
+      setTasks((prev) => [...prev, row])
+      setSelectedTaskId(row.id)
+    }
+    setTemplateSelectorOpen(false)
+  }, [])
+
   const handleDeleteTask = useCallback(async (taskId) => {
     setTasks((prev) => prev.filter((t) => t.id !== taskId))
     setSelectedTaskId((prev) => (prev === taskId ? null : prev))

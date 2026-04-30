@@ -244,7 +244,7 @@ export async function defaultSignVapidJwt(
   const signature = await crypto.subtle.sign(
     { name: 'ECDSA', hash: 'SHA-256' },
     key,
-    signingInput,
+    bs(signingInput),
   )
   return `${headerB64}.${claimsB64}.${b64urlEncode(new Uint8Array(signature))}`
 }

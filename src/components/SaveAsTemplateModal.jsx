@@ -1,0 +1,137 @@
+import { useEffect, useRef, useState } from 'react'
+import { X, Loader2 } from 'lucide-react'
+
+function deepCopy(value) {
+  if (value == null) return value
+  if (typeof structuredClone === 'function') return structuredClone(value)
+  return JSON.parse(JSON.stringify(value))
+}
+
+function buildSnapshot(task, name, description) {
+  return {
+    name: name.trim(),
+    description: description.trim() ? description.trim() : null,
+    task_title: task.title ?? '',
+    task_description: task.description ?? '',
+    plan: task.plan == null ? null : deepCopy(task.plan),
+  }
+}
+
+export default function SaveAsTemplateModal({ task, onClose, onSave }) {
+  const [name, setName] = useState(task.title ?? '')
+  const [description, setDescription] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState(null)
+  const nameRef = useRef(null)
+
+  useEffect(() => {
+    nameRef.current?.focus()
+    nameRef.current?.select()
+  }, [])
+
+  useEffect(() => {
+    const handleKey = (e) => { if (e.key === 'Escape' && !saving) onClose() }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [onClose, saving])
+
+  const trimmedName = name.trim()
+  const canSave = trimmedName.length > 0 && !saving
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!canSave) return
+    setSaving(true)
+    setError(null)
+    try {
+      await onSave(buildSnapshot(task, name, description))
+      onClose()
+    } catch (err) {
+      setError(err?.message || 'Failed to save template')
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60"
+      onClick={() => { if (!saving) onClose() }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md mx-4 rounded-2xl bg-bg-sidebar border border-border-subtle shadow-2xl"
+      >
+        <div className="h-12 border-b border-border-subtle px-5 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-text-primary">Save as template</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="p-1.5 rounded-lg hover:bg-bg-input text-text-muted hover:text-text-primary transition-colors disabled:opacity-50"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="px-5 py-4 space-y-4">
+          <div>
+            <label
+              htmlFor="save-template-name"
+              className="text-[10px] font-semibold uppercase tracking-wider text-text-muted block mb-1.5"
+            >
+              Template name
+            </label>
+            <input
+              id="save-template-name"
+              ref={nameRef}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              className="w-full bg-bg-input border border-border-subtle rounded-xl px-3.5 py-2.5 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-border-hover transition-colors"
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="save-template-description"
+              className="text-[10px] font-semibold uppercase tracking-wider text-text-muted block mb-1.5"
+            >
+              Template description
+            </label>
+            <textarea
+              id="save-template-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Optional — describe when to reuse this template"
+              rows={3}
+              className="w-full bg-bg-input border border-border-subtle rounded-xl px-3.5 py-2.5 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-border-hover resize-none transition-colors"
+            />
+          </div>
+
+          {error && (
+            <p className="text-xs text-rose-300" role="alert">{error}</p>
+          )}
+
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              className="px-3 py-1.5 rounded-lg text-xs text-text-secondary hover:text-text-primary hover:bg-white/5 transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!canSave}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium text-white bg-blue-500 hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saving && <Loader2 size={12} className="animate-spin" />}
+              Save
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}

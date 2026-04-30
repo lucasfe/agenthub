@@ -189,6 +189,7 @@ function ProtectedShell() {
             <Route path="/board" element={<BoardPage />} />
             <Route path="/skills" element={<SkillsPage />} />
             <Route path="/skills/:slug" element={<SkillDetailPage />} />
+            <Route path="/templates" element={<TemplatesPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Routes>
         </main>

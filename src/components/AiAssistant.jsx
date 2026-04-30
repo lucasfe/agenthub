@@ -411,6 +411,7 @@ export default function AiAssistant({ open, onClose }) {
               tokens_out: event.total_tokens_out,
             },
           }))
+          withBoardTaskId(messageIdx, (id) => markTaskDone(supabase, id))
           setIsStreaming(false)
           sessionRef.current = null
           unsubscribe()

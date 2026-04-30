@@ -142,8 +142,10 @@ describe('MobileChat', () => {
     expect(screen.getByText(/Listening/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/Stop voice input/i)).toBeInTheDocument()
 
-    callbacks.onResult({ transcript: 'world', isFinal: true })
-    callbacks.onEnd?.()
+    act(() => {
+      callbacks.onResult({ transcript: 'world', isFinal: true })
+      callbacks.onEnd?.()
+    })
 
     await waitFor(() => {
       expect(input.value).toBe('hello world')

@@ -23,6 +23,8 @@ test.describe('Mobile push opt-in card', () => {
     // localStorage was written; reloading should keep the card hidden.
     await page.reload()
     await expect(card).toBeHidden()
-    await expect(page.getByLabel('Message')).toBeVisible({ timeout: MOBILE_TIMEOUT })
+    await expect(page.getByRole('textbox', { name: 'Message' })).toBeVisible({
+      timeout: MOBILE_TIMEOUT,
+    })
   })
 })

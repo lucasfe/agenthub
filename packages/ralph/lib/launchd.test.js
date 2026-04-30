@@ -249,6 +249,30 @@ describe('installAgent', () => {
     expect(written).not.toBe('<old/>')
     expect(written).toContain(LABEL)
   })
+
+  it('writes a heartbeat plist at the heartbeat path when kind is "heartbeat"', async () => {
+    const v = vol()
+    const exec = makeExec()
+    const result = await installAgent({
+      slug: SLUG,
+      command: '/usr/local/bin/ralph',
+      args: ['schedule', 'heartbeat'],
+      startCalendarInterval: { hour: 9, minute: 0 },
+      workingDirectory: '/Users/me/repos/agenthub',
+      logDir: '/Users/me/repos/agenthub/logs',
+      environment: { PATH: '/usr/bin' },
+      kind: 'heartbeat',
+      home: HOME,
+      fsImpl: v,
+      exec,
+    })
+    const heartbeatPath = `${HOME}/Library/LaunchAgents/com.lucasfe.ralph.heartbeat.${SLUG}.plist`
+    expect(result.plistPath).toBe(heartbeatPath)
+    expect(result.kind).toBe('heartbeat')
+    expect(v.existsSync(heartbeatPath)).toBe(true)
+    const written = v.readFileSync(heartbeatPath, 'utf8').toString()
+    expect(written).toMatch(/<key>StartCalendarInterval<\/key>/)
+  })
 })
 
 describe('removeAgent', () => {

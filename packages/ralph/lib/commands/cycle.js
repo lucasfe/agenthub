@@ -21,6 +21,7 @@ import { templatePath } from '../paths.js'
 const TMUX_SESSION = 'ralph'
 const SEARCH_QUERY =
   'state:open -label:claude-working -label:claude-failed -label:do-not-ralph -label:pending-merge'
+const CYCLE_EVENT_TAG = 'RALPH_CYCLE_EVENT'
 
 class CycleAbort extends Error {
   constructor(message, exitCode = 1) {

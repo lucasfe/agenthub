@@ -18,15 +18,14 @@ vi.mock('./supabase', () => {
 import { fetchTemplates } from './templatesApi'
 
 describe('fetchTemplates', () => {
-  let consoleErrorSpy
-
   beforeEach(() => {
-    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
     queryHolder.result = { data: [], error: null }
   })
 
   afterEach(() => {
-    consoleErrorSpy.mockRestore()
+    vi.restoreAllMocks()
   })
 
   it('returns the rows from Supabase on a successful query', async () => {

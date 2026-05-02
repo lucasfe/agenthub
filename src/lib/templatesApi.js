@@ -1,10 +1,14 @@
 // Thin Supabase CRUD wrapper for the `task_templates` table.
 //
-// Mirrors the inline helpers BoardPage.jsx uses for `tasks`. Trivial
-// pass-through — there is no isolated unit test, only transitive
-// coverage from the page-level component tests.
+// Mirrors the inline helpers BoardPage.jsx uses for `tasks`.
 
 import { supabase } from './supabase'
+
+// Postgres 42P01 ("relation does not exist") and Postgrest PGRST205
+// ("schema cache miss") both mean the table is unreachable. From the
+// user's perspective the page should render the empty state instead
+// of a confusing schema error — see issue #340.
+const MISSING_TABLE_CODES = new Set(['42P01', 'PGRST205'])
 
 export async function fetchTemplates() {
   if (!supabase) return []
@@ -13,6 +17,10 @@ export async function fetchTemplates() {
     .select('*')
     .order('created_at', { ascending: true })
   if (error) {
+    if (MISSING_TABLE_CODES.has(error.code)) {
+      console.warn('[templates] task_templates table not reachable, treating as empty', error)
+      return []
+    }
     console.error('[templates] fetch', error)
     throw error
   }

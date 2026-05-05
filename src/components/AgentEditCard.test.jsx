@@ -35,13 +35,13 @@ const existingAgent = {
 
 describe('AgentEditCard', () => {
   beforeEach(() => {
-    apiMock.fetchAgents.mockResolvedValue([existingAgent])
+    agentsRepoMock.listAgents.mockResolvedValue([existingAgent])
     apiMock.fetchTeams.mockResolvedValue([])
-    apiMock.updateAgent.mockReset()
+    agentsRepoMock.updateAgent.mockReset()
   })
 
   it('shows a missing-agent error when the target id does not exist', async () => {
-    apiMock.fetchAgents.mockResolvedValue([]) // empty DB
+    agentsRepoMock.listAgents.mockResolvedValue([]) // empty DB
 
     renderWithProviders(
       <AgentEditCard targetId="ghost-agent" updates={{ color: 'rose' }} />,
@@ -113,7 +113,7 @@ describe('AgentEditCard', () => {
   })
 
   it('calls updateAgent with only the diff fields on apply', async () => {
-    apiMock.updateAgent.mockResolvedValue({ ...existingAgent, color: 'purple' })
+    agentsRepoMock.updateAgent.mockResolvedValue({ ...existingAgent, color: 'purple' })
 
     const user = userEvent.setup()
     renderWithProviders(
@@ -130,7 +130,7 @@ describe('AgentEditCard', () => {
     await user.click(screen.getByRole('button', { name: /apply changes/i }))
 
     await waitFor(() => {
-      expect(apiMock.updateAgent).toHaveBeenCalledWith('frontend-developer', {
+      expect(agentsRepoMock.updateAgent).toHaveBeenCalledWith('frontend-developer', {
         color: 'purple',
       })
     })
@@ -144,7 +144,7 @@ describe('AgentEditCard', () => {
   })
 
   it('shows an error banner when updateAgent fails', async () => {
-    apiMock.updateAgent.mockRejectedValue(new Error('DB is sad'))
+    agentsRepoMock.updateAgent.mockRejectedValue(new Error('DB is sad'))
 
     const user = userEvent.setup()
     renderWithProviders(
@@ -166,7 +166,7 @@ describe('AgentEditCard', () => {
   })
 
   it('allows editing the proposed diff inline before applying', async () => {
-    apiMock.updateAgent.mockResolvedValue({ ...existingAgent, color: 'rose' })
+    agentsRepoMock.updateAgent.mockResolvedValue({ ...existingAgent, color: 'rose' })
 
     const user = userEvent.setup()
     renderWithProviders(
@@ -193,7 +193,7 @@ describe('AgentEditCard', () => {
     await user.click(screen.getByRole('button', { name: /apply changes/i }))
 
     await waitFor(() => {
-      expect(apiMock.updateAgent).toHaveBeenCalledWith('frontend-developer', {
+      expect(agentsRepoMock.updateAgent).toHaveBeenCalledWith('frontend-developer', {
         color: 'rose',
       })
     })

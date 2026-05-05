@@ -5,10 +5,17 @@ import userEvent from '@testing-library/user-event'
 // ─── Mocks ────────────────────────────────────────────────────────────────
 
 vi.mock('../lib/api', () => ({
-  fetchAgents: vi.fn().mockResolvedValue([]),
   fetchTeams: vi.fn().mockResolvedValue([]),
   fetchTools: vi.fn().mockResolvedValue([]),
   trackAgentUsage: vi.fn().mockResolvedValue(null),
+}))
+
+vi.mock('../lib/agentsRepo', () => ({
+  listAgents: vi.fn().mockResolvedValue([]),
+  getAgent: vi.fn(),
+  createAgent: vi.fn(),
+  updateAgent: vi.fn(),
+  deleteAgent: vi.fn(),
 }))
 
 // Controllable mock of the SSE stream — same shape as in

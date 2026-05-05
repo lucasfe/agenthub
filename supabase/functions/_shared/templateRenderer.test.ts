@@ -217,7 +217,7 @@ Deno.test('render — {{ref:KEY}} image reference becomes an image block, not UR
 })
 
 Deno.test('render — multiple image refs emitted in left-to-right order', () => {
-  const refs = {
+  const refs: Record<string, TemplateReference> = {
     a: { kind: 'image', url: 'https://x/a.png', mime_type: 'image/png' },
     b: { kind: 'image', url: 'https://x/b.png', mime_type: 'image/png' },
     c: { kind: 'image', url: 'https://x/c.png', mime_type: 'image/png' },
@@ -229,7 +229,7 @@ Deno.test('render — multiple image refs emitted in left-to-right order', () =>
     references: refs,
   })
   const urls = out.user_message_blocks
-    .filter((b) => b.type === 'image')
+    .filter((b): b is ImageBlock => b.type === 'image')
     .map((b) => b.source.url)
   assertEquals(urls, ['https://x/b.png', 'https://x/a.png', 'https://x/c.png'])
 })

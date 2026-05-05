@@ -45,8 +45,15 @@ export default function TemplateCard({ template, agents = [], onClick }) {
         </div>
       )}
 
-      <div className="mt-auto pt-3 border-t border-border-subtle/50 flex items-center justify-between text-xs text-text-muted">
+      <div className="mt-auto pt-3 border-t border-border-subtle/50 flex items-center justify-between gap-2 text-xs text-text-muted">
         <span>{planLabel}</span>
+        <Link
+          to={`/templates/${template.id}`}
+          onClick={(e) => e.stopPropagation()}
+          className="px-3 py-1.5 rounded-lg bg-accent-blue/10 text-accent-blue text-xs font-medium hover:bg-accent-blue/20 transition-colors"
+        >
+          Usar template
+        </Link>
       </div>
     </button>
   )

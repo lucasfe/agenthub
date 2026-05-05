@@ -58,7 +58,7 @@ describe('TemplatesPage', () => {
   it('renders one card per template, each showing name and step count', async () => {
     // Seed every referenced agent so the missing-agent pill does not appear
     // and the only "2 steps" text on the card is the plan-summary label.
-    fetchAgents.mockResolvedValueOnce([
+    listAgents.mockResolvedValueOnce([
       { id: 'a', name: 'Agent A' },
       { id: 'b', name: 'Agent B' },
     ])
@@ -514,7 +514,7 @@ describe('TemplatesPage', () => {
     }
 
     it('renders a "needs attention" pill when a template plan references a missing agent', async () => {
-      fetchAgents.mockResolvedValueOnce([
+      listAgents.mockResolvedValueOnce([
         { id: 'frontend-developer', name: 'Frontend Developer' },
       ])
       fetchTemplates.mockResolvedValue([templateWithMissingAgent])
@@ -524,7 +524,7 @@ describe('TemplatesPage', () => {
     })
 
     it('does not render the pill when every agent referenced by the plan resolves', async () => {
-      fetchAgents.mockResolvedValueOnce([
+      listAgents.mockResolvedValueOnce([
         { id: 'frontend-developer', name: 'Frontend Developer' },
         { id: 'ghost-agent', name: 'Ghost' },
       ])

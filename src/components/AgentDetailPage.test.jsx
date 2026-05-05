@@ -5,17 +5,23 @@ import { MemoryRouter, Routes, Route } from 'react-router'
 import { render } from '@testing-library/react'
 
 const apiMock = vi.hoisted(() => ({
-  fetchAgent: vi.fn(),
-  fetchAgents: vi.fn().mockResolvedValue([]),
   fetchTeams: vi.fn().mockResolvedValue([]),
   fetchTools: vi.fn().mockResolvedValue([]),
-  deleteAgent: vi.fn().mockResolvedValue(null),
-  updateAgent: vi.fn(),
   trackAgentUsage: vi.fn().mockResolvedValue(null),
   fetchAllTasks: vi.fn().mockResolvedValue([]),
 }))
 
 vi.mock('../lib/api', () => apiMock)
+
+const agentsRepoMock = vi.hoisted(() => ({
+  listAgents: vi.fn().mockResolvedValue([]),
+  getAgent: vi.fn(),
+  createAgent: vi.fn(),
+  updateAgent: vi.fn(),
+  deleteAgent: vi.fn().mockResolvedValue(null),
+}))
+
+vi.mock('../lib/agentsRepo', () => agentsRepoMock)
 
 const templatesApiMock = vi.hoisted(() => ({
   fetchTemplates: vi.fn().mockResolvedValue([]),

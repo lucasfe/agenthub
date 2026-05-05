@@ -202,6 +202,21 @@ create policy "Public update access for task_templates" on task_templates
 create policy "Public delete access for task_templates" on task_templates
   for delete using (true);
 
+-- template_references uses the same single-user-friendly public policy as
+-- task_templates. Tighten to per-owner once task_templates grows
+-- owner_user_id (see PRD #344 — slice #346).
+create policy "Public read access for template_references" on template_references
+  for select using (true);
+
+create policy "Public insert access for template_references" on template_references
+  for insert with check (true);
+
+create policy "Public update access for template_references" on template_references
+  for update using (true) with check (true);
+
+create policy "Public delete access for template_references" on template_references
+  for delete using (true);
+
 -- Push subscription policies: a row belongs to its user_id. The Edge
 -- Functions never touch other users' rows, so we don't expose any update or
 -- service-role policy here.

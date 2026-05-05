@@ -12,13 +12,15 @@ const MISSING_TABLE_CODES = new Set(['42P01', 'PGRST205'])
 
 // Defensive fallback: if Supabase returns an unrecognized error code
 // (e.g. an upstream version bump), fall back to matching the message
-// against task_templates-specific phrasing. Matches the two upstream
-// shapes we know — Postgres ("relation \"public.task_templates\" does
-// not exist") and PostgREST ("Could not find the table
-// 'public.task_templates' in the schema cache"). Restricted to the
-// task_templates table so unrelated failures still surface.
+// against task_templates-specific phrasing. Matches the upstream shapes
+// we know — Postgres ("relation \"task_templates\" does not exist") and
+// PostgREST ("Could not find the table 'task_templates' in the schema
+// cache"), with or without the optional `public.` schema prefix (some
+// servers omit it depending on search_path / upstream version).
+// Restricted to the task_templates table so unrelated failures still
+// surface.
 const MISSING_TABLE_MESSAGE_PATTERN =
-  /(relation\s+"?public\.task_templates"?\s+does\s+not\s+exist|table\s+'?public\.task_templates'?[^']*schema\s+cache)/i
+  /(relation\s+"?(?:public\.)?task_templates"?\s+does\s+not\s+exist|table\s+'?(?:public\.)?task_templates'?[^']*schema\s+cache)/i
 
 // Single user-facing message for every CRUD path that hits a missing-
 // table condition. Keeps the modal/drawer copy consistent so users

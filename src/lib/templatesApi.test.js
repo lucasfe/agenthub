@@ -121,6 +121,35 @@ describe('fetchTemplates', () => {
     await expect(fetchTemplates()).resolves.toEqual([])
   })
 
+  it('returns [] when the message omits the public. schema prefix on a relation-does-not-exist error (issue #340)', async () => {
+    // search_path-aware Postgres servers and some PostgREST builds emit the
+    // bare table name in their error string. The fallback must still match
+    // so the templates page degrades to the empty state instead of bubbling
+    // raw Postgres jargon to the user.
+    queryHolder.result = {
+      data: null,
+      error: {
+        code: undefined,
+        message: 'relation "task_templates" does not exist',
+      },
+    }
+    await expect(fetchTemplates()).resolves.toEqual([])
+  })
+
+  it('returns [] when the message omits the public. prefix on a schema-cache miss (issue #340)', async () => {
+    // Some PostgREST versions report the schema-cache miss without the
+    // schema prefix. Mirrors the prefixed PGRST205 case the existing
+    // suite covers.
+    queryHolder.result = {
+      data: null,
+      error: {
+        code: 'PGRST999',
+        message: "Could not find the table 'task_templates' in the schema cache",
+      },
+    }
+    await expect(fetchTemplates()).resolves.toEqual([])
+  })
+
   it('still throws when the message mentions a different table that is missing', async () => {
     // Message-based fallback must not swallow genuinely unrelated errors —
     // a missing-column or missing-other-table error should still surface.

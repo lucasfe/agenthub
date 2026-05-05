@@ -126,6 +126,7 @@ export default function TemplatesPage() {
                 template={template}
                 agents={agents}
                 onClick={() => setSelectedId(template.id)}
+                onUse={() => setUseTemplateId(template.id)}
               />
             ))}
           </div>

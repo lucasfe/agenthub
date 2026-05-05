@@ -156,6 +156,7 @@ alter table teams enable row level security;
 alter table tools enable row level security;
 alter table runs enable row level security;
 alter table task_templates enable row level security;
+alter table template_references enable row level security;
 alter table push_subscriptions enable row level security;
 
 -- For now, allow public read access (no auth yet)

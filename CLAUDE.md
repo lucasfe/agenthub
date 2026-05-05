@@ -242,8 +242,10 @@ import { useStack } from '../context/StackContext'
 // Router
 import { Link, useParams, useNavigate } from 'react-router'
 
-// Data
-import agentsData from '../data/agents.json'
+// Data — agents come from Supabase via the agentsRepo deep module
+import { listAgents, getAgent } from '../lib/agentsRepo'
+// Or via the global DataContext, which already calls listAgents() on mount
+import { useData } from '../context/DataContext'
 ```
 
 ### Props

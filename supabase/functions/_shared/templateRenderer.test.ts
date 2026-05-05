@@ -1,9 +1,18 @@
 import { assertEquals } from 'jsr:@std/assert@1'
-import { render, validate } from './templateRenderer.ts'
+import {
+  type ImageBlock,
+  type PriorStep,
+  render,
+  type TemplateReference,
+  validate,
+} from './templateRenderer.ts'
 
-const sampleParams = { topic: 'ansiedade', time_range: '7d' }
+const sampleParams: Record<string, string> = {
+  topic: 'ansiedade',
+  time_range: '7d',
+}
 
-const sampleSteps = [
+const sampleSteps: PriorStep[] = [
   {
     output: 'research summary text',
     output_files: [
@@ -17,7 +26,7 @@ const sampleSteps = [
   },
 ]
 
-const sampleRefs = {
+const sampleRefs: Record<string, TemplateReference> = {
   tone_of_voice: {
     kind: 'text',
     content_text: 'Speak in calm, warm Portuguese.',

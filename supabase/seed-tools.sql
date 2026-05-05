@@ -55,6 +55,43 @@ ON CONFLICT (id) DO UPDATE SET
   enabled = EXCLUDED.enabled;
 
 -- =============================================================================
+-- TOOL: render_html_to_image (issue #351)
+-- =============================================================================
+--
+-- Drives Browserless headlessly to render arbitrary HTML at a fixed viewport,
+-- post-processes the PNG to a JPEG @ q95 via sharp, uploads to the private
+-- `task-outputs` bucket at `{user_id}/{task_id}/step-{order}/{filename}.jpg`,
+-- and returns the storage path + 24h signed URL.
+--
+-- Configuration: requires `BROWSERLESS_TOKEN` Edge Function secret. When
+-- absent, the handler returns a structured `not_configured` error instead of
+-- attempting the call.
+--
+-- requires_approval is intentionally false: rendering is a read-only
+-- operation that produces a private artifact in the task-outputs bucket.
+-- Public publishing is gated by separate write tools (e.g. zernio_publish).
+
+INSERT INTO tools (id, name, description, icon, category, input_schema, requires_approval, enabled)
+VALUES (
+  'render_html_to_image',
+  'Render HTML to image',
+  'Renders the supplied HTML at the requested viewport via Browserless and returns a private signed URL to the resulting JPEG. Use for previewing visual layouts, social-card mockups, and template artifacts.',
+  'Image',
+  'media',
+  '{"type":"object","required":["html","width","height"],"properties":{"html":{"type":"string","description":"Full HTML document to render. Inline any CSS / fonts you need — the page is rendered in a sandboxed Chromium with no network access guarantees."},"width":{"type":"integer","minimum":1,"description":"Viewport width in pixels (e.g. 1080 for an Instagram feed asset)."},"height":{"type":"integer","minimum":1,"description":"Viewport height in pixels (e.g. 1080 for square, 1350 for portrait, 1920 for story)."},"filename_prefix":{"type":"string","description":"Optional prefix used to name the resulting file. Sanitised to [a-zA-Z0-9_-] before storage. Defaults to \"screenshot\"."}},"additionalProperties":false}'::jsonb,
+  false,
+  true
+)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  icon = EXCLUDED.icon,
+  category = EXCLUDED.category,
+  input_schema = EXCLUDED.input_schema,
+  requires_approval = EXCLUDED.requires_approval,
+  enabled = EXCLUDED.enabled;
+
+-- =============================================================================
 -- AGENT
 -- =============================================================================
 --

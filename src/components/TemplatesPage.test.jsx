@@ -5,13 +5,20 @@ import TemplatesPage from './TemplatesPage'
 import { renderWithProviders } from '../test/test-utils'
 
 vi.mock('../lib/api', () => ({
-  fetchAgents: vi.fn().mockResolvedValue([]),
   fetchTeams: vi.fn().mockResolvedValue([]),
   fetchTools: vi.fn().mockResolvedValue([]),
   trackAgentUsage: vi.fn().mockResolvedValue(null),
 }))
 
-import { fetchAgents } from '../lib/api'
+vi.mock('../lib/agentsRepo', () => ({
+  listAgents: vi.fn().mockResolvedValue([]),
+  getAgent: vi.fn(),
+  createAgent: vi.fn(),
+  updateAgent: vi.fn(),
+  deleteAgent: vi.fn(),
+}))
+
+import { listAgents } from '../lib/agentsRepo'
 
 vi.mock('../lib/templatesApi', () => ({
   fetchTemplates: vi.fn(),

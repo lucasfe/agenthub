@@ -119,7 +119,7 @@ beforeEach(() => {
   insertTemplate.mockClear()
   fetchTemplates.mockClear()
   fetchTemplates.mockResolvedValue([])
-  fetchAgents.mockResolvedValue([])
+  listAgents.mockResolvedValue([])
   fetchTools.mockResolvedValue([])
 })
 
@@ -594,7 +594,7 @@ describe('BoardPage missing-agent and missing-tool warnings', () => {
   })
 
   it('does not render the missing-agent banner when every agent in the plan resolves', async () => {
-    fetchAgents.mockResolvedValueOnce([
+    listAgents.mockResolvedValueOnce([
       { id: 'frontend-developer', name: 'Frontend Developer' },
     ])
 
@@ -612,7 +612,7 @@ describe('BoardPage missing-agent and missing-tool warnings', () => {
   })
 
   it('keeps Approve & run enabled when only a tool is missing from the catalog', async () => {
-    fetchAgents.mockResolvedValueOnce([
+    listAgents.mockResolvedValueOnce([
       { id: 'frontend-developer', name: 'Frontend Developer' },
     ])
     fetchTools.mockResolvedValueOnce([])
@@ -624,7 +624,7 @@ describe('BoardPage missing-agent and missing-tool warnings', () => {
   })
 
   it('renders a softer, separate warning listing missing tool ids', async () => {
-    fetchAgents.mockResolvedValueOnce([
+    listAgents.mockResolvedValueOnce([
       { id: 'frontend-developer', name: 'Frontend Developer' },
     ])
     fetchTools.mockResolvedValueOnce([])

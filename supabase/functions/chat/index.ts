@@ -13,7 +13,11 @@
 
 // deno-lint-ignore-file no-explicit-any
 
-import { analyzeRequirements, runExecutorBranch } from './executor.ts'
+import {
+  analyzeRequirements,
+  runExecutorBranch,
+  TOOL_HANDLERS,
+} from './executor.ts'
 import { runSelectedAgentBranch } from './selectedAgentBranch.ts'
 import {
   resumeTemplateApprove,
@@ -21,6 +25,7 @@ import {
   runTemplateExecutor,
   type TemplateExecutorDeps,
 } from './templateExecutorBranch.ts'
+import { rerenderStepFile } from './templateRerenderFile.ts'
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages'
 const CHAT_MODEL = Deno.env.get('CHAT_MODEL') || 'claude-sonnet-4-6'

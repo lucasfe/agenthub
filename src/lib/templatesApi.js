@@ -20,6 +20,12 @@ const MISSING_TABLE_CODES = new Set(['42P01', 'PGRST205'])
 const MISSING_TABLE_MESSAGE_PATTERN =
   /(relation\s+"?public\.task_templates"?\s+does\s+not\s+exist|table\s+'?public\.task_templates'?[^']*schema\s+cache)/i
 
+// Single user-facing message for every CRUD path that hits a missing-
+// table condition. Keeps the modal/drawer copy consistent so users
+// reading the alert never see raw Postgres/PostgREST jargon.
+const FRIENDLY_MISSING_TABLE_MESSAGE =
+  'Templates table is not ready yet. Please try again in a moment, or contact your administrator if the problem persists.'
+
 function isMissingTableError(error) {
   if (!error) return false
   if (MISSING_TABLE_CODES.has(error.code)) return true
@@ -27,6 +33,16 @@ function isMissingTableError(error) {
     return true
   }
   return false
+}
+
+// Wrap a missing-table Supabase error in a user-readable Error so the
+// CreateTemplateModal / TemplateEditDrawer / TaskDetailPanel surfaces
+// surface a sensible message via their existing err.message rendering.
+// The original Supabase error is preserved on `.cause` for debugging.
+function asFriendlyMissingTableError(error) {
+  const friendly = new Error(FRIENDLY_MISSING_TABLE_MESSAGE)
+  friendly.cause = error
+  return friendly
 }
 
 export async function fetchTemplates() {
@@ -55,6 +71,7 @@ export async function insertTemplate(template) {
     .single()
   if (error) {
     console.error('[templates] insert', error)
+    if (isMissingTableError(error)) throw asFriendlyMissingTableError(error)
     throw error
   }
   return data
@@ -71,6 +88,7 @@ export async function updateTemplate(id, updates) {
     .single()
   if (error) {
     console.error('[templates] update', error)
+    if (isMissingTableError(error)) throw asFriendlyMissingTableError(error)
     throw error
   }
   return data
@@ -81,6 +99,7 @@ export async function deleteTemplate(id) {
   const { error } = await supabase.from('task_templates').delete().eq('id', id)
   if (error) {
     console.error('[templates] delete', error)
+    if (isMissingTableError(error)) throw asFriendlyMissingTableError(error)
     throw error
   }
 }

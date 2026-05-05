@@ -31,6 +31,7 @@ import {
   type ScreenshotPath,
   type ScreenshotRequest,
 } from '../_shared/htmlScreenshotter.ts'
+import { mockImageRender, mockZernioPublish } from './mockTools.ts'
 
 // Tools whose client-side declaration is replaced with the Anthropic native
 // server-side tool (web_search_20250305 / web_fetch_20250910). The model uses

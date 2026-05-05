@@ -807,6 +807,10 @@ export const TOOL_HANDLERS: Record<string, ToolHandler> = {
   list_github_repos: listGithubRepos,
   create_github_issue: createGithubIssue,
   render_html_to_image: renderHtmlToImage,
+  // Stubs for the Luiza template pipeline (issue #354). Slices #351 and #352
+  // replace these with real Browserless + Zernio implementations.
+  mock_image_render: mockImageRender,
+  mock_zernio_publish: mockZernioPublish,
 }
 
 // Which tools are functional in the current environment. Some tools depend on

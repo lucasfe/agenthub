@@ -48,7 +48,7 @@ export function DataProvider({ children }) {
 
   const refreshAgents = async () => {
     try {
-      const data = await fetchAgents()
+      const data = await listAgents()
       setAgents(data)
     } catch (err) {
       console.error('Failed to refresh agents:', err)

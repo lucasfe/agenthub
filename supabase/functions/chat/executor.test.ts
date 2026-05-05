@@ -4,7 +4,14 @@ import {
   assertExists,
   assertStringIncludes,
 } from 'jsr:@std/assert@1'
-import { runStep, TOOL_HANDLERS } from './executor.ts'
+import {
+  _renderHtmlInternals,
+  describeUnavailableReason,
+  getAvailableTools,
+  runStep,
+  setCreateAdminClientForTests,
+  TOOL_HANDLERS,
+} from './executor.ts'
 
 interface MockCall {
   url: string
@@ -659,4 +666,223 @@ Deno.test('runStep — adds anthropic-beta header when native web_fetch declared
     restore()
     restoreAnthropic()
   }
+})
+
+// ─── render_html_to_image ───────────────────────────────────────────────────
+
+Deno.test('render_html_to_image — registered in TOOL_HANDLERS', () => {
+  assert(typeof TOOL_HANDLERS.render_html_to_image === 'function')
+})
+
+Deno.test('render_html_to_image — returns not_configured when BROWSERLESS_TOKEN is missing', async () => {
+  const restoreEnv = withEnv('BROWSERLESS_TOKEN', null)
+  try {
+    const result = await TOOL_HANDLERS.render_html_to_image(
+      { html: '<h1>hi</h1>', width: 800, height: 600 },
+      { ...makeCtx(), userId: 'user-1' },
+    )
+    assertEquals(result.ok, false)
+    assertStringIncludes(result.error ?? '', 'BROWSERLESS_TOKEN')
+    assertEquals(
+      (result.result as { error?: string } | undefined)?.error,
+      'not_configured',
+    )
+  } finally {
+    restoreEnv()
+  }
+})
+
+Deno.test('render_html_to_image — rejects empty html before hitting Browserless', async () => {
+  const restoreToken = withEnv('BROWSERLESS_TOKEN', 'TOK')
+  let fetchCalled = false
+  const { restore } = installFetchMock(() => {
+    fetchCalled = true
+    return new Response(new Uint8Array([1, 2, 3]).buffer)
+  })
+  try {
+    const result = await TOOL_HANDLERS.render_html_to_image(
+      { html: '   ', width: 800, height: 600 },
+      { ...makeCtx(), userId: 'user-1' },
+    )
+    assertEquals(result.ok, false)
+    assertStringIncludes(result.error ?? '', 'html')
+    assertEquals(fetchCalled, false)
+  } finally {
+    restore()
+    restoreToken()
+  }
+})
+
+Deno.test('render_html_to_image — rejects non-positive viewport dimensions', async () => {
+  const restoreToken = withEnv('BROWSERLESS_TOKEN', 'TOK')
+  try {
+    const result = await TOOL_HANDLERS.render_html_to_image(
+      { html: '<h1>hi</h1>', width: 0, height: 600 },
+      { ...makeCtx(), userId: 'user-1' },
+    )
+    assertEquals(result.ok, false)
+    assertStringIncludes(result.error ?? '', 'width')
+  } finally {
+    restoreToken()
+  }
+})
+
+Deno.test('render_html_to_image — refuses to run without ctx.userId', async () => {
+  const restoreToken = withEnv('BROWSERLESS_TOKEN', 'TOK')
+  try {
+    const result = await TOOL_HANDLERS.render_html_to_image(
+      { html: '<h1>hi</h1>', width: 800, height: 600 },
+      makeCtx(),
+    )
+    assertEquals(result.ok, false)
+    assertStringIncludes(result.error ?? '', 'userId')
+  } finally {
+    restoreToken()
+  }
+})
+
+Deno.test('render_html_to_image — returns not_configured when SUPABASE_SERVICE_ROLE_KEY is missing', async () => {
+  const restoreToken = withEnv('BROWSERLESS_TOKEN', 'TOK')
+  const restoreUrl = withEnv('SUPABASE_URL', 'https://x.supabase.co')
+  const restoreKey = withEnv('SUPABASE_SERVICE_ROLE_KEY', null)
+  try {
+    const result = await TOOL_HANDLERS.render_html_to_image(
+      { html: '<h1>hi</h1>', width: 800, height: 600 },
+      { ...makeCtx(), userId: 'user-1' },
+    )
+    assertEquals(result.ok, false)
+    assertStringIncludes(result.error ?? '', 'SUPABASE_SERVICE_ROLE_KEY')
+    assertEquals(
+      (result.result as { error?: string } | undefined)?.error,
+      'not_configured',
+    )
+  } finally {
+    restoreKey()
+    restoreUrl()
+    restoreToken()
+  }
+})
+
+Deno.test('render_html_to_image — happy path returns storage_path + signed_url', async () => {
+  const restoreToken = withEnv('BROWSERLESS_TOKEN', 'TOK')
+  const restoreUrl = withEnv('SUPABASE_URL', 'https://x.supabase.co')
+  const restoreKey = withEnv('SUPABASE_SERVICE_ROLE_KEY', 'svc')
+
+  let captureCalls = 0
+  let capturedPath: { userId: string; taskId: string; stepOrder: number } | null = null
+  const previousCapture = _renderHtmlInternals.capture
+  _renderHtmlInternals.capture = async (_deps, request, path) => {
+    captureCalls += 1
+    capturedPath = path
+    return {
+      storage_path: `${path.userId}/${path.taskId}/step-${path.stepOrder}/x.jpg`,
+      signed_url: 'https://signed.example/x.jpg?token=abc',
+      mime_type: 'image/jpeg',
+      width: request.width,
+      height: request.height,
+    }
+  }
+  const restoreClient = setCreateAdminClientForTests(((..._args: unknown[]) =>
+    ({}) as never) as never)
+  try {
+    const result = await TOOL_HANDLERS.render_html_to_image(
+      { html: '<h1>hi</h1>', width: 1080, height: 1080, filename_prefix: 'cover' },
+      {
+        ...makeCtx(),
+        userId: 'user-1',
+        taskId: 'task-2',
+        stepOrder: 3,
+      },
+    )
+    assert(result.ok, `expected ok, got ${result.error}`)
+    assertEquals(captureCalls, 1)
+    assertEquals(capturedPath, { userId: 'user-1', taskId: 'task-2', stepOrder: 3 })
+    const r = result.result as {
+      storage_path: string
+      signed_url: string
+      mime_type: string
+      width: number
+      height: number
+    }
+    assertEquals(r.storage_path, 'user-1/task-2/step-3/x.jpg')
+    assertEquals(r.mime_type, 'image/jpeg')
+    assertEquals(r.width, 1080)
+    assertEquals(r.height, 1080)
+    assertStringIncludes(r.signed_url, 'signed.example')
+  } finally {
+    _renderHtmlInternals.capture = previousCapture
+    restoreClient()
+    restoreKey()
+    restoreUrl()
+    restoreToken()
+  }
+})
+
+Deno.test('render_html_to_image — falls back to chat-toolCallId / stepId when no template ctx', async () => {
+  const restoreToken = withEnv('BROWSERLESS_TOKEN', 'TOK')
+  const restoreUrl = withEnv('SUPABASE_URL', 'https://x.supabase.co')
+  const restoreKey = withEnv('SUPABASE_SERVICE_ROLE_KEY', 'svc')
+
+  let capturedPath: { userId: string; taskId: string; stepOrder: number } | null = null
+  const previousCapture = _renderHtmlInternals.capture
+  _renderHtmlInternals.capture = async (_deps, request, path) => {
+    capturedPath = path
+    return {
+      storage_path: `${path.userId}/${path.taskId}/step-${path.stepOrder}/x.jpg`,
+      signed_url: 'https://signed.example/x.jpg',
+      mime_type: 'image/jpeg',
+      width: request.width,
+      height: request.height,
+    }
+  }
+  const restoreClient = setCreateAdminClientForTests(((..._args: unknown[]) =>
+    ({}) as never) as never)
+  try {
+    const ctx = makeCtx()
+    ctx.stepId = 7
+    ctx.toolCallId = 'tool-call-xyz'
+    const result = await TOOL_HANDLERS.render_html_to_image(
+      { html: '<h1>hi</h1>', width: 800, height: 600 },
+      { ...ctx, userId: 'user-1' },
+    )
+    assert(result.ok, `expected ok, got ${result.error}`)
+    assertEquals(capturedPath?.userId, 'user-1')
+    assertEquals(capturedPath?.taskId, 'chat-tool-call-xyz')
+    assertEquals(capturedPath?.stepOrder, 7)
+  } finally {
+    _renderHtmlInternals.capture = previousCapture
+    restoreClient()
+    restoreKey()
+    restoreUrl()
+    restoreToken()
+  }
+})
+
+// ─── available tool gating ──────────────────────────────────────────────────
+
+Deno.test('getAvailableTools — drops render_html_to_image when BROWSERLESS_TOKEN missing', () => {
+  const restoreEnv = withEnv('BROWSERLESS_TOKEN', null)
+  try {
+    const available = getAvailableTools()
+    assertEquals(available.has('render_html_to_image'), false)
+  } finally {
+    restoreEnv()
+  }
+})
+
+Deno.test('getAvailableTools — keeps render_html_to_image when BROWSERLESS_TOKEN present', () => {
+  const restoreEnv = withEnv('BROWSERLESS_TOKEN', 'TOK')
+  try {
+    const available = getAvailableTools()
+    assertEquals(available.has('render_html_to_image'), true)
+  } finally {
+    restoreEnv()
+  }
+})
+
+Deno.test('describeUnavailableReason — names BROWSERLESS_TOKEN for render_html_to_image', () => {
+  assertStringIncludes(
+    describeUnavailableReason('render_html_to_image'),
+    'BROWSERLESS_TOKEN',
+  )
 })

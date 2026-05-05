@@ -121,7 +121,7 @@ The agent calls two tools, both registered in `supabase/functions/chat/executor.
 - **`list_github_repos`** — read-only. No parameters. Fetches the live list of repos Lucas owns from the GitHub REST API, slimmed to `{ name, full_name, description, pushed_at }`. `requires_approval: false`. The system prompt instructs the agent to call this exactly once at the start of every new conversation so it grounds itself in the current repo set rather than stale model memory.
 - **`create_github_issue`** — write. Parameters: `repo` (`owner/name` string), `title` (string), `body` (Markdown string). Creates the issue and returns `{ url, number }`. **`requires_approval: true`** on the row in the `tools` table, which makes the existing chat approval gate pause execution and render a one-click "Approve" button before the call goes out. There is no way to bypass the approval from the agent side.
 
-The two `tools` rows and the `agents` row that wires them to `github-issue-creator` are seeded in [`supabase/seed-tools.sql`](supabase/seed-tools.sql). The catalog card definition lives in `src/data/agents.json`; the agent's system prompt is keyed by `github-issue-creator` in `src/data/agentContent.js` (and a copy is embedded in the same `seed-tools.sql` for the database-side `agents` row).
+The two `tools` rows and the `agents` row that wires them to `github-issue-creator` are seeded in [`supabase/seed-tools.sql`](supabase/seed-tools.sql). The agent's catalog card and system prompt are stored in the Supabase `agents` table (single source of truth); seeding happens via the same `seed-tools.sql` row, which is idempotent (`ON CONFLICT DO UPDATE`).
 
 ### Module layout
 

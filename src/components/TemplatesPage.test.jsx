@@ -86,7 +86,7 @@ describe('TemplatesPage', () => {
     expect(screen.getByText('Feature template')).toBeInTheDocument()
     expect(screen.getByText(/for routine bug fixes/i)).toBeInTheDocument()
     expect(screen.getByText(/2 steps/i)).toBeInTheDocument()
-    expect(screen.getByText(/no plan yet/i)).toBeInTheDocument()
+    expect(screen.getByText(/0 steps/i)).toBeInTheDocument()
   })
 
   it('shows a loading indicator before the fetch resolves', () => {
@@ -100,6 +100,53 @@ describe('TemplatesPage', () => {
     renderWithProviders(<TemplatesPage />)
     expect(await screen.findByText(/failed to load templates/i)).toBeInTheDocument()
     expect(screen.getByText(/network down/i)).toBeInTheDocument()
+  })
+
+  describe('"Usar template" CTA (issue #350)', () => {
+    const sampleTemplate = {
+      id: 'tpl-go',
+      name: 'Reusable template',
+      description: 'A description',
+      task_title: 'Title',
+      task_description: '',
+      plan: { steps: [{ id: 1, agent_id: 'a' }] },
+    }
+
+    it('renders a "Usar template" CTA on every card linking to /templates/[id]', async () => {
+      fetchTemplates.mockResolvedValue([sampleTemplate])
+      renderWithProviders(<TemplatesPage />)
+
+      const cta = await screen.findByRole('link', { name: /usar template/i })
+      expect(cta).toHaveAttribute('href', '/templates/tpl-go')
+    })
+
+    it('clicking the "Usar template" CTA does not open the edit drawer', async () => {
+      fetchTemplates.mockResolvedValue([sampleTemplate])
+      const user = userEvent.setup()
+      renderWithProviders(<TemplatesPage />)
+
+      await user.click(await screen.findByRole('link', { name: /usar template/i }))
+
+      expect(
+        screen.queryByRole('heading', { name: /edit template/i }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('shows "0 steps" on the card when plan is null (per acceptance criteria)', async () => {
+      fetchTemplates.mockResolvedValue([
+        {
+          id: 'tpl-zero',
+          name: 'No plan template',
+          description: 'plan is null',
+          task_title: 'Title',
+          task_description: '',
+          plan: null,
+        },
+      ])
+      renderWithProviders(<TemplatesPage />)
+
+      expect(await screen.findByText(/0 steps/i)).toBeInTheDocument()
+    })
   })
 
   describe('+ New template flow', () => {

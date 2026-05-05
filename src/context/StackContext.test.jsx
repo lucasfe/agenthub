@@ -4,13 +4,20 @@ import { StackProvider, useStack } from './StackContext'
 import { DataProvider, useData } from './DataContext'
 
 vi.mock('../lib/api', () => ({
-  fetchAgents: vi.fn().mockResolvedValue([
-    { id: 'frontend-developer', name: 'Frontend Dev', usage_count: 0 },
-    { id: 'backend-developer', name: 'Backend Dev', usage_count: 0 },
-  ]),
   fetchTeams: vi.fn().mockResolvedValue([]),
   fetchTools: vi.fn().mockResolvedValue([]),
   trackAgentUsage: vi.fn().mockResolvedValue(1),
+}))
+
+vi.mock('../lib/agentsRepo', () => ({
+  listAgents: vi.fn().mockResolvedValue([
+    { id: 'frontend-developer', name: 'Frontend Dev', usage_count: 0 },
+    { id: 'backend-developer', name: 'Backend Dev', usage_count: 0 },
+  ]),
+  getAgent: vi.fn(),
+  createAgent: vi.fn(),
+  updateAgent: vi.fn(),
+  deleteAgent: vi.fn(),
 }))
 
 function wrapper({ children }) {

@@ -46,8 +46,8 @@ You are working on Lucas AI Hub, a React 19 + Vite 8 + Tailwind CSS 4 web app fo
 
 ## When Adding Features
 
-1. New agents → update `agents.json` + `agentContent.js`
-2. New teams → update `teams.json` with valid agent IDs
+1. New agents → append to `supabase/migrations/20260504120000_seed_agents.sql` (or, for tool-bound specialists, to `supabase/seed-tools.sql`). Both use `ON CONFLICT (id) DO UPDATE` — idempotent. The `agents` table is the single source of truth; static catalog files have been removed.
+2. New teams → update `teams.json` with valid agent IDs (`src/lib/teamsSeedValidation.test.js` enforces every id resolves in the seed migration)
 3. New routes → add to Routes in `App.jsx`, add sidebar entry if top-level
 4. New global state → create Context in `src/context/`, provide in `main.jsx`
 5. New components → one file per component in `src/components/`

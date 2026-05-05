@@ -5,7 +5,13 @@ import MobileChat from './MobileChat'
 import { renderWithProviders } from '../../test/test-utils'
 
 vi.mock('../../lib/api', () => ({
-  fetchAgents: vi.fn().mockResolvedValue([
+  fetchTeams: vi.fn().mockResolvedValue([]),
+  fetchTools: vi.fn().mockResolvedValue([]),
+  trackAgentUsage: vi.fn().mockResolvedValue(null),
+}))
+
+vi.mock('../../lib/agentsRepo', () => ({
+  listAgents: vi.fn().mockResolvedValue([
     {
       id: 'frontend-developer',
       name: 'Frontend Developer',
@@ -25,11 +31,10 @@ vi.mock('../../lib/api', () => ({
       color: 'green',
     },
   ]),
-  fetchTeams: vi.fn().mockResolvedValue([]),
-  fetchTools: vi.fn().mockResolvedValue([]),
+  getAgent: vi.fn(),
   createAgent: vi.fn().mockResolvedValue({ id: 'mock' }),
   updateAgent: vi.fn().mockResolvedValue({ id: 'frontend-developer' }),
-  trackAgentUsage: vi.fn().mockResolvedValue(null),
+  deleteAgent: vi.fn(),
 }))
 
 const orchestrationMock = vi.hoisted(() => {

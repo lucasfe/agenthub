@@ -3,7 +3,7 @@ import JSZip from 'jszip'
 import * as Icons from 'lucide-react'
 import { useStack } from '../context/StackContext'
 import { useData } from '../context/DataContext'
-import { fetchAgent } from '../lib/api'
+import { getAgent } from '../lib/agentsRepo'
 
 export default function StackButton() {
   const { stack, removeAgent, clearStack, panelOpen, setPanelOpen } = useStack()
@@ -17,7 +17,7 @@ export default function StackButton() {
   const handleDownload = async () => {
     const zip = new JSZip()
     const agentDetails = await Promise.all(
-      stackAgents.map((agent) => fetchAgent(agent.id).catch(() => null))
+      stackAgents.map((agent) => getAgent(agent.id).catch(() => null))
     )
     agentDetails.filter(Boolean).forEach((agent) => {
       const content = agent.content || agent.description

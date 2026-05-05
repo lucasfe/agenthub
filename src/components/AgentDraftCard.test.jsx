@@ -5,14 +5,22 @@ import AgentDraftCard from './AgentDraftCard'
 import { renderWithProviders } from '../test/test-utils'
 
 const apiMock = vi.hoisted(() => ({
-  fetchAgents: vi.fn(),
   fetchTeams: vi.fn(),
   fetchTools: vi.fn().mockResolvedValue([]),
-  createAgent: vi.fn(),
   trackAgentUsage: vi.fn().mockResolvedValue(null),
 }))
 
 vi.mock('../lib/api', () => apiMock)
+
+const agentsRepoMock = vi.hoisted(() => ({
+  listAgents: vi.fn().mockResolvedValue([]),
+  getAgent: vi.fn(),
+  createAgent: vi.fn(),
+  updateAgent: vi.fn(),
+  deleteAgent: vi.fn(),
+}))
+
+vi.mock('../lib/agentsRepo', () => agentsRepoMock)
 
 const fullDraft = {
   name: 'Security Auditor',
@@ -26,9 +34,9 @@ const fullDraft = {
 
 describe('AgentDraftCard', () => {
   beforeEach(() => {
-    apiMock.fetchAgents.mockResolvedValue([])
+    agentsRepoMock.listAgents.mockResolvedValue([])
     apiMock.fetchTeams.mockResolvedValue([])
-    apiMock.createAgent.mockReset()
+    agentsRepoMock.createAgent.mockReset()
   })
 
   it('renders preview with name, description, tags, and category', async () => {
@@ -62,7 +70,7 @@ describe('AgentDraftCard', () => {
   })
 
   it('calls createAgent on Create click and shows the created state', async () => {
-    apiMock.createAgent.mockResolvedValue({ id: 'security-auditor' })
+    agentsRepoMock.createAgent.mockResolvedValue({ id: 'security-auditor' })
 
     const user = userEvent.setup()
     renderWithProviders(<AgentDraftCard draft={fullDraft} />)
@@ -70,7 +78,7 @@ describe('AgentDraftCard', () => {
     await user.click(screen.getByRole('button', { name: /create agent/i }))
 
     await waitFor(() => {
-      expect(apiMock.createAgent).toHaveBeenCalledWith(
+      expect(agentsRepoMock.createAgent).toHaveBeenCalledWith(
         expect.objectContaining({
           id: 'security-auditor',
           name: 'Security Auditor',
@@ -92,7 +100,7 @@ describe('AgentDraftCard', () => {
   })
 
   it('shows an error when createAgent fails', async () => {
-    apiMock.createAgent.mockRejectedValue(new Error('DB exploded'))
+    agentsRepoMock.createAgent.mockRejectedValue(new Error('DB exploded'))
 
     const user = userEvent.setup()
     renderWithProviders(<AgentDraftCard draft={fullDraft} />)
@@ -105,7 +113,7 @@ describe('AgentDraftCard', () => {
   })
 
   it('warns and disables Create when the derived ID conflicts with an existing agent', async () => {
-    apiMock.fetchAgents.mockResolvedValue([
+    agentsRepoMock.listAgents.mockResolvedValue([
       { id: 'security-auditor', name: 'Security Auditor', category: 'AI Specialists' },
     ])
 

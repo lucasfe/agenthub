@@ -39,10 +39,8 @@ src/
 ├── context/              # React Context providers
 │   ├── ThemeContext.jsx   # Dark/light theme, persisted in localStorage
 │   └── StackContext.jsx   # Selected agents stack (add/remove/download)
-└── data/                 # Static data (editable JSON)
-    ├── agents.json        # 21 agents across 2 categories
-    ├── teams.json         # 6 predefined teams
-    └── agentContent.js    # System prompts keyed by agent ID
+└── data/                 # Reference data (teams.json only)
+    └── teams.json         # 6 predefined teams (validated against the seed migration)
 ```
 
 ## Routing
@@ -123,7 +121,7 @@ The agent calls two tools, both registered in `supabase/functions/chat/executor.
 - **`list_github_repos`** — read-only. No parameters. Fetches the live list of repos Lucas owns from the GitHub REST API, slimmed to `{ name, full_name, description, pushed_at }`. `requires_approval: false`. The system prompt instructs the agent to call this exactly once at the start of every new conversation so it grounds itself in the current repo set rather than stale model memory.
 - **`create_github_issue`** — write. Parameters: `repo` (`owner/name` string), `title` (string), `body` (Markdown string). Creates the issue and returns `{ url, number }`. **`requires_approval: true`** on the row in the `tools` table, which makes the existing chat approval gate pause execution and render a one-click "Approve" button before the call goes out. There is no way to bypass the approval from the agent side.
 
-The two `tools` rows and the `agents` row that wires them to `github-issue-creator` are seeded in [`supabase/seed-tools.sql`](supabase/seed-tools.sql). The catalog card definition lives in `src/data/agents.json`; the agent's system prompt is keyed by `github-issue-creator` in `src/data/agentContent.js` (and a copy is embedded in the same `seed-tools.sql` for the database-side `agents` row).
+The two `tools` rows and the `agents` row that wires them to `github-issue-creator` are seeded in [`supabase/seed-tools.sql`](supabase/seed-tools.sql). The agent's catalog card and system prompt are stored in the Supabase `agents` table (single source of truth); seeding happens via the same `seed-tools.sql` row, which is idempotent (`ON CONFLICT DO UPDATE`).
 
 ### Module layout
 
@@ -178,8 +176,8 @@ Tests live next to each module as `skills.test.js` / `skillFrontmatter.test.js` 
 The `skill-creator` agent (catalog category **AI Specialists**, icon `Wand2`, color `cyan`) interviews the user about a new skill, then files a structured GitHub issue against `lucasfe/skills` containing a ready-to-paste `SKILL.md`. It does not commit code or open PRs — humans (or another loop) act on the issue.
 
 - Hardcoded target repo: `lucasfe/skills`. The system prompt embeds this so the LLM cannot mis-target another repo.
-- Tool dependency: reuses the existing `create_github_issue` tool from the [GitHub Issue Creator agent](#github-issue-creator-agent). It is the only tool the agent declares in `src/data/agents.json` (no `list_github_repos` — there is nothing to choose). Approval gating, error handling, and the `GITHUB_TOKEN` Edge Function secret are inherited from that feature unchanged.
-- Card definition in `src/data/agents.json` (`id: "skill-creator"`); system prompt keyed by `skill-creator` in `src/data/agentContent.js` (and mirrored in `supabase/seed-tools.sql` for the database-side `agents` row).
+- Tool dependency: reuses the existing `create_github_issue` tool from the [GitHub Issue Creator agent](#github-issue-creator-agent). It is the only tool the agent declares (no `list_github_repos` — there is nothing to choose). Approval gating, error handling, and the `GITHUB_TOKEN` Edge Function secret are inherited from that feature unchanged.
+- The agent's catalog card and system prompt live in the Supabase `agents` table; the row is seeded in `supabase/seed-tools.sql` (`id: "skill-creator"`).
 
 ### Install flow
 
@@ -244,8 +242,10 @@ import { useStack } from '../context/StackContext'
 // Router
 import { Link, useParams, useNavigate } from 'react-router'
 
-// Data
-import agentsData from '../data/agents.json'
+// Data — agents come from Supabase via the agentsRepo deep module
+import { listAgents, getAgent } from '../lib/agentsRepo'
+// Or via the global DataContext, which already calls listAgents() on mount
+import { useData } from '../context/DataContext'
 ```
 
 ### Props
@@ -302,25 +302,28 @@ White opacity utilities (`bg-white/5`, `hover:bg-white/10`) are overridden in li
 
 ## Data Schemas
 
-### Agent (agents.json)
-```json
+### Agent (Supabase `agents` table)
+The agent catalog is stored in Postgres and accessed through `src/lib/agentsRepo.js` (`listAgents`, `getAgent`, `createAgent`, `updateAgent`, `deleteAgent`). Row shape:
+```
 {
-  "id": "frontend-developer",
-  "name": "Frontend Developer",
-  "category": "Development Team",
-  "description": "Expert in React, TypeScript...",
-  "tags": ["React", "TypeScript", "CSS"],
-  "icon": "Monitor",
-  "color": "blue",
-  "featured": true,
-  "popularity": 98
+  id: 'frontend-developer',           -- kebab-case PK, used in URLs
+  name: 'Frontend Developer',
+  category: 'Development Team',       -- 'Development Team' | 'AI Specialists'
+  description: 'Expert in React...',
+  tags: ['React', 'TypeScript', 'CSS'],
+  icon: 'Monitor',                    -- lucide-react export name
+  color: 'blue',                      -- blue | green | purple | amber | rose | cyan
+  featured: true,
+  popularity: 98,                     -- integer 1–100 (sort + display)
+  content: 'You are a senior frontend developer...',  -- markdown system prompt
+  tools: [],
+  model: 'claude-sonnet-4-6',
+  capabilities: [],
+  usage_count: 0
 }
 ```
-- `id`: kebab-case, unique, used in URLs and as key
-- `category`: `"Development Team"` or `"AI Specialists"`
-- `icon`: must be a valid lucide-react export name
-- `color`: one of `blue | green | purple | amber | rose | cyan`
-- `popularity`: integer 1–100, used for sort + display (`popularity * 243` shown as downloads)
+
+The seed migration that loads the catalog is `supabase/migrations/20260504120000_seed_agents.sql`. It is idempotent (`INSERT ... ON CONFLICT (id) DO UPDATE`) so re-running it on an existing DB refreshes the seeded columns without nuking new rows or `usage_count`.
 
 ### Team (teams.json)
 ```json
@@ -333,16 +336,7 @@ White opacity utilities (`bg-white/5`, `hover:bg-white/10`) are overridden in li
   "createdAt": "2026-02-15"
 }
 ```
-- `agents`: array of agent IDs (must match `agents.json` entries)
-
-### Agent Content (agentContent.js)
-```javascript
-const agentContent = {
-  'frontend-developer': `You are a senior frontend developer...`,
-  // markdown-formatted system prompts
-}
-export default agentContent
-```
+- `agents`: array of agent IDs. Every id MUST resolve to a row in the seed migration — `src/lib/teamsSeedValidation.test.js` enforces this in CI.
 
 ## Key Features
 
@@ -508,10 +502,17 @@ If the user clicks Approve or Cancel before `createTaskFromPlan` has resolved, t
 
 ## Adding a New Agent
 
-1. Add entry to `src/data/agents.json` following the schema above
-2. Add system prompt to `src/data/agentContent.js` using the same `id` as key
-3. Ensure the `icon` value exists in lucide-react
-4. Use one of the 6 defined colors
+The catalog lives in the Supabase `agents` table. There are two paths:
+
+- **Permanent catalog agent** — append a tuple to the agents `INSERT` block in `supabase/migrations/20260504120000_seed_agents.sql` and add a matching `agent_id` to whatever team(s) should reference it in `src/data/teams.json`. Re-run the migration (idempotent) to apply on an existing DB.
+- **Tool-bound specialist** (e.g. github-issue-creator, skill-creator) — add an `INSERT INTO agents ... ON CONFLICT DO UPDATE` block to `supabase/seed-tools.sql` alongside the relevant `tools` rows.
+
+In both cases:
+- `id` is kebab-case and must be unique.
+- `category` is `"Development Team"` or `"AI Specialists"`.
+- `icon` must be a valid lucide-react export name.
+- `color` is one of `blue | green | purple | amber | rose | cyan`.
+- For runtime UI changes without re-seeding, use `src/lib/agentsRepo.js` (`createAgent`, `updateAgent`, `deleteAgent`).
 
 ## Adding a New Team
 

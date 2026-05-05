@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router'
 import * as Icons from 'lucide-react'
-import { fetchAgent, deleteAgent, updateAgent, fetchAllTasks } from '../lib/api'
+import { fetchAllTasks } from '../lib/api'
+import { getAgent, deleteAgent, updateAgent } from '../lib/agentsRepo'
 import { fetchTemplates } from '../lib/templatesApi'
 import { findReferencingTemplates, findReferencingActiveTasks } from '../lib/templates'
 import { useData } from '../context/DataContext'
@@ -51,7 +52,7 @@ export default function AgentDetailPage() {
   useEffect(() => {
     let cancelled = false
     setAgentLoading(true)
-    fetchAgent(agentId)
+    getAgent(agentId)
       .then((data) => {
         if (!cancelled) {
           setAgent(data)

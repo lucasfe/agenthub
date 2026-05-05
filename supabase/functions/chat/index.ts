@@ -722,6 +722,7 @@ Deno.serve(async (req: Request) => {
     references?: Record<string, unknown>
     params?: Record<string, string>
     step_id?: number
+    file_idx?: number
     feedback?: string
   }
   try {

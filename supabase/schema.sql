@@ -228,3 +228,10 @@ create policy "Users can insert own push_subscriptions" on push_subscriptions
 
 create policy "Users can delete own push_subscriptions" on push_subscriptions
   for delete using (auth.uid() = user_id);
+
+-- Private Storage buckets owned by the task-templates feature
+-- (template-references and task-outputs). The bucket rows and the
+-- storage.objects RLS policies live in
+-- supabase/migrations/20260505000000_template_references_and_storage.sql so
+-- they can be applied with the rest of the migration history; see that file
+-- for the canonical definitions.

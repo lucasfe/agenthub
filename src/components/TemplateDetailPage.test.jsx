@@ -321,8 +321,7 @@ describe('TemplateDetailPage — steps editor', () => {
     await screen.findByLabelText(/step 1 instruction/i)
 
     const instruction = screen.getByLabelText(/step 1 instruction/i)
-    await user.clear(instruction)
-    await user.type(instruction, 'Pesquise sobre {{params.topic}}')
+    fireEvent.change(instruction, { target: { value: 'Pesquise sobre {{params.topic}}' } })
 
     const approvalToggle = screen.getByLabelText(/step 1 requires approval/i)
     await user.click(approvalToggle) // toggle off (was true)
@@ -347,8 +346,7 @@ describe('TemplateDetailPage — steps editor', () => {
     await screen.findByLabelText(/step 1 instruction/i)
 
     const instruction = screen.getByLabelText(/step 1 instruction/i)
-    await user.clear(instruction)
-    await user.type(instruction, 'Bad: {{params.unknown_one}}')
+    fireEvent.change(instruction, { target: { value: 'Bad: {{params.unknown_one}}' } })
 
     await user.click(screen.getByRole('button', { name: /^save step 1$/i }))
 
@@ -363,8 +361,7 @@ describe('TemplateDetailPage — steps editor', () => {
     await screen.findByLabelText(/step 1 instruction/i)
 
     const instruction = screen.getByLabelText(/step 1 instruction/i)
-    await user.clear(instruction)
-    await user.type(instruction, 'Voice: {{ref:nonexistent}}')
+    fireEvent.change(instruction, { target: { value: 'Voice: {{ref:nonexistent}}' } })
 
     await user.click(screen.getByRole('button', { name: /^save step 1$/i }))
 

@@ -1084,15 +1084,14 @@ export async function runStep(
           nativeFallbackUsed = true
           const fallbackPayload: any[] = []
           for (const f of failed) {
-            // TEMPORARILY DISABLED FOR RED STEP
-            // console.log(
-            //   JSON.stringify({
-            //     event: 'web_search.fallback.tavily',
-            //     step_id: step.id,
-            //     query: f.query,
-            //     reason: f.reason,
-            //   }),
-            // )
+            console.log(
+              JSON.stringify({
+                event: 'web_search.fallback.tavily',
+                step_id: step.id,
+                query: f.query,
+                reason: f.reason,
+              }),
+            )
             const tavilyResult = await webSearch(
               { query: f.query },
               {

@@ -564,6 +564,76 @@ Deno.test('runStep — does NOT add native web tools when agent does not declare
   }
 })
 
+Deno.test('runStep — emits web_search.fallback.tavily telemetry log with original query', async () => {
+  const restoreAnthropic = withEnv('ANTHROPIC_API_KEY', 'sk-test')
+  const restoreTavily = withEnv('TAVILY_API_KEY', 'tv-test')
+  const originalQuery = 'react server components benchmarks'
+  let anthropicCallCount = 0
+  const { restore } = installFetchMock((call) => {
+    if (call.url === 'https://api.anthropic.com/v1/messages') {
+      anthropicCallCount++
+      if (anthropicCallCount === 1) {
+        return jsonResponse(200, {
+          content: [
+            {
+              type: 'server_tool_use',
+              id: 'srvtoolu_telemetry',
+              name: 'web_search',
+              input: { query: originalQuery },
+            },
+            {
+              type: 'web_search_tool_result',
+              tool_use_id: 'srvtoolu_telemetry',
+              content: [],
+            },
+            { type: 'text', text: 'No results.' },
+          ],
+          usage: { input_tokens: 10, output_tokens: 5 },
+        })
+      }
+      return jsonResponse(200, {
+        content: [{ type: 'text', text: 'done' }],
+        usage: { input_tokens: 5, output_tokens: 5 },
+      })
+    }
+    if (call.url === 'https://api.tavily.com/search') {
+      return jsonResponse(200, { results: [] })
+    }
+    return jsonResponse(404, {})
+  })
+  const logged: string[] = []
+  const originalLog = console.log
+  console.log = (...args: unknown[]) => {
+    logged.push(args.map((a) => (typeof a === 'string' ? a : JSON.stringify(a))).join(' '))
+  }
+  try {
+    await runStep(
+      makeStep(['web_search']),
+      [RESEARCHER_AGENT],
+      [WEB_SEARCH_TOOL_META],
+      'context',
+      {},
+      () => {},
+      'sk-test',
+      new AbortController().signal,
+    )
+    const telemetryLine = logged.find((l) => l.includes('web_search.fallback.tavily'))
+    assertExists(
+      telemetryLine,
+      `expected a "web_search.fallback.tavily" telemetry log line. Got: ${logged.join(' | ')}`,
+    )
+    const parsed = JSON.parse(telemetryLine!)
+    assertEquals(parsed.event, 'web_search.fallback.tavily')
+    assertEquals(parsed.query, originalQuery)
+    assertEquals(parsed.reason, 'no_results')
+  } finally {
+    console.log = originalLog
+    restore()
+    restoreAnthropic()
+    restoreTavily()
+  }
+})
+
 Deno.test('runStep — successful native web_search does NOT trigger Tavily fallback', async () => {
   const restoreAnthropic = withEnv('ANTHROPIC_API_KEY', 'sk-test')
   const restoreTavily = withEnv('TAVILY_API_KEY', 'tv-test')

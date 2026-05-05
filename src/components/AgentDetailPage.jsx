@@ -52,7 +52,7 @@ export default function AgentDetailPage() {
   useEffect(() => {
     let cancelled = false
     setAgentLoading(true)
-    fetchAgent(agentId)
+    getAgent(agentId)
       .then((data) => {
         if (!cancelled) {
           setAgent(data)

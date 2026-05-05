@@ -35,15 +35,9 @@ function ThumbCard({
   const [feedback, setFeedback] = useState(
     typeof file.feedback === 'string' ? file.feedback : '',
   )
-
-  // Sync local editing buffer with incoming feedback (e.g. after a rerender
-  // resets state). Effect avoids stomping on user typing once the textarea
-  // is open.
-  useEffect(() => {
-    if (!editingOpen) {
-      setFeedback(typeof file.feedback === 'string' ? file.feedback : '')
-    }
-  }, [file.feedback, editingOpen])
+  // The parent passes a key bound to file.signed_url so this component
+  // remounts whenever the file is rerendered — that resets local state
+  // (editingOpen + feedback) without needing an effect.
 
   const stateBadge = (() => {
     if (state === 'approved') {

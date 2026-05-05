@@ -1,9 +1,10 @@
 import {
   assert,
   assertEquals,
+  assertExists,
   assertStringIncludes,
 } from 'jsr:@std/assert@1'
-import { TOOL_HANDLERS } from './executor.ts'
+import { runStep, TOOL_HANDLERS } from './executor.ts'
 
 interface MockCall {
   url: string
@@ -55,6 +56,16 @@ function withGithubToken(token: string | null): () => void {
     } else {
       Deno.env.set('GITHUB_TOKEN', previous)
     }
+  }
+}
+
+function withEnv(key: string, value: string | null): () => void {
+  const previous = Deno.env.get(key)
+  if (value === null) Deno.env.delete(key)
+  else Deno.env.set(key, value)
+  return () => {
+    if (previous === undefined) Deno.env.delete(key)
+    else Deno.env.set(key, previous)
   }
 }
 
@@ -273,5 +284,379 @@ Deno.test('create_github_issue — surfaces upstream 422 validation error', asyn
   } finally {
     restore()
     restoreToken()
+  }
+})
+
+// ─── runStep — native web_search/web_fetch wiring ───────────────────────────
+
+const RESEARCHER_AGENT = {
+  id: 'researcher',
+  name: 'Researcher',
+  content: 'You are a researcher. Use web_search to find information.',
+  tools: ['web_search'],
+  model: 'claude-sonnet-4-6',
+}
+
+const WEB_SEARCH_TOOL_META = {
+  id: 'web_search',
+  name: 'Web search',
+  description: 'Search the web',
+  input_schema: { type: 'object', properties: { query: { type: 'string' } } },
+}
+
+function makeStep(toolsUsed: string[]) {
+  return {
+    id: 1,
+    agent_id: 'researcher',
+    agent_name: 'Researcher',
+    task: 'Find python web frameworks',
+    tools_used: toolsUsed,
+    inputs: ['original_task'],
+  }
+}
+
+function findAnthropicCalls(calls: MockCall[]): MockCall[] {
+  return calls.filter((c) => c.url === 'https://api.anthropic.com/v1/messages')
+}
+
+function getRequestBody(call: MockCall): any {
+  return JSON.parse(call.init?.body as string)
+}
+
+Deno.test('runStep — injects native web_search_20250305 tool def when agent declares web_search', async () => {
+  const restoreAnthropic = withEnv('ANTHROPIC_API_KEY', 'sk-test')
+  const { calls, restore } = installFetchMock(() =>
+    jsonResponse(200, {
+      content: [{ type: 'text', text: 'done' }],
+      usage: { input_tokens: 10, output_tokens: 5 },
+    }),
+  )
+  try {
+    await runStep(
+      makeStep(['web_search']),
+      [RESEARCHER_AGENT],
+      [WEB_SEARCH_TOOL_META],
+      'context',
+      {},
+      () => {},
+      'sk-test',
+      new AbortController().signal,
+    )
+    const anthropicCalls = findAnthropicCalls(calls)
+    assertEquals(anthropicCalls.length, 1)
+    const body = getRequestBody(anthropicCalls[0])
+    assertExists(body.tools)
+    const native = body.tools.find(
+      (t: { type?: string }) => t.type === 'web_search_20250305',
+    )
+    assertExists(native, 'expected native web_search_20250305 tool def in request body')
+    assertEquals(native.name, 'web_search')
+    // Client-side web_search def must NOT be sent (would collide on `name`).
+    const clientSide = body.tools.find(
+      (t: { type?: string; name?: string }) =>
+        t.name === 'web_search' && t.type !== 'web_search_20250305',
+    )
+    assertEquals(clientSide, undefined)
+  } finally {
+    restore()
+    restoreAnthropic()
+  }
+})
+
+Deno.test('runStep — falls back to Tavily when native web_search returns zero results', async () => {
+  const restoreAnthropic = withEnv('ANTHROPIC_API_KEY', 'sk-test')
+  const restoreTavily = withEnv('TAVILY_API_KEY', 'tv-test')
+  let anthropicCallCount = 0
+  let tavilyCallCount = 0
+  let tavilyQuery = ''
+  const { restore } = installFetchMock((call) => {
+    if (call.url === 'https://api.anthropic.com/v1/messages') {
+      anthropicCallCount++
+      if (anthropicCallCount === 1) {
+        return jsonResponse(200, {
+          content: [
+            {
+              type: 'server_tool_use',
+              id: 'srvtoolu_1',
+              name: 'web_search',
+              input: { query: 'python web frameworks' },
+            },
+            {
+              type: 'web_search_tool_result',
+              tool_use_id: 'srvtoolu_1',
+              content: [],
+            },
+            { type: 'text', text: 'I could not find anything.' },
+          ],
+          usage: { input_tokens: 10, output_tokens: 5 },
+        })
+      }
+      // Second turn after fallback — model emits final text only.
+      return jsonResponse(200, {
+        content: [{ type: 'text', text: 'done with tavily' }],
+        usage: { input_tokens: 5, output_tokens: 5 },
+      })
+    }
+    if (call.url === 'https://api.tavily.com/search') {
+      tavilyCallCount++
+      const body = JSON.parse(call.init?.body as string)
+      tavilyQuery = body.query
+      return jsonResponse(200, {
+        results: [
+          {
+            title: 'Django',
+            url: 'https://www.djangoproject.com/',
+            content: 'High-level Python web framework.',
+          },
+        ],
+      })
+    }
+    return jsonResponse(404, {})
+  })
+  try {
+    await runStep(
+      makeStep(['web_search']),
+      [RESEARCHER_AGENT],
+      [WEB_SEARCH_TOOL_META],
+      'context',
+      {},
+      () => {},
+      'sk-test',
+      new AbortController().signal,
+    )
+    assertEquals(tavilyCallCount, 1)
+    assertEquals(tavilyQuery, 'python web frameworks')
+    assertEquals(anthropicCallCount, 2)
+  } finally {
+    restore()
+    restoreAnthropic()
+    restoreTavily()
+  }
+})
+
+Deno.test('runStep — falls back to Tavily when native web_search errors', async () => {
+  const restoreAnthropic = withEnv('ANTHROPIC_API_KEY', 'sk-test')
+  const restoreTavily = withEnv('TAVILY_API_KEY', 'tv-test')
+  let tavilyCallCount = 0
+  let tavilyQuery = ''
+  let anthropicCallCount = 0
+  const { restore } = installFetchMock((call) => {
+    if (call.url === 'https://api.anthropic.com/v1/messages') {
+      anthropicCallCount++
+      if (anthropicCallCount === 1) {
+        return jsonResponse(200, {
+          content: [
+            {
+              type: 'server_tool_use',
+              id: 'srvtoolu_2',
+              name: 'web_search',
+              input: { query: 'fastapi performance' },
+            },
+            {
+              type: 'web_search_tool_result',
+              tool_use_id: 'srvtoolu_2',
+              content: {
+                type: 'web_search_tool_result_error',
+                error_code: 'max_uses_exceeded',
+              },
+            },
+            { type: 'text', text: 'Search errored.' },
+          ],
+          usage: { input_tokens: 10, output_tokens: 5 },
+        })
+      }
+      return jsonResponse(200, {
+        content: [{ type: 'text', text: 'done' }],
+        usage: { input_tokens: 5, output_tokens: 5 },
+      })
+    }
+    if (call.url === 'https://api.tavily.com/search') {
+      tavilyCallCount++
+      const body = JSON.parse(call.init?.body as string)
+      tavilyQuery = body.query
+      return jsonResponse(200, { results: [] })
+    }
+    return jsonResponse(404, {})
+  })
+  try {
+    await runStep(
+      makeStep(['web_search']),
+      [RESEARCHER_AGENT],
+      [WEB_SEARCH_TOOL_META],
+      'context',
+      {},
+      () => {},
+      'sk-test',
+      new AbortController().signal,
+    )
+    assertEquals(tavilyCallCount, 1)
+    assertEquals(tavilyQuery, 'fastapi performance')
+  } finally {
+    restore()
+    restoreAnthropic()
+    restoreTavily()
+  }
+})
+
+Deno.test('runStep — does NOT add native web tools when agent does not declare them', async () => {
+  const restoreAnthropic = withEnv('ANTHROPIC_API_KEY', 'sk-test')
+  const restoreGithub = withEnv('GITHUB_TOKEN', 'tok')
+  const { calls, restore } = installFetchMock((call) => {
+    if (call.url === 'https://api.anthropic.com/v1/messages') {
+      return jsonResponse(200, {
+        content: [{ type: 'text', text: 'done' }],
+        usage: { input_tokens: 5, output_tokens: 5 },
+      })
+    }
+    return jsonResponse(404, {})
+  })
+  try {
+    const issueAgent = {
+      id: 'issuer',
+      name: 'Issuer',
+      content: 'You file issues.',
+      tools: ['create_github_issue'],
+      model: 'claude-sonnet-4-6',
+    }
+    const issueStep = {
+      id: 1,
+      agent_id: 'issuer',
+      task: 'File an issue',
+      tools_used: ['create_github_issue'],
+      inputs: ['original_task'],
+    }
+    const issueToolMeta = {
+      id: 'create_github_issue',
+      name: 'Create issue',
+      description: 'Create a GitHub issue',
+      input_schema: { type: 'object', properties: {} },
+    }
+    await runStep(
+      issueStep,
+      [issueAgent],
+      [issueToolMeta],
+      'context',
+      {},
+      () => {},
+      'sk-test',
+      new AbortController().signal,
+    )
+    const body = getRequestBody(findAnthropicCalls(calls)[0])
+    const hasNativeWebSearch = (body.tools || []).some(
+      (t: { type?: string }) => t.type === 'web_search_20250305',
+    )
+    const hasNativeWebFetch = (body.tools || []).some(
+      (t: { type?: string }) => t.type === 'web_fetch_20250910',
+    )
+    assertEquals(hasNativeWebSearch, false)
+    assertEquals(hasNativeWebFetch, false)
+  } finally {
+    restore()
+    restoreAnthropic()
+    restoreGithub()
+  }
+})
+
+Deno.test('runStep — successful native web_search does NOT trigger Tavily fallback', async () => {
+  const restoreAnthropic = withEnv('ANTHROPIC_API_KEY', 'sk-test')
+  const restoreTavily = withEnv('TAVILY_API_KEY', 'tv-test')
+  let tavilyCallCount = 0
+  const { restore } = installFetchMock((call) => {
+    if (call.url === 'https://api.anthropic.com/v1/messages') {
+      return jsonResponse(200, {
+        content: [
+          {
+            type: 'server_tool_use',
+            id: 'srvtoolu_ok',
+            name: 'web_search',
+            input: { query: 'q' },
+          },
+          {
+            type: 'web_search_tool_result',
+            tool_use_id: 'srvtoolu_ok',
+            content: [
+              { type: 'web_search_result', url: 'https://x.com', title: 't' },
+            ],
+          },
+          { type: 'text', text: 'Found something.' },
+        ],
+        usage: { input_tokens: 5, output_tokens: 5 },
+      })
+    }
+    if (call.url === 'https://api.tavily.com/search') {
+      tavilyCallCount++
+      return jsonResponse(200, { results: [] })
+    }
+    return jsonResponse(404, {})
+  })
+  try {
+    await runStep(
+      makeStep(['web_search']),
+      [RESEARCHER_AGENT],
+      [WEB_SEARCH_TOOL_META],
+      'context',
+      {},
+      () => {},
+      'sk-test',
+      new AbortController().signal,
+    )
+    assertEquals(tavilyCallCount, 0)
+  } finally {
+    restore()
+    restoreAnthropic()
+    restoreTavily()
+  }
+})
+
+Deno.test('runStep — adds anthropic-beta header when native web_fetch declared', async () => {
+  const restoreAnthropic = withEnv('ANTHROPIC_API_KEY', 'sk-test')
+  const { calls, restore } = installFetchMock(() =>
+    jsonResponse(200, {
+      content: [{ type: 'text', text: 'done' }],
+      usage: { input_tokens: 5, output_tokens: 5 },
+    }),
+  )
+  try {
+    const fetcherAgent = {
+      id: 'fetcher',
+      name: 'Fetcher',
+      content: 'You fetch URLs.',
+      tools: ['web_fetch'],
+      model: 'claude-sonnet-4-6',
+    }
+    const fetchStep = {
+      id: 1,
+      agent_id: 'fetcher',
+      task: 'Fetch a URL',
+      tools_used: ['web_fetch'],
+      inputs: ['original_task'],
+    }
+    const webFetchToolMeta = {
+      id: 'web_fetch',
+      name: 'Web fetch',
+      description: 'Fetch a URL',
+      input_schema: { type: 'object', properties: {} },
+    }
+    await runStep(
+      fetchStep,
+      [fetcherAgent],
+      [webFetchToolMeta],
+      'context',
+      {},
+      () => {},
+      'sk-test',
+      new AbortController().signal,
+    )
+    const anthropicCall = findAnthropicCalls(calls)[0]
+    const headers = (anthropicCall.init?.headers ?? {}) as Record<string, string>
+    assertEquals(headers['anthropic-beta'], 'web-fetch-2025-09-10')
+    const body = getRequestBody(anthropicCall)
+    const native = body.tools.find(
+      (t: { type?: string }) => t.type === 'web_fetch_20250910',
+    )
+    assertExists(native)
+  } finally {
+    restore()
+    restoreAnthropic()
   }
 })

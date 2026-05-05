@@ -17,6 +17,17 @@
 
 import { createIssue, listRepos } from './github.ts'
 import { filterAndSlim } from './githubFilters.ts'
+import {
+  buildNativeWebTools,
+  findFailedNativeSearches,
+} from './webResearchTools.ts'
+
+// Tools whose client-side declaration is replaced with the Anthropic native
+// server-side tool (web_search_20250305 / web_fetch_20250910). The model uses
+// the native tool first; the Tavily-backed `web_search` handler stays as a
+// fallback when the native call returns zero results or errors.
+const NATIVE_WEB_TOOL_IDS = new Set(['web_search', 'web_fetch'])
+const WEB_FETCH_BETA_HEADER = 'web-fetch-2025-09-10'
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages'
 const DEFAULT_STEP_MODEL = 'claude-sonnet-4-6'
@@ -727,7 +738,7 @@ function buildStepContext(
 
 type EmitFn = (type: string, payload?: Record<string, unknown>) => void
 
-async function runStep(
+export async function runStep(
   step: any,
   agentsContext: any[],
   toolsContext: any[],
@@ -762,7 +773,9 @@ async function runStep(
   const skippedIds: string[] = []
   for (const id of declaredIds) {
     if (!agentToolIds.has(id)) continue
-    if (!availableInEnv.has(id)) {
+    // Native web tools (web_search / web_fetch) run server-side on Anthropic
+    // and need no client config — they're always allowed when declared.
+    if (!availableInEnv.has(id) && !NATIVE_WEB_TOOL_IDS.has(id)) {
       skippedIds.push(id)
       continue
     }
@@ -789,9 +802,18 @@ async function runStep(
     })
   }
 
-  const anthropicTools = allowedIds
+  // For web_search / web_fetch we inject Anthropic's server-side tool def
+  // (`web_search_20250305` / `web_fetch_20250910`) instead of the client-side
+  // schema, so the model uses the native research path first.
+  const clientToolDefs = allowedIds
+    .filter((id) => !NATIVE_WEB_TOOL_IDS.has(id))
     .map((id) => buildAnthropicTool(id, toolsContext))
     .filter(Boolean) as any[]
+  const nativeToolDefs = buildNativeWebTools(
+    allowedIds.filter((id) => NATIVE_WEB_TOOL_IDS.has(id)),
+  )
+  const anthropicTools = [...clientToolDefs, ...nativeToolDefs] as any[]
+  const usesNativeWebFetch = nativeToolDefs.some((t) => t.type === 'web_fetch_20250910')
 
   const unavailableNotice =
     skippedIds.length > 0
@@ -828,6 +850,8 @@ async function runStep(
   // Tracks repeated tool failures: if the same tool fails twice in a row,
   // abort the step rather than burning iterations on a broken loop.
   const consecutiveFailures = new Map<string, number>()
+  // Tavily fallback for the native web_search runs at most once per step.
+  let nativeFallbackUsed = false
 
   for (let iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
     const reqBody: any = {
@@ -838,17 +862,22 @@ async function runStep(
     }
     if (anthropicTools.length > 0) reqBody.tools = anthropicTools
 
+    const headers: Record<string, string> = {
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json',
+    }
+    if (usesNativeWebFetch) {
+      headers['anthropic-beta'] = WEB_FETCH_BETA_HEADER
+    }
+
     // Fetch with a single retry on 429 (rate limit). Waits for the
     // Retry-After header value or 10s, whichever is smaller.
     let res: Response
     const doFetch = () =>
       fetch(ANTHROPIC_API_URL, {
         method: 'POST',
-        headers: {
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'content-type': 'application/json',
-        },
+        headers,
         body: JSON.stringify(reqBody),
         signal,
       })
@@ -888,7 +917,52 @@ async function runStep(
 
     const toolUses = content.filter((b) => b.type === 'tool_use')
     if (toolUses.length === 0) {
-      // Model produced only text — step is done.
+      // Model produced only text — but first check whether the native
+      // server-side web_search returned zero results / errored. If so, run
+      // the Tavily-backed handler once and re-prompt with those results.
+      if (!nativeFallbackUsed) {
+        const failed = findFailedNativeSearches(content)
+        if (failed.length > 0) {
+          nativeFallbackUsed = true
+          const fallbackPayload: any[] = []
+          for (const f of failed) {
+            console.log(
+              JSON.stringify({
+                event: 'web_search.fallback.tavily',
+                step_id: step.id,
+                query: f.query,
+                reason: f.reason,
+              }),
+            )
+            const tavilyResult = await webSearch(
+              { query: f.query },
+              {
+                signal,
+                agentsContext,
+                stepId: step.id,
+                toolCallId: `fallback-${f.tool_use_id}`,
+                userId,
+              },
+            )
+            fallbackPayload.push({
+              query: f.query,
+              ok: tavilyResult.ok,
+              result: tavilyResult.result,
+              error: tavilyResult.error,
+            })
+          }
+          messages.push({ role: 'assistant', content })
+          messages.push({
+            role: 'user',
+            content: `The native web_search returned no usable results (${failed
+              .map((f) => f.reason)
+              .join(', ')}). Tavily fallback results follow — use them to complete the task:\n\n${JSON.stringify(
+              fallbackPayload,
+            ).slice(0, 4000)}`,
+          })
+          continue
+        }
+      }
       return { text: finalText, tokens_in: totalIn, tokens_out: totalOut }
     }
 

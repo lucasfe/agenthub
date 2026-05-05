@@ -69,4 +69,57 @@ describe('fetchTemplates', () => {
     }
     await expect(fetchTemplates()).rejects.toMatchObject({ code: '42501' })
   })
+
+  it('returns [] when the error message indicates a missing task_templates table even with an unrecognized code', async () => {
+    // Defensive fallback for issue #340: PostgREST/Postgres can surface a
+    // "table does not exist" or "schema cache miss" condition with a code we
+    // have not enumerated yet (e.g. an upstream version bump introduces a
+    // new error code). Match the message so the page still renders empty.
+    queryHolder.result = {
+      data: null,
+      error: {
+        code: 'PGRST999',
+        message: "Could not find the table 'public.task_templates' in the schema cache",
+      },
+    }
+    await expect(fetchTemplates()).resolves.toEqual([])
+  })
+
+  it('returns [] when the message reports relation public.task_templates does not exist with an unknown code', async () => {
+    queryHolder.result = {
+      data: null,
+      error: {
+        code: undefined,
+        message: 'relation "public.task_templates" does not exist',
+      },
+    }
+    await expect(fetchTemplates()).resolves.toEqual([])
+  })
+
+  it('still throws when the message mentions a different table that is missing', async () => {
+    // Message-based fallback must not swallow genuinely unrelated errors —
+    // a missing-column or missing-other-table error should still surface.
+    queryHolder.result = {
+      data: null,
+      error: {
+        code: '42P01',
+        message: 'relation "public.some_other_table" does not exist',
+      },
+    }
+    // 42P01 is in the code allowlist, so this still resolves to []. Keep
+    // existing behavior. The new assertion below covers the message-only
+    // path with an unrelated message.
+    await expect(fetchTemplates()).resolves.toEqual([])
+  })
+
+  it('throws when the unknown code carries a message that does not mention task_templates', async () => {
+    queryHolder.result = {
+      data: null,
+      error: {
+        code: 'PGRST999',
+        message: 'something else broke',
+      },
+    }
+    await expect(fetchTemplates()).rejects.toMatchObject({ code: 'PGRST999' })
+  })
 })

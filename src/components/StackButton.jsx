@@ -3,7 +3,7 @@ import JSZip from 'jszip'
 import * as Icons from 'lucide-react'
 import { useStack } from '../context/StackContext'
 import { useData } from '../context/DataContext'
-import { fetchAgent } from '../lib/api'
+import { getAgent } from '../lib/agentsRepo'
 
 export default function StackButton() {
   const { stack, removeAgent, clearStack, panelOpen, setPanelOpen } = useStack()

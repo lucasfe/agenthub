@@ -769,7 +769,8 @@ Deno.test('render_html_to_image — happy path returns storage_path + signed_url
   const restoreKey = withEnv('SUPABASE_SERVICE_ROLE_KEY', 'svc')
 
   let captureCalls = 0
-  let capturedPath: { userId: string; taskId: string; stepOrder: number } | null = null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let capturedPath: any = null
   const previousCapture = _renderHtmlInternals.capture
   _renderHtmlInternals.capture = async (_deps, request, path) => {
     captureCalls += 1
@@ -823,7 +824,8 @@ Deno.test('render_html_to_image — falls back to chat-toolCallId / stepId when 
   const restoreUrl = withEnv('SUPABASE_URL', 'https://x.supabase.co')
   const restoreKey = withEnv('SUPABASE_SERVICE_ROLE_KEY', 'svc')
 
-  let capturedPath: { userId: string; taskId: string; stepOrder: number } | null = null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let capturedPath: any = null
   const previousCapture = _renderHtmlInternals.capture
   _renderHtmlInternals.capture = async (_deps, request, path) => {
     capturedPath = path

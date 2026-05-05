@@ -802,9 +802,18 @@ export async function runStep(
     })
   }
 
-  const anthropicTools = allowedIds
+  // For web_search / web_fetch we inject Anthropic's server-side tool def
+  // (`web_search_20250305` / `web_fetch_20250910`) instead of the client-side
+  // schema, so the model uses the native research path first.
+  const clientToolDefs = allowedIds
+    .filter((id) => !NATIVE_WEB_TOOL_IDS.has(id))
     .map((id) => buildAnthropicTool(id, toolsContext))
     .filter(Boolean) as any[]
+  const nativeToolDefs = buildNativeWebTools(
+    allowedIds.filter((id) => NATIVE_WEB_TOOL_IDS.has(id)),
+  )
+  const anthropicTools = [...clientToolDefs, ...nativeToolDefs] as any[]
+  const usesNativeWebFetch = nativeToolDefs.some((t) => t.type === 'web_fetch_20250910')
 
   const unavailableNotice =
     skippedIds.length > 0

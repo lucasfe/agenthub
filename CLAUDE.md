@@ -176,8 +176,8 @@ Tests live next to each module as `skills.test.js` / `skillFrontmatter.test.js` 
 The `skill-creator` agent (catalog category **AI Specialists**, icon `Wand2`, color `cyan`) interviews the user about a new skill, then files a structured GitHub issue against `lucasfe/skills` containing a ready-to-paste `SKILL.md`. It does not commit code or open PRs — humans (or another loop) act on the issue.
 
 - Hardcoded target repo: `lucasfe/skills`. The system prompt embeds this so the LLM cannot mis-target another repo.
-- Tool dependency: reuses the existing `create_github_issue` tool from the [GitHub Issue Creator agent](#github-issue-creator-agent). It is the only tool the agent declares in `src/data/agents.json` (no `list_github_repos` — there is nothing to choose). Approval gating, error handling, and the `GITHUB_TOKEN` Edge Function secret are inherited from that feature unchanged.
-- Card definition in `src/data/agents.json` (`id: "skill-creator"`); system prompt keyed by `skill-creator` in `src/data/agentContent.js` (and mirrored in `supabase/seed-tools.sql` for the database-side `agents` row).
+- Tool dependency: reuses the existing `create_github_issue` tool from the [GitHub Issue Creator agent](#github-issue-creator-agent). It is the only tool the agent declares (no `list_github_repos` — there is nothing to choose). Approval gating, error handling, and the `GITHUB_TOKEN` Edge Function secret are inherited from that feature unchanged.
+- The agent's catalog card and system prompt live in the Supabase `agents` table; the row is seeded in `supabase/seed-tools.sql` (`id: "skill-creator"`).
 
 ### Install flow
 

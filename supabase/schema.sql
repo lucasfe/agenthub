@@ -92,6 +92,10 @@ create index if not exists idx_runs_created_at on runs(created_at desc);
 -- snapshots a ticket's title, description, and the full execution plan
 -- so the planner cost is paid once and the resulting plan can be
 -- instantiated as new tickets. See PRD #246 / issue #247.
+--
+-- The brand_context / params_schema / title_template / description_template
+-- columns plus the template_references child table support the Luiza
+-- content-automation feature (PRD #344, slice #346).
 create table if not exists task_templates (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -99,12 +103,36 @@ create table if not exists task_templates (
   task_title text not null,
   task_description text,
   plan jsonb,
+  brand_context text,
+  params_schema jsonb,
+  title_template text,
+  description_template text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
 create index if not exists idx_task_templates_created_at
   on task_templates (created_at desc);
+
+-- Template references (text snippets, images, audio samples) attached to a
+-- task_templates row to ground its prompt at instantiation time. Bucket-
+-- backed assets live under storage_path; pure-text references inline the
+-- payload in content_text.
+create table if not exists template_references (
+  id uuid primary key default gen_random_uuid(),
+  template_id uuid not null references task_templates (id) on delete cascade,
+  key text not null,
+  kind text not null check (kind in ('text', 'image', 'audio')),
+  storage_path text,
+  mime_type text,
+  content_text text,
+  original_filename text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_template_references_template_id
+  on template_references (template_id);
 
 -- Web Push subscriptions for the mobile shell at /mobile. Owned by the
 -- push-subscribe / push-unsubscribe Edge Functions. RLS scopes every
@@ -128,6 +156,7 @@ alter table teams enable row level security;
 alter table tools enable row level security;
 alter table runs enable row level security;
 alter table task_templates enable row level security;
+alter table template_references enable row level security;
 alter table push_subscriptions enable row level security;
 
 -- For now, allow public read access (no auth yet)
@@ -173,6 +202,21 @@ create policy "Public update access for task_templates" on task_templates
 create policy "Public delete access for task_templates" on task_templates
   for delete using (true);
 
+-- template_references uses the same single-user-friendly public policy as
+-- task_templates. Tighten to per-owner once task_templates grows
+-- owner_user_id (see PRD #344 — slice #346).
+create policy "Public read access for template_references" on template_references
+  for select using (true);
+
+create policy "Public insert access for template_references" on template_references
+  for insert with check (true);
+
+create policy "Public update access for template_references" on template_references
+  for update using (true) with check (true);
+
+create policy "Public delete access for template_references" on template_references
+  for delete using (true);
+
 -- Push subscription policies: a row belongs to its user_id. The Edge
 -- Functions never touch other users' rows, so we don't expose any update or
 -- service-role policy here.
@@ -184,3 +228,10 @@ create policy "Users can insert own push_subscriptions" on push_subscriptions
 
 create policy "Users can delete own push_subscriptions" on push_subscriptions
   for delete using (auth.uid() = user_id);
+
+-- Private Storage buckets owned by the task-templates feature
+-- (template-references and task-outputs). The bucket rows and the
+-- storage.objects RLS policies live in
+-- supabase/migrations/20260505000000_template_references_and_storage.sql so
+-- they can be applied with the rest of the migration history; see that file
+-- for the canonical definitions.

@@ -109,7 +109,8 @@ vi.mock('../lib/supabase', () => {
 import BoardPage from './BoardPage'
 import { renderWithProviders } from '../test/test-utils'
 import { insertTemplate, fetchTemplates } from '../lib/templatesApi'
-import { fetchAgents, fetchTools } from '../lib/api'
+import { fetchTools } from '../lib/api'
+import { listAgents } from '../lib/agentsRepo'
 
 beforeEach(() => {
   streamMock.stream.mockClear()

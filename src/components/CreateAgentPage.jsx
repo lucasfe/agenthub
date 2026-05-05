@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router'
 import * as Icons from 'lucide-react'
-import { createAgent } from '../lib/api'
+import { createAgent } from '../lib/agentsRepo'
 import { useData } from '../context/DataContext'
 
 const iconOptions = ['Bot', 'Monitor', 'Server', 'Layers', 'Brain', 'Sparkles', 'Shield', 'Database', 'Terminal', 'MessageSquare', 'Eye', 'Network', 'Palette', 'Smartphone', 'FileText', 'Microscope', 'Languages', 'Scale', 'BarChart3', 'GitPullRequest', 'Container', 'ShieldCheck', 'Cpu', 'Wrench', 'Zap']

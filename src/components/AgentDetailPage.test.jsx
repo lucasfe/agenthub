@@ -59,8 +59,8 @@ function renderAt(path = '/agent/development-team/frontend-developer') {
 }
 
 beforeEach(() => {
-  apiMock.fetchAgent.mockReset().mockResolvedValue(sampleAgent)
-  apiMock.deleteAgent.mockReset().mockResolvedValue(null)
+  agentsRepoMock.getAgent.mockReset().mockResolvedValue(sampleAgent)
+  agentsRepoMock.deleteAgent.mockReset().mockResolvedValue(null)
   apiMock.fetchAllTasks.mockReset().mockResolvedValue([])
   templatesApiMock.fetchTemplates.mockReset().mockResolvedValue([])
 })

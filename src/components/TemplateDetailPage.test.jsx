@@ -171,7 +171,7 @@ describe('TemplateDetailPage — loading, not-found, and basic header', () => {
 describe('TemplateDetailPage — brand_context editor', () => {
   it('pre-fills the brand context textarea with the current value', async () => {
     renderAtRoute()
-    const textarea = await screen.findByLabelText(/brand context/i)
+    const textarea = await screen.findByLabelText(/^brand context$/i)
     expect(textarea).toHaveValue('Speak warmly in Portuguese.')
   })
 
@@ -182,7 +182,7 @@ describe('TemplateDetailPage — brand_context editor', () => {
     const user = userEvent.setup()
     renderAtRoute()
 
-    const textarea = await screen.findByLabelText(/brand context/i)
+    const textarea = await screen.findByLabelText(/^brand context$/i)
     await user.clear(textarea)
     await user.type(textarea, 'Updated brand voice')
     await user.click(screen.getByRole('button', { name: /save brand context/i }))

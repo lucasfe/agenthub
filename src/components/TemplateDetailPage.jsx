@@ -479,7 +479,12 @@ export default function TemplateDetailPage() {
         <div className="px-8 pb-12 space-y-8">
           <section className="rounded-2xl border border-border-subtle bg-bg-card p-5 space-y-3">
             <div>
-              <h2 className="text-sm font-semibold text-text-primary">Brand context</h2>
+              <label
+                htmlFor="template-brand-context"
+                className="text-sm font-semibold text-text-primary block"
+              >
+                Brand context
+              </label>
               <p className="text-xs text-text-muted">
                 Free-form Markdown describing voice, anti-patterns, and grounding
                 content for every step in this template.
@@ -487,7 +492,6 @@ export default function TemplateDetailPage() {
             </div>
             <textarea
               id="template-brand-context"
-              aria-label="Brand context"
               value={brandContext}
               onChange={(e) => setBrandContext(e.target.value)}
               rows={6}

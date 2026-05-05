@@ -54,4 +54,13 @@ describe('teams.json <-> seed migration', () => {
       expect(missing).toEqual([])
     },
   )
+
+  it('the validation logic flags a fabricated missing agent reference', () => {
+    // Smoke-tests the cross-check itself: a team that points at an id absent
+    // from the seed must produce a non-empty missing list. Without this, a
+    // bug that returns "all valid" for any input would ship undetected.
+    const fakeTeam = { id: 'fake', agents: ['definitely-not-in-seed'] }
+    const missing = fakeTeam.agents.filter((id) => !seedAgentIds.has(id))
+    expect(missing).toEqual(['definitely-not-in-seed'])
+  })
 })

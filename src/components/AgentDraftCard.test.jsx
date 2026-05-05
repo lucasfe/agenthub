@@ -34,9 +34,9 @@ const fullDraft = {
 
 describe('AgentDraftCard', () => {
   beforeEach(() => {
-    apiMock.fetchAgents.mockResolvedValue([])
+    agentsRepoMock.listAgents.mockResolvedValue([])
     apiMock.fetchTeams.mockResolvedValue([])
-    apiMock.createAgent.mockReset()
+    agentsRepoMock.createAgent.mockReset()
   })
 
   it('renders preview with name, description, tags, and category', async () => {

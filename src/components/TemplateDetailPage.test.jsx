@@ -295,7 +295,7 @@ describe('TemplateDetailPage — steps editor', () => {
 
   it('renders structural fields read-only and instruction as a textarea', async () => {
     renderAtRoute()
-    await screen.findByText(/step 1/i)
+    await screen.findByLabelText(/step 1 instruction/i)
 
     // Read-only display: agent_id should appear as text, not in an editable input.
     const agentIdReadonly = screen.getAllByText(/pedro-pesquisa/i)
@@ -317,7 +317,7 @@ describe('TemplateDetailPage — steps editor', () => {
     )
     const user = userEvent.setup()
     renderAtRoute()
-    await screen.findByText(/step 1/i)
+    await screen.findByLabelText(/step 1 instruction/i)
 
     const instruction = screen.getByLabelText(/step 1 instruction/i)
     await user.clear(instruction)
@@ -343,7 +343,7 @@ describe('TemplateDetailPage — steps editor', () => {
   it('blocks save when instruction has an undeclared placeholder, surfacing inline error', async () => {
     const user = userEvent.setup()
     renderAtRoute()
-    await screen.findByText(/step 1/i)
+    await screen.findByLabelText(/step 1 instruction/i)
 
     const instruction = screen.getByLabelText(/step 1 instruction/i)
     await user.clear(instruction)
@@ -359,7 +359,7 @@ describe('TemplateDetailPage — steps editor', () => {
   it('blocks save when instruction references an unknown reference key', async () => {
     const user = userEvent.setup()
     renderAtRoute()
-    await screen.findByText(/step 1/i)
+    await screen.findByLabelText(/step 1 instruction/i)
 
     const instruction = screen.getByLabelText(/step 1 instruction/i)
     await user.clear(instruction)

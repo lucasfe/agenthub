@@ -577,7 +577,7 @@ export default function BoardPage() {
     if (loading || !taskFromUrl) return
     const exists = tasks.some((t) => t.id === taskFromUrl)
     if (!exists) return
-    setSelectedTaskId(taskFromUrl)
+    setSelectedTaskId(taskFromUrl) // eslint-disable-line react-hooks/set-state-in-effect
     const next = new URLSearchParams(searchParams)
     next.delete('task')
     setSearchParams(next, { replace: true })

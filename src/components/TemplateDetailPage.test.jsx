@@ -287,9 +287,10 @@ describe('TemplateDetailPage — references CRUD', () => {
 describe('TemplateDetailPage — steps editor', () => {
   it('renders one step block per step, labeled with order and agent', async () => {
     renderAtRoute()
-    expect(await screen.findByText(/step 1/i)).toBeInTheDocument()
+    await screen.findByLabelText(/step 1 instruction/i)
+    expect(screen.getByLabelText(/step 1 instruction/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/step 2 instruction/i)).toBeInTheDocument()
     expect(screen.getByText(/pedro pesquisa/i)).toBeInTheDocument()
-    expect(screen.getByText(/step 2/i)).toBeInTheDocument()
     expect(screen.getByText(/iago instagram/i)).toBeInTheDocument()
   })
 

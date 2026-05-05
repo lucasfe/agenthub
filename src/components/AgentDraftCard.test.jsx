@@ -5,14 +5,22 @@ import AgentDraftCard from './AgentDraftCard'
 import { renderWithProviders } from '../test/test-utils'
 
 const apiMock = vi.hoisted(() => ({
-  fetchAgents: vi.fn(),
   fetchTeams: vi.fn(),
   fetchTools: vi.fn().mockResolvedValue([]),
-  createAgent: vi.fn(),
   trackAgentUsage: vi.fn().mockResolvedValue(null),
 }))
 
 vi.mock('../lib/api', () => apiMock)
+
+const agentsRepoMock = vi.hoisted(() => ({
+  listAgents: vi.fn().mockResolvedValue([]),
+  getAgent: vi.fn(),
+  createAgent: vi.fn(),
+  updateAgent: vi.fn(),
+  deleteAgent: vi.fn(),
+}))
+
+vi.mock('../lib/agentsRepo', () => agentsRepoMock)
 
 const fullDraft = {
   name: 'Security Auditor',

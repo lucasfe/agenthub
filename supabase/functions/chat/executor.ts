@@ -15,12 +15,22 @@
 //
 // deno-lint-ignore-file no-explicit-any
 
+import {
+  createClient as defaultCreateAdminClient,
+  type SupabaseClient,
+} from 'jsr:@supabase/supabase-js@2'
 import { createIssue, listRepos } from './github.ts'
 import { filterAndSlim } from './githubFilters.ts'
 import {
   buildNativeWebTools,
   findFailedNativeSearches,
 } from './webResearchTools.ts'
+import {
+  captureHtmlToTaskOutput,
+  type CaptureDeps,
+  type ScreenshotPath,
+  type ScreenshotRequest,
+} from '../_shared/htmlScreenshotter.ts'
 
 // Tools whose client-side declaration is replaced with the Anthropic native
 // server-side tool (web_search_20250305 / web_fetch_20250910). The model uses

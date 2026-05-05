@@ -92,6 +92,10 @@ create index if not exists idx_runs_created_at on runs(created_at desc);
 -- snapshots a ticket's title, description, and the full execution plan
 -- so the planner cost is paid once and the resulting plan can be
 -- instantiated as new tickets. See PRD #246 / issue #247.
+--
+-- The brand_context / params_schema / title_template / description_template
+-- columns plus the template_references child table support the Luiza
+-- content-automation feature (PRD #344, slice #346).
 create table if not exists task_templates (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -99,12 +103,36 @@ create table if not exists task_templates (
   task_title text not null,
   task_description text,
   plan jsonb,
+  brand_context text,
+  params_schema jsonb,
+  title_template text,
+  description_template text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
 create index if not exists idx_task_templates_created_at
   on task_templates (created_at desc);
+
+-- Template references (text snippets, images, audio samples) attached to a
+-- task_templates row to ground its prompt at instantiation time. Bucket-
+-- backed assets live under storage_path; pure-text references inline the
+-- payload in content_text.
+create table if not exists template_references (
+  id uuid primary key default gen_random_uuid(),
+  template_id uuid not null references task_templates (id) on delete cascade,
+  key text not null,
+  kind text not null check (kind in ('text', 'image', 'audio')),
+  storage_path text,
+  mime_type text,
+  content_text text,
+  original_filename text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_template_references_template_id
+  on template_references (template_id);
 
 -- Web Push subscriptions for the mobile shell at /mobile. Owned by the
 -- push-subscribe / push-unsubscribe Edge Functions. RLS scopes every

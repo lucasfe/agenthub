@@ -1,5 +1,4 @@
 import { AlertTriangle, LayoutTemplate } from 'lucide-react'
-import { Link } from 'react-router'
 import { findMissingAgents } from '../lib/templates'
 
 function describePlan(plan) {
@@ -7,7 +6,7 @@ function describePlan(plan) {
   return `${count} ${count === 1 ? 'step' : 'steps'}`
 }
 
-export default function TemplateCard({ template, agents = [], onClick }) {
+export default function TemplateCard({ template, agents = [], onClick, onUse }) {
   const planLabel = describePlan(template.plan)
   const missingAgents = findMissingAgents(template.plan, agents)
   const missingSet = new Set(missingAgents)
@@ -51,12 +50,16 @@ export default function TemplateCard({ template, agents = [], onClick }) {
 
       <div className="relative mt-auto pt-3 border-t border-border-subtle/50 flex items-center justify-between gap-2 text-xs text-text-muted">
         <span className="pointer-events-none">{planLabel}</span>
-        <Link
-          to={`/templates/${template.id}`}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onUse?.(template)
+          }}
           className="relative z-10 px-3 py-1.5 rounded-lg bg-accent-blue/10 text-accent-blue text-xs font-medium hover:bg-accent-blue/20 transition-colors"
         >
           Usar template
-        </Link>
+        </button>
       </div>
     </div>
   )

@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { LayoutTemplate, Plus } from 'lucide-react'
+import { useNavigate } from 'react-router'
 import Header from './Header'
 import TemplateCard from './TemplateCard'
 import CreateTemplateModal from './CreateTemplateModal'
 import TemplateEditDrawer from './TemplateEditDrawer'
+import UseTemplateModal from './UseTemplateModal'
 import { useData } from '../context/DataContext'
 import {
   fetchTemplates,
@@ -11,6 +13,8 @@ import {
   updateTemplate,
   deleteTemplate,
 } from '../lib/templatesApi'
+import { instantiateTemplate } from '../lib/instantiateTemplate'
+import { supabase } from '../lib/supabase'
 
 export default function TemplatesPage() {
   const [templates, setTemplates] = useState([])
@@ -18,7 +22,9 @@ export default function TemplatesPage() {
   const [error, setError] = useState(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [selectedId, setSelectedId] = useState(null)
+  const [useTemplateId, setUseTemplateId] = useState(null)
   const { agents } = useData()
+  const navigate = useNavigate()
 
   useEffect(() => {
     let cancelled = false
@@ -60,7 +66,15 @@ export default function TemplatesPage() {
     setTemplates((prev) => prev.filter((tpl) => tpl.id !== id))
   }
 
+  const handleInstantiate = async (params) => {
+    if (!useTemplateId) return
+    const taskId = await instantiateTemplate(supabase, useTemplateId, params)
+    setUseTemplateId(null)
+    navigate(`/board?task=${taskId}`)
+  }
+
   const selected = templates.find((tpl) => tpl.id === selectedId) || null
+  const useTemplate = templates.find((tpl) => tpl.id === useTemplateId) || null
 
   return (
     <>
@@ -112,6 +126,7 @@ export default function TemplatesPage() {
                 template={template}
                 agents={agents}
                 onClick={() => setSelectedId(template.id)}
+                onUse={() => setUseTemplateId(template.id)}
               />
             ))}
           </div>
@@ -132,6 +147,15 @@ export default function TemplatesPage() {
           onClose={() => setSelectedId(null)}
           onSave={(updates) => handleSave(selected.id, updates)}
           onDelete={() => handleDelete(selected.id)}
+        />
+      )}
+
+      {useTemplate && (
+        <UseTemplateModal
+          key={useTemplate.id}
+          template={useTemplate}
+          onClose={() => setUseTemplateId(null)}
+          onInstantiate={handleInstantiate}
         />
       )}
     </>

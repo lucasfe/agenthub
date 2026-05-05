@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
+import { useSearchParams } from 'react-router'
 import {
   Plus, GripVertical, X, MoreHorizontal, Trash2, ChevronDown,
   Loader2, AlertCircle, CheckCircle2, Clock, Play, Square, Eye, RefreshCw, Bookmark,
@@ -560,12 +561,27 @@ export default function BoardPage() {
   const [selectedTaskId, setSelectedTaskId] = useState(null)
   const [templateSelectorOpen, setTemplateSelectorOpen] = useState(false)
   const { agents, tools } = useData()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const taskFromUrl = searchParams.get('task')
 
   const selectedTask = selectedTaskId ? tasks.find((t) => t.id === selectedTaskId) : null
 
   useEffect(() => {
     fetchTasks().then((data) => { setTasks(data); setLoading(false) })
   }, [])
+
+  // Open the panel for ?task=<id> after the initial fetch resolves. Once
+  // the task exists we drop the query param so navigating away and back
+  // does not re-open it after the user manually closes the panel.
+  useEffect(() => {
+    if (loading || !taskFromUrl) return
+    const exists = tasks.some((t) => t.id === taskFromUrl)
+    if (!exists) return
+    setSelectedTaskId(taskFromUrl) // eslint-disable-line react-hooks/set-state-in-effect
+    const next = new URLSearchParams(searchParams)
+    next.delete('task')
+    setSearchParams(next, { replace: true })
+  }, [loading, taskFromUrl, tasks, searchParams, setSearchParams])
 
   const handleAddTask = useCallback(async (data) => {
     const row = await insertTask({ title: data.title, description: data.description, status: 'todo' })

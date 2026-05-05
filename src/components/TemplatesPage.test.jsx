@@ -102,7 +102,7 @@ describe('TemplatesPage', () => {
     expect(screen.getByText(/network down/i)).toBeInTheDocument()
   })
 
-  describe('"Usar template" CTA (issue #350)', () => {
+  describe('"Usar template" CTA (issue #356)', () => {
     const sampleTemplate = {
       id: 'tpl-go',
       name: 'Reusable template',
@@ -110,23 +110,32 @@ describe('TemplatesPage', () => {
       task_title: 'Title',
       task_description: '',
       plan: { steps: [{ id: 1, agent_id: 'a' }] },
+      params_schema: {
+        properties: { topic: { type: 'string', required: true } },
+      },
     }
 
-    it('renders a "Usar template" CTA on every card linking to /templates/[id]', async () => {
+    it('renders a "Usar template" CTA button on every card', async () => {
       fetchTemplates.mockResolvedValue([sampleTemplate])
       renderWithProviders(<TemplatesPage />)
 
-      const cta = await screen.findByRole('link', { name: /usar template/i })
-      expect(cta).toHaveAttribute('href', '/templates/tpl-go')
+      expect(
+        await screen.findByRole('button', { name: /usar template/i }),
+      ).toBeInTheDocument()
     })
 
-    it('clicking the "Usar template" CTA does not open the edit drawer', async () => {
+    it('clicking the "Usar template" CTA opens the UseTemplateModal, not the edit drawer', async () => {
       fetchTemplates.mockResolvedValue([sampleTemplate])
       const user = userEvent.setup()
       renderWithProviders(<TemplatesPage />)
 
-      await user.click(await screen.findByRole('link', { name: /usar template/i }))
+      await user.click(
+        await screen.findByRole('button', { name: /usar template/i }),
+      )
 
+      expect(
+        await screen.findByRole('heading', { name: /use template/i }),
+      ).toBeInTheDocument()
       expect(
         screen.queryByRole('heading', { name: /edit template/i }),
       ).not.toBeInTheDocument()

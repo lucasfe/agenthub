@@ -850,6 +850,8 @@ export async function runStep(
   // Tracks repeated tool failures: if the same tool fails twice in a row,
   // abort the step rather than burning iterations on a broken loop.
   const consecutiveFailures = new Map<string, number>()
+  // Tavily fallback for the native web_search runs at most once per step.
+  let nativeFallbackUsed = false
 
   for (let iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
     const reqBody: any = {
@@ -860,17 +862,22 @@ export async function runStep(
     }
     if (anthropicTools.length > 0) reqBody.tools = anthropicTools
 
+    const headers: Record<string, string> = {
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json',
+    }
+    if (usesNativeWebFetch) {
+      headers['anthropic-beta'] = WEB_FETCH_BETA_HEADER
+    }
+
     // Fetch with a single retry on 429 (rate limit). Waits for the
     // Retry-After header value or 10s, whichever is smaller.
     let res: Response
     const doFetch = () =>
       fetch(ANTHROPIC_API_URL, {
         method: 'POST',
-        headers: {
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'content-type': 'application/json',
-        },
+        headers,
         body: JSON.stringify(reqBody),
         signal,
       })

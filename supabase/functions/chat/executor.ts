@@ -662,6 +662,139 @@ async function createGithubIssue(
   }
 }
 
+// ─── Render HTML to image (Browserless) ─────────────────────────────────────
+
+const MISSING_BROWSERLESS_TOKEN_ERROR =
+  'Browserless is not configured. Set BROWSERLESS_TOKEN in the Edge Function secrets to enable this tool.'
+const MISSING_SUPABASE_ADMIN_ERROR =
+  'render_html_to_image cannot reach Supabase Storage (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY missing).'
+
+// Indirection so unit tests can swap in a mock Supabase client without
+// pulling jsr:@supabase/supabase-js into the test sandbox.
+let _createAdminClient: (url: string, key: string) => SupabaseClient =
+  defaultCreateAdminClient as unknown as (
+    url: string,
+    key: string,
+  ) => SupabaseClient
+
+export function setCreateAdminClientForTests(
+  factory: ((url: string, key: string) => SupabaseClient) | null,
+): () => void {
+  const previous = _createAdminClient
+  _createAdminClient =
+    factory ??
+    (defaultCreateAdminClient as unknown as (
+      url: string,
+      key: string,
+    ) => SupabaseClient)
+  return () => {
+    _createAdminClient = previous
+  }
+}
+
+// Exported only so the executor.test.ts can override the conversion step
+// without resolving `npm:sharp` inside the test sandbox.
+export const _renderHtmlInternals = {
+  capture: captureHtmlToTaskOutput as (
+    deps: CaptureDeps,
+    request: ScreenshotRequest,
+    path: ScreenshotPath,
+    signal?: AbortSignal,
+  ) => Promise<{
+    storage_path: string
+    signed_url: string
+    mime_type: 'image/jpeg'
+    width: number
+    height: number
+  }>,
+}
+
+async function renderHtmlToImage(
+  input: {
+    html?: unknown
+    width?: unknown
+    height?: unknown
+    filename_prefix?: unknown
+  },
+  ctx: ToolContext,
+): Promise<ToolResult> {
+  const html = typeof input.html === 'string' ? input.html : ''
+  const width = typeof input.width === 'number' ? input.width : 0
+  const height = typeof input.height === 'number' ? input.height : 0
+  const filenamePrefix =
+    typeof input.filename_prefix === 'string' && input.filename_prefix.trim()
+      ? input.filename_prefix.trim()
+      : undefined
+
+  if (!html.trim()) {
+    return {
+      ok: false,
+      error: 'render_html_to_image requires a non-empty `html` string.',
+    }
+  }
+  if (width <= 0 || height <= 0) {
+    return {
+      ok: false,
+      error:
+        'render_html_to_image requires positive `width` and `height` viewport dimensions.',
+    }
+  }
+
+  const token = Deno.env.get('BROWSERLESS_TOKEN')
+  if (!token) {
+    return {
+      ok: false,
+      error: MISSING_BROWSERLESS_TOKEN_ERROR,
+      result: { error: 'not_configured' },
+    }
+  }
+
+  if (!ctx.userId) {
+    return {
+      ok: false,
+      error:
+        'render_html_to_image requires an authenticated user (ctx.userId is missing).',
+    }
+  }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+  if (!supabaseUrl || !serviceKey) {
+    return {
+      ok: false,
+      error: MISSING_SUPABASE_ADMIN_ERROR,
+      result: { error: 'not_configured' },
+    }
+  }
+
+  const taskId = ctx.taskId ?? `chat-${ctx.toolCallId}`
+  const stepOrder =
+    typeof ctx.stepOrder === 'number' ? ctx.stepOrder : ctx.stepId
+
+  try {
+    const supabase = _createAdminClient(supabaseUrl, serviceKey)
+    const result = await _renderHtmlInternals.capture(
+      { token, supabase },
+      { html, width, height, filenamePrefix },
+      { userId: ctx.userId, taskId, stepOrder },
+      ctx.signal,
+    )
+    return {
+      ok: true,
+      result,
+      summary: `Rendered ${width}×${height} screenshot → ${result.storage_path}`,
+      artifact: {
+        type: 'file',
+        name: result.storage_path.split('/').pop() || 'screenshot.jpg',
+        format: 'jpg',
+        content: result.signed_url,
+      },
+    }
+  } catch (err) {
+    return { ok: false, error: (err as Error).message }
+  }
+}
+
 export const TOOL_HANDLERS: Record<string, ToolHandler> = {
   web_search: webSearch,
   fetch_url: fetchUrl,
@@ -672,6 +805,7 @@ export const TOOL_HANDLERS: Record<string, ToolHandler> = {
   create_google_slides: createGoogleSlides,
   list_github_repos: listGithubRepos,
   create_github_issue: createGithubIssue,
+  render_html_to_image: renderHtmlToImage,
 }
 
 // Which tools are functional in the current environment. Some tools depend on

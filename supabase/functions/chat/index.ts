@@ -711,6 +711,13 @@ Deno.serve(async (req: Request) => {
     original_task?: string
     step_answers?: Record<string, Record<string, string>>
     selected_agent_id?: string
+    // Template-mode fields (issue #354). Used when mode is one of
+    // template_execute / template_approve / template_retry.
+    task?: any
+    references?: Record<string, unknown>
+    params?: Record<string, string>
+    step_id?: number
+    feedback?: string
   }
   try {
     body = await req.json()

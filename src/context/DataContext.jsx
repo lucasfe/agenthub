@@ -14,7 +14,7 @@ export function DataProvider({ children }) {
   const loadData = useCallback(async () => {
     setLoading(true)
     const results = await Promise.allSettled([
-      fetchAgents(),
+      listAgents(),
       fetchTeams(),
       fetchTools(),
     ])

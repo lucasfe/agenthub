@@ -58,6 +58,14 @@ export interface ToolContext {
   stepId: number
   toolCallId: string
   userId?: string
+  // Optional template-mode context. When the executor is instantiated against
+  // a template-mode task (issue #354), it threads the real `task.id` and the
+  // 0-based step order through here so tools that emit artifacts (e.g.
+  // `render_html_to_image`) can build a deterministic Storage path. Chat-mode
+  // and free-form tasks leave them undefined and the tool falls back to
+  // ctx.toolCallId / ctx.stepId.
+  taskId?: string
+  stepOrder?: number
 }
 
 export interface ToolArtifact {

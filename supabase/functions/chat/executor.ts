@@ -820,6 +820,9 @@ export function getAvailableTools(): Set<string> {
     available.delete('list_github_repos')
     available.delete('create_github_issue')
   }
+  if (!Deno.env.get('BROWSERLESS_TOKEN')) {
+    available.delete('render_html_to_image')
+  }
   return available
 }
 
@@ -829,6 +832,9 @@ export function describeUnavailableReason(toolId: string): string {
   }
   if (toolId === 'list_github_repos' || toolId === 'create_github_issue') {
     return 'GITHUB_TOKEN is not configured in the Edge Function secrets.'
+  }
+  if (toolId === 'render_html_to_image') {
+    return 'BROWSERLESS_TOKEN is not configured in the Edge Function secrets.'
   }
   return 'Tool is not available in this environment.'
 }

@@ -1,13 +1,13 @@
 -- Seed migration: seven Luiza personas under the new "Content Creators"
 -- catalog category (issue #349, parent PRD #344).
 --
--- The personas are ported verbatim from the upstream Opensquad squad at
--- /Users/lucasfe/repos/luiza/squads/luiza-instagram/agents/. Filesystem
--- references like `squads/luiza-instagram/output/research-brief.md` are
--- replaced with Mustache placeholders (e.g. `{{step-2.output}}` for pipeline
--- step outputs, `{{tone-of-voice}}` for template-level config inputs) so the
--- prompts can be rendered by the upcoming template task runner without
--- touching the Opensquad filesystem layout.
+-- The personas are ported verbatim from the upstream Opensquad squad
+-- (luiza-instagram). Filesystem references like the original research-brief
+-- markdown output have been replaced with Mustache placeholders (e.g.
+-- `{{step-2.output}}` for pipeline step outputs, `{{tone-of-voice}}` for
+-- template-level config inputs) so the prompts can be rendered by the
+-- upcoming template task runner without touching any Opensquad filesystem
+-- layout.
 --
 -- Three of the agents declare tools that may not exist yet at the time this
 -- migration first runs (`render_html_to_image`, `zernio_publish`). The

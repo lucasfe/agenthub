@@ -59,6 +59,16 @@ function withGithubToken(token: string | null): () => void {
   }
 }
 
+function withEnv(key: string, value: string | null): () => void {
+  const previous = Deno.env.get(key)
+  if (value === null) Deno.env.delete(key)
+  else Deno.env.set(key, value)
+  return () => {
+    if (previous === undefined) Deno.env.delete(key)
+    else Deno.env.set(key, previous)
+  }
+}
+
 function makeCtx() {
   return {
     signal: new AbortController().signal,

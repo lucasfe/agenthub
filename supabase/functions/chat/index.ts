@@ -13,7 +13,11 @@
 
 // deno-lint-ignore-file no-explicit-any
 
-import { analyzeRequirements, runExecutorBranch } from './executor.ts'
+import {
+  analyzeRequirements,
+  runExecutorBranch,
+  TOOL_HANDLERS,
+} from './executor.ts'
 import { runSelectedAgentBranch } from './selectedAgentBranch.ts'
 import {
   resumeTemplateApprove,
@@ -21,6 +25,7 @@ import {
   runTemplateExecutor,
   type TemplateExecutorDeps,
 } from './templateExecutorBranch.ts'
+import { rerenderStepFile } from './templateRerenderFile.ts'
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages'
 const CHAT_MODEL = Deno.env.get('CHAT_MODEL') || 'claude-sonnet-4-6'
@@ -717,6 +722,7 @@ Deno.serve(async (req: Request) => {
     references?: Record<string, unknown>
     params?: Record<string, string>
     step_id?: number
+    file_idx?: number
     feedback?: string
   }
   try {
@@ -753,7 +759,8 @@ Deno.serve(async (req: Request) => {
   const isTemplateMode =
     mode === 'template_execute' ||
     mode === 'template_approve' ||
-    mode === 'template_retry'
+    mode === 'template_retry' ||
+    mode === 'template_rerender_file'
 
   const messages = Array.isArray(body.messages) ? body.messages : []
   const cleanMessages = messages
@@ -816,12 +823,100 @@ Deno.serve(async (req: Request) => {
           const stepId =
             typeof body.step_id === 'number' ? body.step_id : null
           if (
-            (mode === 'template_approve' || mode === 'template_retry') &&
+            (mode === 'template_approve' ||
+              mode === 'template_retry' ||
+              mode === 'template_rerender_file') &&
             stepId === null
           ) {
             emit('run.error', {
               error: `${mode} requires a numeric step_id`,
             })
+            return
+          }
+          if (mode === 'template_rerender_file') {
+            const fileIdx =
+              typeof body.file_idx === 'number' ? body.file_idx : -1
+            if (fileIdx < 0) {
+              emit('run.error', {
+                error: 'template_rerender_file requires a numeric file_idx',
+              })
+              return
+            }
+            emit('router.classified', { mode })
+            const timeoutController = new AbortController()
+            const timeoutId = setTimeout(
+              () => timeoutController.abort(),
+              RUN_TIMEOUT_MS,
+            )
+            try {
+              const renderHandler = TOOL_HANDLERS.render_html_to_image
+              if (!renderHandler) {
+                emit('run.error', {
+                  error: 'render_html_to_image tool is not registered',
+                })
+                return
+              }
+              const renderFile = async (req: {
+                html: string
+                width: number
+                height: number
+                feedback?: string
+              }) => {
+                const ctx = {
+                  userId,
+                  taskId:
+                    typeof task.id === 'string' ? task.id : `task-${task.id}`,
+                  stepId: stepId!,
+                  stepOrder: stepId!,
+                  toolCallId: `rerender-${stepId}-${fileIdx}-${Date.now()}`,
+                  signal: timeoutController.signal,
+                } as any
+                const out = await renderHandler(
+                  {
+                    html: req.html,
+                    width: req.width,
+                    height: req.height,
+                  },
+                  ctx,
+                )
+                if (!out.ok || !out.result) {
+                  throw new Error(
+                    out.error ||
+                      'render_html_to_image failed without an error message',
+                  )
+                }
+                return out.result as {
+                  storage_path: string
+                  signed_url: string
+                  mime_type: string
+                  width: number
+                  height: number
+                }
+              }
+              const result = await rerenderStepFile(
+                task,
+                stepId!,
+                fileIdx,
+                {
+                  renderFile,
+                  feedback:
+                    typeof body.feedback === 'string'
+                      ? body.feedback
+                      : undefined,
+                },
+              )
+              emit('step.file.rerendered', {
+                step_id: stepId,
+                file_idx: fileIdx,
+                file: result.newFile,
+              })
+              emit('task.updated', { task: result.task })
+              emit('run.done', { task_id: task.id })
+            } catch (err) {
+              emit('run.error', { error: (err as Error).message })
+            } finally {
+              clearTimeout(timeoutId)
+            }
             return
           }
           emit('router.classified', { mode })

@@ -86,7 +86,7 @@ describe('TemplatesPage', () => {
     expect(screen.getByText('Feature template')).toBeInTheDocument()
     expect(screen.getByText(/for routine bug fixes/i)).toBeInTheDocument()
     expect(screen.getByText(/2 steps/i)).toBeInTheDocument()
-    expect(screen.getByText(/no plan yet/i)).toBeInTheDocument()
+    expect(screen.getByText(/0 steps/i)).toBeInTheDocument()
   })
 
   it('shows a loading indicator before the fetch resolves', () => {

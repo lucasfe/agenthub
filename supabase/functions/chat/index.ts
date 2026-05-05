@@ -759,7 +759,8 @@ Deno.serve(async (req: Request) => {
   const isTemplateMode =
     mode === 'template_execute' ||
     mode === 'template_approve' ||
-    mode === 'template_retry'
+    mode === 'template_retry' ||
+    mode === 'template_rerender_file'
 
   const messages = Array.isArray(body.messages) ? body.messages : []
   const cleanMessages = messages

@@ -66,7 +66,15 @@ export default function TemplatesPage() {
     setTemplates((prev) => prev.filter((tpl) => tpl.id !== id))
   }
 
+  const handleInstantiate = async (params) => {
+    if (!useTemplateId) return
+    const taskId = await instantiateTemplate(supabase, useTemplateId, params)
+    setUseTemplateId(null)
+    navigate(`/board?task=${taskId}`)
+  }
+
   const selected = templates.find((tpl) => tpl.id === selectedId) || null
+  const useTemplate = templates.find((tpl) => tpl.id === useTemplateId) || null
 
   return (
     <>

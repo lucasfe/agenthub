@@ -39,10 +39,8 @@ src/
 ├── context/              # React Context providers
 │   ├── ThemeContext.jsx   # Dark/light theme, persisted in localStorage
 │   └── StackContext.jsx   # Selected agents stack (add/remove/download)
-└── data/                 # Static data (editable JSON)
-    ├── agents.json        # 21 agents across 2 categories
-    ├── teams.json         # 6 predefined teams
-    └── agentContent.js    # System prompts keyed by agent ID
+└── data/                 # Reference data (teams.json only)
+    └── teams.json         # 6 predefined teams (validated against the seed migration)
 ```
 
 ## Routing

@@ -274,10 +274,12 @@ describe('TemplateDetailPage — references CRUD', () => {
     renderAtRoute()
     await screen.findByText(/^tone$/i)
 
-    const deleteButtons = screen.getAllByRole('button', { name: /delete reference/i })
+    const deleteButtons = screen.getAllByRole('button', { name: /^delete reference tone$/i })
     await user.click(deleteButtons[0])
     // Confirmation step
-    await user.click(await screen.findByRole('button', { name: /^confirm delete reference$/i }))
+    await user.click(
+      await screen.findByRole('button', { name: /^confirm delete reference tone$/i }),
+    )
 
     await waitFor(() => expect(deleteReference).toHaveBeenCalledWith('ref-tone-id'))
     await waitFor(() => expect(screen.queryByText(/^tone$/i)).not.toBeInTheDocument())

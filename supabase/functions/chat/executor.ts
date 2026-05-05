@@ -738,7 +738,7 @@ function buildStepContext(
 
 type EmitFn = (type: string, payload?: Record<string, unknown>) => void
 
-async function runStep(
+export async function runStep(
   step: any,
   agentsContext: any[],
   toolsContext: any[],

@@ -17,7 +17,7 @@ export default function StackButton() {
   const handleDownload = async () => {
     const zip = new JSZip()
     const agentDetails = await Promise.all(
-      stackAgents.map((agent) => fetchAgent(agent.id).catch(() => null))
+      stackAgents.map((agent) => getAgent(agent.id).catch(() => null))
     )
     agentDetails.filter(Boolean).forEach((agent) => {
       const content = agent.content || agent.description

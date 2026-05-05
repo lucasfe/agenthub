@@ -12,7 +12,7 @@
 // Use `loadingIndices` to disable buttons on a thumbnail whose rerender is
 // in flight.
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import * as Icons from 'lucide-react'
 import {
   countApproved,

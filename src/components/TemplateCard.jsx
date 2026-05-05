@@ -1,11 +1,9 @@
 import { AlertTriangle, LayoutTemplate } from 'lucide-react'
+import { Link } from 'react-router'
 import { findMissingAgents } from '../lib/templates'
 
 function describePlan(plan) {
-  if (!plan || !Array.isArray(plan.steps) || plan.steps.length === 0) {
-    return 'No plan yet'
-  }
-  const count = plan.steps.length
+  const count = Array.isArray(plan?.steps) ? plan.steps.length : 0
   return `${count} ${count === 1 ? 'step' : 'steps'}`
 }
 

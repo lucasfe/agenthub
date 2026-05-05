@@ -1,5 +1,4 @@
 import { AlertTriangle, LayoutTemplate } from 'lucide-react'
-import { Link } from 'react-router'
 import { findMissingAgents } from '../lib/templates'
 
 function describePlan(plan) {
@@ -7,7 +6,7 @@ function describePlan(plan) {
   return `${count} ${count === 1 ? 'step' : 'steps'}`
 }
 
-export default function TemplateCard({ template, agents = [], onClick }) {
+export default function TemplateCard({ template, agents = [], onClick, onUse }) {
   const planLabel = describePlan(template.plan)
   const missingAgents = findMissingAgents(template.plan, agents)
   const missingSet = new Set(missingAgents)

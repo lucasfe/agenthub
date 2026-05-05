@@ -353,8 +353,9 @@ describe('TemplateDetailPage — steps editor', () => {
     await user.click(screen.getByRole('button', { name: /^save step 1$/i }))
 
     expect(updateTemplate).not.toHaveBeenCalled()
-    expect(await screen.findByText(/params\.unknown_one/i)).toBeInTheDocument()
-    expect(screen.getByText(/undeclared/i)).toBeInTheDocument()
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent(/params\.unknown_one/i)
+    expect(alert).toHaveTextContent(/undeclared/i)
   })
 
   it('blocks save when instruction references an unknown reference key', async () => {
@@ -368,6 +369,7 @@ describe('TemplateDetailPage — steps editor', () => {
     await user.click(screen.getByRole('button', { name: /^save step 1$/i }))
 
     expect(updateTemplate).not.toHaveBeenCalled()
-    expect(await screen.findByText(/ref:nonexistent/i)).toBeInTheDocument()
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent(/ref:nonexistent/i)
   })
 })

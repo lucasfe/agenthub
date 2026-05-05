@@ -750,6 +750,11 @@ Deno.serve(async (req: Request) => {
       ? body.session_id
       : crypto.randomUUID()
 
+  const isTemplateMode =
+    mode === 'template_execute' ||
+    mode === 'template_approve' ||
+    mode === 'template_retry'
+
   const messages = Array.isArray(body.messages) ? body.messages : []
   const cleanMessages = messages
     .filter(
@@ -760,7 +765,10 @@ Deno.serve(async (req: Request) => {
     )
     .map((m) => ({ role: m.role, content: m.content }))
 
-  if (cleanMessages.length === 0) {
+  // Template-mode requests carry a `task` payload directly, not a chat
+  // history. Skip the messages requirement when running through the
+  // template executor branch.
+  if (cleanMessages.length === 0 && !isTemplateMode) {
     return new Response(
       JSON.stringify({ error: 'At least one user message is required' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },

@@ -917,7 +917,52 @@ export async function runStep(
 
     const toolUses = content.filter((b) => b.type === 'tool_use')
     if (toolUses.length === 0) {
-      // Model produced only text — step is done.
+      // Model produced only text — but first check whether the native
+      // server-side web_search returned zero results / errored. If so, run
+      // the Tavily-backed handler once and re-prompt with those results.
+      if (!nativeFallbackUsed) {
+        const failed = findFailedNativeSearches(content)
+        if (failed.length > 0) {
+          nativeFallbackUsed = true
+          const fallbackPayload: any[] = []
+          for (const f of failed) {
+            console.log(
+              JSON.stringify({
+                event: 'web_search.fallback.tavily',
+                step_id: step.id,
+                query: f.query,
+                reason: f.reason,
+              }),
+            )
+            const tavilyResult = await webSearch(
+              { query: f.query },
+              {
+                signal,
+                agentsContext,
+                stepId: step.id,
+                toolCallId: `fallback-${f.tool_use_id}`,
+                userId,
+              },
+            )
+            fallbackPayload.push({
+              query: f.query,
+              ok: tavilyResult.ok,
+              result: tavilyResult.result,
+              error: tavilyResult.error,
+            })
+          }
+          messages.push({ role: 'assistant', content })
+          messages.push({
+            role: 'user',
+            content: `The native web_search returned no usable results (${failed
+              .map((f) => f.reason)
+              .join(', ')}). Tavily fallback results follow — use them to complete the task:\n\n${JSON.stringify(
+              fallbackPayload,
+            ).slice(0, 4000)}`,
+          })
+          continue
+        }
+      }
       return { text: finalText, tokens_in: totalIn, tokens_out: totalOut }
     }
 

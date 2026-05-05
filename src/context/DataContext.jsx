@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import { fetchAgents, fetchTeams, fetchTools, trackAgentUsage } from '../lib/api'
+import { fetchTeams, fetchTools, trackAgentUsage } from '../lib/api'
+import { listAgents } from '../lib/agentsRepo'
 
 const DataContext = createContext()
 

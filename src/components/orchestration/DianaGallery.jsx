@@ -204,7 +204,7 @@ export default function DianaGallery({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-4">
         {images.map(({ idx, file }) => (
           <ThumbCard
-            key={idx}
+            key={`${idx}:${file.signed_url || file.storage_path || ''}`}
             idx={idx}
             file={file}
             loading={loadingSet.has(idx)}

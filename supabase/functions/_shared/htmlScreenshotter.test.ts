@@ -40,7 +40,9 @@ function installFetchMock(
 }
 
 function pngResponse(status: number, bytes: Uint8Array): Response {
-  return new Response(bytes, {
+  // Pass a Blob to dodge the Uint8Array<ArrayBufferLike> generic mismatch
+  // that current TS lib types complain about for Response's BodyInit.
+  return new Response(new Blob([new Uint8Array(bytes)]), {
     status,
     headers: { 'Content-Type': 'image/png' },
   })

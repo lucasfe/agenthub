@@ -302,25 +302,28 @@ White opacity utilities (`bg-white/5`, `hover:bg-white/10`) are overridden in li
 
 ## Data Schemas
 
-### Agent (agents.json)
-```json
+### Agent (Supabase `agents` table)
+The agent catalog is stored in Postgres and accessed through `src/lib/agentsRepo.js` (`listAgents`, `getAgent`, `createAgent`, `updateAgent`, `deleteAgent`). Row shape:
+```
 {
-  "id": "frontend-developer",
-  "name": "Frontend Developer",
-  "category": "Development Team",
-  "description": "Expert in React, TypeScript...",
-  "tags": ["React", "TypeScript", "CSS"],
-  "icon": "Monitor",
-  "color": "blue",
-  "featured": true,
-  "popularity": 98
+  id: 'frontend-developer',           -- kebab-case PK, used in URLs
+  name: 'Frontend Developer',
+  category: 'Development Team',       -- 'Development Team' | 'AI Specialists'
+  description: 'Expert in React...',
+  tags: ['React', 'TypeScript', 'CSS'],
+  icon: 'Monitor',                    -- lucide-react export name
+  color: 'blue',                      -- blue | green | purple | amber | rose | cyan
+  featured: true,
+  popularity: 98,                     -- integer 1–100 (sort + display)
+  content: 'You are a senior frontend developer...',  -- markdown system prompt
+  tools: [],
+  model: 'claude-sonnet-4-6',
+  capabilities: [],
+  usage_count: 0
 }
 ```
-- `id`: kebab-case, unique, used in URLs and as key
-- `category`: `"Development Team"` or `"AI Specialists"`
-- `icon`: must be a valid lucide-react export name
-- `color`: one of `blue | green | purple | amber | rose | cyan`
-- `popularity`: integer 1–100, used for sort + display (`popularity * 243` shown as downloads)
+
+The seed migration that loads the catalog is `supabase/migrations/20260504120000_seed_agents.sql`. It is idempotent (`INSERT ... ON CONFLICT (id) DO UPDATE`) so re-running it on an existing DB refreshes the seeded columns without nuking new rows or `usage_count`.
 
 ### Team (teams.json)
 ```json
@@ -333,16 +336,7 @@ White opacity utilities (`bg-white/5`, `hover:bg-white/10`) are overridden in li
   "createdAt": "2026-02-15"
 }
 ```
-- `agents`: array of agent IDs (must match `agents.json` entries)
-
-### Agent Content (agentContent.js)
-```javascript
-const agentContent = {
-  'frontend-developer': `You are a senior frontend developer...`,
-  // markdown-formatted system prompts
-}
-export default agentContent
-```
+- `agents`: array of agent IDs. Every id MUST resolve to a row in the seed migration — `src/lib/teamsSeedValidation.test.js` enforces this in CI.
 
 ## Key Features
 

@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { LayoutTemplate, Plus } from 'lucide-react'
+import { useNavigate } from 'react-router'
 import Header from './Header'
 import TemplateCard from './TemplateCard'
 import CreateTemplateModal from './CreateTemplateModal'
 import TemplateEditDrawer from './TemplateEditDrawer'
+import UseTemplateModal from './UseTemplateModal'
 import { useData } from '../context/DataContext'
 import {
   fetchTemplates,
@@ -11,6 +13,8 @@ import {
   updateTemplate,
   deleteTemplate,
 } from '../lib/templatesApi'
+import { instantiateTemplate } from '../lib/instantiateTemplate'
+import { supabase } from '../lib/supabase'
 
 export default function TemplatesPage() {
   const [templates, setTemplates] = useState([])
@@ -18,7 +22,9 @@ export default function TemplatesPage() {
   const [error, setError] = useState(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [selectedId, setSelectedId] = useState(null)
+  const [useTemplateId, setUseTemplateId] = useState(null)
   const { agents } = useData()
+  const navigate = useNavigate()
 
   useEffect(() => {
     let cancelled = false

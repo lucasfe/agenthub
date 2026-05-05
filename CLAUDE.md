@@ -502,10 +502,17 @@ If the user clicks Approve or Cancel before `createTaskFromPlan` has resolved, t
 
 ## Adding a New Agent
 
-1. Add entry to `src/data/agents.json` following the schema above
-2. Add system prompt to `src/data/agentContent.js` using the same `id` as key
-3. Ensure the `icon` value exists in lucide-react
-4. Use one of the 6 defined colors
+The catalog lives in the Supabase `agents` table. There are two paths:
+
+- **Permanent catalog agent** — append a tuple to the agents `INSERT` block in `supabase/migrations/20260504120000_seed_agents.sql` and add a matching `agent_id` to whatever team(s) should reference it in `src/data/teams.json`. Re-run the migration (idempotent) to apply on an existing DB.
+- **Tool-bound specialist** (e.g. github-issue-creator, skill-creator) — add an `INSERT INTO agents ... ON CONFLICT DO UPDATE` block to `supabase/seed-tools.sql` alongside the relevant `tools` rows.
+
+In both cases:
+- `id` is kebab-case and must be unique.
+- `category` is `"Development Team"` or `"AI Specialists"`.
+- `icon` must be a valid lucide-react export name.
+- `color` is one of `blue | green | purple | amber | rose | cyan`.
+- For runtime UI changes without re-seeding, use `src/lib/agentsRepo.js` (`createAgent`, `updateAgent`, `deleteAgent`).
 
 ## Adding a New Team
 

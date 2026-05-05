@@ -149,6 +149,15 @@ export default function TemplatesPage() {
           onDelete={() => handleDelete(selected.id)}
         />
       )}
+
+      {useTemplate && (
+        <UseTemplateModal
+          key={useTemplate.id}
+          template={useTemplate}
+          onClose={() => setUseTemplateId(null)}
+          onInstantiate={handleInstantiate}
+        />
+      )}
     </>
   )
 }

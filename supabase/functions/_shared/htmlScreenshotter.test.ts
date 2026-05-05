@@ -308,7 +308,7 @@ Deno.test('captureHtmlToTaskOutput — happy path: fetches PNG, converts JPEG, u
       {
         token: 'TOK',
         supabase: supabase.client,
-        pngToJpeg: async (png, quality) => {
+        pngToJpeg: async (png: Uint8Array, quality: number) => {
           convertCalled = true
           convertedQuality = quality
           assertEquals(Array.from(png), Array.from(FAKE_PNG))

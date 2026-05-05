@@ -58,9 +58,9 @@ ON CONFLICT (id) DO UPDATE SET
 -- AGENT
 -- =============================================================================
 --
--- The agent's `content` (system prompt) below must stay in sync with the
--- entry in src/data/agentContent.js — that file is the source of truth for
--- the static fallback. If you edit one, edit the other.
+-- The agent's `content` (system prompt) below is now the single source of
+-- truth — the former static fallback in src/data/agentContent.js has been
+-- removed. Edit this row to change the agent's prompt.
 
 INSERT INTO agents (
   id, name, category, description, tags, icon, color, featured, popularity,
@@ -149,9 +149,9 @@ ON CONFLICT (id) DO UPDATE SET
 -- Reuses the `create_github_issue` tool above. Does NOT use `list_github_repos`
 -- — the target repo `lucasfe/skills` is hardcoded in the system prompt.
 --
--- The agent's `content` (system prompt) below must stay in sync with the
--- entry in src/data/agentContent.js — that file is the source of truth for
--- the static fallback. If you edit one, edit the other.
+-- The agent's `content` (system prompt) below is now the single source of
+-- truth — the former static fallback in src/data/agentContent.js has been
+-- removed. Edit this row to change the agent's prompt.
 
 INSERT INTO agents (
   id, name, category, description, tags, icon, color, featured, popularity,

@@ -773,7 +773,9 @@ export async function runStep(
   const skippedIds: string[] = []
   for (const id of declaredIds) {
     if (!agentToolIds.has(id)) continue
-    if (!availableInEnv.has(id)) {
+    // Native web tools (web_search / web_fetch) run server-side on Anthropic
+    // and need no client config — they're always allowed when declared.
+    if (!availableInEnv.has(id) && !NATIVE_WEB_TOOL_IDS.has(id)) {
       skippedIds.push(id)
       continue
     }

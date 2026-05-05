@@ -1,9 +1,10 @@
 import {
   assert,
   assertEquals,
+  assertExists,
   assertStringIncludes,
 } from 'jsr:@std/assert@1'
-import { TOOL_HANDLERS } from './executor.ts'
+import { runStep, TOOL_HANDLERS } from './executor.ts'
 
 interface MockCall {
   url: string

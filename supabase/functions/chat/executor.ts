@@ -17,6 +17,17 @@
 
 import { createIssue, listRepos } from './github.ts'
 import { filterAndSlim } from './githubFilters.ts'
+import {
+  buildNativeWebTools,
+  findFailedNativeSearches,
+} from './webResearchTools.ts'
+
+// Tools whose client-side declaration is replaced with the Anthropic native
+// server-side tool (web_search_20250305 / web_fetch_20250910). The model uses
+// the native tool first; the Tavily-backed `web_search` handler stays as a
+// fallback when the native call returns zero results or errors.
+const NATIVE_WEB_TOOL_IDS = new Set(['web_search', 'web_fetch'])
+const WEB_FETCH_BETA_HEADER = 'web-fetch-2025-09-10'
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages'
 const DEFAULT_STEP_MODEL = 'claude-sonnet-4-6'

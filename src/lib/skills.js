@@ -6,8 +6,11 @@
 // authenticated user's `accessToken` (Supabase session token) so the
 // function's JWT gate accepts the call — there is no anonymous mode.
 //
-// This module only knows about reaching the proxy and parsing what comes
-// back. Frontmatter parsing is delegated to `./skillFrontmatter.js`.
+// The skills repo organizes skills under category folders at the root
+// (e.g. `development/<slug>/SKILL.md`, `meta/<slug>/SKILL.md`). The proxy
+// returns the flat catalog `{ slug, category, path }[]`; this module fetches
+// each `SKILL.md` via `?op=raw&category=<cat>&slug=<slug>` and parses the
+// frontmatter. Categories and slugs are discovered, never hard-coded.
 
 import { parseFrontmatter } from './skillFrontmatter.js'
 
@@ -46,8 +49,11 @@ function buildHeaders(accessToken) {
   }
 }
 
-export async function listSkills(options = {}) {
-  const { accessToken } = options
+function sourceUrlFor(category, slug) {
+  return `https://github.com/${REPO}/tree/main/${category}/${slug}`
+}
+
+async function fetchCatalog(accessToken) {
   const headers = buildHeaders(accessToken)
   const res = await fetch(buildProxyUrl('list'), { headers })
   if (!res.ok) {
@@ -57,67 +63,74 @@ export async function listSkills(options = {}) {
   if (!Array.isArray(entries)) {
     throw new SkillsApiError('Proxy returned an unexpected response shape.', 502)
   }
-  const folders = entries.filter(
-    (entry) => entry && entry.type === 'dir' && typeof entry.name === 'string',
+  return entries.filter(
+    (entry) =>
+      entry &&
+      typeof entry.slug === 'string' &&
+      entry.slug.length > 0 &&
+      typeof entry.category === 'string' &&
+      entry.category.length > 0,
   )
-  const skills = []
-  for (const folder of folders) {
-    const skill = await fetchSkillForFolder(folder.name, accessToken)
-    if (skill) skills.push(skill)
-  }
-  return skills
 }
 
-async function fetchSkillForFolder(slug, accessToken) {
+async function fetchSkillFile(category, slug, accessToken) {
   const headers = buildHeaders(accessToken)
-  const res = await fetch(buildProxyUrl('raw', { slug }), { headers })
-  if (res.status === 404) return null
+  const res = await fetch(buildProxyUrl('raw', { category, slug }), { headers })
+  if (res.status === 404) return { status: 404, parsed: null }
   if (!res.ok) {
-    if (res.status === 403 || res.status >= 500) {
-      throw new SkillsApiError(
-        `Failed to fetch SKILL.md for "${slug}" (${res.status}).`,
-        res.status,
-      )
-    }
-    return null
+    throw new SkillsApiError(
+      `Failed to fetch SKILL.md for "${category}/${slug}" (${res.status}).`,
+      res.status,
+    )
   }
   const text = await res.text()
-  const parsed = parseFrontmatter(text)
+  return { status: 200, parsed: parseFrontmatter(text) }
+}
+
+function extractNameAndDescription(parsed) {
   if (!parsed) return null
   const name = typeof parsed.name === 'string' ? parsed.name.trim() : ''
-  const description = typeof parsed.description === 'string' ? parsed.description.trim() : ''
+  const description =
+    typeof parsed.description === 'string' ? parsed.description.trim() : ''
   if (!name || !description) return null
-  return {
-    slug,
-    name,
-    description,
-    sourceUrl: `https://github.com/${REPO}/tree/main/${slug}`,
+  return { name, description }
+}
+
+export async function listSkills(options = {}) {
+  const { accessToken } = options
+  const entries = await fetchCatalog(accessToken)
+  const skills = []
+  for (const entry of entries) {
+    const { slug, category } = entry
+    const { parsed } = await fetchSkillFile(category, slug, accessToken)
+    const meta = extractNameAndDescription(parsed)
+    if (!meta) continue
+    skills.push({
+      slug,
+      category,
+      name: meta.name,
+      description: meta.description,
+      sourceUrl: sourceUrlFor(category, slug),
+    })
   }
+  return skills
 }
 
 export async function getSkill(slug, options = {}) {
   if (typeof slug !== 'string' || slug.length === 0) return null
   const { accessToken } = options
-  const headers = buildHeaders(accessToken)
-  const res = await fetch(buildProxyUrl('raw', { slug }), { headers })
-  if (res.status === 404) return null
-  if (!res.ok) {
-    throw new SkillsApiError(
-      `Failed to fetch SKILL.md for "${slug}" (${res.status}).`,
-      res.status,
-    )
-  }
-  const text = await res.text()
-  const parsed = parseFrontmatter(text)
-  if (!parsed) return null
-  const name = typeof parsed.name === 'string' ? parsed.name.trim() : ''
-  const description = typeof parsed.description === 'string' ? parsed.description.trim() : ''
-  if (!name || !description) return null
+  const entries = await fetchCatalog(accessToken)
+  const entry = entries.find((e) => e.slug === slug)
+  if (!entry) return null
+  const { parsed } = await fetchSkillFile(entry.category, slug, accessToken)
+  const meta = extractNameAndDescription(parsed)
+  if (!meta) return null
   return {
     slug,
-    name,
-    description,
+    category: entry.category,
+    name: meta.name,
+    description: meta.description,
     body: typeof parsed.body === 'string' ? parsed.body : '',
-    sourceUrl: `https://github.com/${REPO}/tree/main/${slug}`,
+    sourceUrl: sourceUrlFor(entry.category, slug),
   }
 }

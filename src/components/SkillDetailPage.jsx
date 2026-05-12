@@ -40,7 +40,7 @@ export default function SkillDetailPage() {
     return () => { cancelled = true }
   }, [slug, accessToken])
 
-  const installCommand = skill ? buildInstallCommand(skill.slug) : ''
+  const installCommand = skill ? buildInstallCommand(skill.category, skill.slug) : ''
 
   const handleCopy = async () => {
     if (!installCommand) return

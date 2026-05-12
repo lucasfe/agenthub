@@ -129,6 +129,50 @@ describe('MobileChat', () => {
     )
   })
 
+  it('renders markdown in assistant replies (bold, inline code, headings)', async () => {
+    scriptSession([
+      {
+        type: 'chat.text',
+        value: '## Heading\nA **bold** word and `inline()` code.',
+      },
+      { type: 'chat.done' },
+    ])
+
+    const user = userEvent.setup()
+    const { container } = renderWithProviders(<MobileChat />)
+
+    await user.type(screen.getByPlaceholderText(/Type a message/i), 'oi')
+    await user.click(screen.getByLabelText(/Send message/i))
+
+    await waitFor(() => {
+      expect(container.querySelector('h2')).not.toBeNull()
+    })
+    expect(container.querySelector('h2')).toHaveTextContent('Heading')
+    expect(container.querySelector('strong')).toHaveTextContent('bold')
+    expect(container.querySelector('code')).toHaveTextContent('inline()')
+    // Raw markdown markers must not leak through as literal text.
+    expect(container.textContent).not.toMatch(/\*\*bold\*\*/)
+    expect(container.textContent).not.toMatch(/^## /m)
+  })
+
+  it('preserves plain-text rendering for user messages (no markdown parsing)', async () => {
+    scriptSession([{ type: 'chat.done' }])
+
+    const user = userEvent.setup()
+    const { container } = renderWithProviders(<MobileChat />)
+
+    await user.type(
+      screen.getByPlaceholderText(/Type a message/i),
+      '**not bold**',
+    )
+    await user.click(screen.getByLabelText(/Send message/i))
+
+    await waitFor(() => {
+      expect(screen.getByText('**not bold**')).toBeInTheDocument()
+    })
+    expect(container.querySelector('strong')).toBeNull()
+  })
+
   it('mic FAB starts speech recognition and appends transcript to input', async () => {
     let callbacks = null
     voiceMock.startRecognition.mockImplementation((opts) => {

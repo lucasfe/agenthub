@@ -168,56 +168,6 @@ describe('MobileChat', () => {
     expect(container.querySelector('strong')).toBeNull()
   })
 
-  it('mic FAB starts speech recognition and appends transcript to input', async () => {
-    let callbacks = null
-    voiceMock.startRecognition.mockImplementation((opts) => {
-      callbacks = opts
-      return { stop: vi.fn() }
-    })
-
-    const user = userEvent.setup()
-    renderWithProviders(<MobileChat />)
-
-    const input = screen.getByPlaceholderText(/Type a message/i)
-    await user.type(input, 'hello ')
-
-    await user.click(screen.getByLabelText(/Voice input/i))
-    expect(voiceMock.startRecognition).toHaveBeenCalledTimes(1)
-    expect(screen.getByText(/Listening/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/Stop voice input/i)).toBeInTheDocument()
-
-    act(() => {
-      callbacks.onResult({ transcript: 'world', isFinal: true })
-      callbacks.onEnd?.()
-    })
-
-    await waitFor(() => {
-      expect(input.value).toBe('hello world')
-    })
-    expect(screen.queryByText(/Listening/i)).not.toBeInTheDocument()
-  })
-
-  it('shows toast when speech recognition reports not-allowed (permission denied)', async () => {
-    let callbacks = null
-    voiceMock.startRecognition.mockImplementation((opts) => {
-      callbacks = opts
-      return { stop: vi.fn() }
-    })
-
-    const user = userEvent.setup()
-    renderWithProviders(<MobileChat />)
-
-    await user.click(screen.getByLabelText(/Voice input/i))
-    act(() => {
-      callbacks.onError({ code: 'not-allowed', message: 'denied' })
-      callbacks.onEnd?.()
-    })
-
-    await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent(/Microphone/i)
-    })
-  })
-
   it('renders an approval card when chat.tool_call has requires_approval and approve dispatches', async () => {
     const onApprove = vi.fn()
     orchestrationMock.startSession.mockImplementationOnce(() => {

@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Bot, Loader2, Mic, Plus, Send, Square } from 'lucide-react'
+import { Bot, Loader2, Plus, Send } from 'lucide-react'
 import { useData } from '../../context/DataContext'
 import { isOrchestrationConfigured, startSession } from '../../lib/orchestration'
-import { startRecognition } from '../../lib/voice'
 import Markdown from '../../lib/markdown'
 import MobileAgentPicker from './MobileAgentPicker'
 import MobileApprovalCard from './MobileApprovalCard'
@@ -21,10 +20,7 @@ export default function MobileChat() {
   const [isStreaming, setIsStreaming] = useState(false)
   const [selectedAgentId, setSelectedAgentId] = useState(null)
   const [pickerOpen, setPickerOpen] = useState(false)
-  const [listening, setListening] = useState(false)
-  const [toast, setToast] = useState(null)
   const sessionRef = useRef(null)
-  const recognitionRef = useRef(null)
   const listRef = useRef(null)
 
   useEffect(() => {
@@ -34,15 +30,8 @@ export default function MobileChat() {
   useEffect(() => {
     return () => {
       sessionRef.current?.session?.cancel('unmount')
-      recognitionRef.current?.stop?.()
     }
   }, [])
-
-  useEffect(() => {
-    if (!toast) return
-    const handle = setTimeout(() => setToast(null), 4000)
-    return () => clearTimeout(handle)
-  }, [toast])
 
   const patchMessageAt = (index, patch) => {
     setMessages((prev) => {
@@ -271,52 +260,6 @@ export default function MobileChat() {
     setInput('')
   }
 
-  const stopVoice = () => {
-    recognitionRef.current?.stop?.()
-    recognitionRef.current = null
-    setListening(false)
-  }
-
-  const startVoice = () => {
-    if (listening) {
-      stopVoice()
-      return
-    }
-    let finalText = ''
-    setListening(true)
-    const handle = startRecognition({
-      lang: 'pt-BR',
-      onResult: ({ transcript, isFinal }) => {
-        if (isFinal) {
-          finalText = transcript
-        }
-      },
-      onError: (err) => {
-        if (err?.code === 'not-allowed' || err?.code === 'service-not-allowed') {
-          setToast({
-            kind: 'error',
-            text: 'Microphone permission denied. Open iOS Settings → Safari → Microphone to allow it.',
-          })
-        } else if (err?.code === 'unsupported') {
-          setToast({
-            kind: 'error',
-            text: 'Voice input is not supported on this browser.',
-          })
-        } else if (err?.code) {
-          setToast({ kind: 'error', text: `Voice error: ${err.code}` })
-        }
-      },
-      onEnd: () => {
-        recognitionRef.current = null
-        setListening(false)
-        if (finalText) {
-          setInput((prev) => (prev ? `${prev}${finalText}` : finalText))
-        }
-      },
-    })
-    recognitionRef.current = handle
-  }
-
   const selectedAgent =
     selectedAgentId && Array.isArray(agents)
       ? agents.find((a) => a.id === selectedAgentId)
@@ -447,22 +390,6 @@ export default function MobileChat() {
         )}
       </main>
 
-      {listening && (
-        <div className="px-4 pb-2 flex items-center gap-2 text-xs text-text-muted">
-          <span className="h-2 w-2 rounded-full bg-rose-400 animate-pulse" />
-          <span>Listening…</span>
-        </div>
-      )}
-
-      {toast && (
-        <div
-          role="alert"
-          className="mx-4 mb-2 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs px-3 py-2"
-        >
-          {toast.text}
-        </div>
-      )}
-
       <form
         onSubmit={handleSend}
         className="sticky bottom-0 border-t border-white/10 bg-bg-primary px-4 py-3"
@@ -477,16 +404,6 @@ export default function MobileChat() {
             disabled={isStreaming}
             className="flex-1 bg-white/5 text-text-primary text-sm px-3 py-2 rounded-xl outline-none disabled:opacity-50"
           />
-          <button
-            type="button"
-            onClick={startVoice}
-            aria-label={listening ? 'Stop voice input' : 'Voice input'}
-            className={`p-2 rounded-xl text-white ${
-              listening ? 'bg-rose-500 animate-pulse' : 'bg-white/10 text-text-primary'
-            }`}
-          >
-            {listening ? <Square size={18} /> : <Mic size={18} />}
-          </button>
           <button
             type="submit"
             disabled={!input.trim() || isStreaming}

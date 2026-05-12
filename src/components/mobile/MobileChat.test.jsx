@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { act, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import MobileChat from './MobileChat'
 import { renderWithProviders } from '../../test/test-utils'
@@ -69,14 +69,6 @@ const orchestrationMock = vi.hoisted(() => {
 
 vi.mock('../../lib/orchestration', () => orchestrationMock)
 
-const voiceMock = vi.hoisted(() => ({
-  isSupported: vi.fn(() => true),
-  startRecognition: vi.fn(),
-  stopRecognition: vi.fn(),
-}))
-
-vi.mock('../../lib/voice', () => voiceMock)
-
 function scriptSession(events) {
   orchestrationMock.startSession.mockImplementationOnce(() =>
     orchestrationMock._createFakeSession(events),
@@ -87,18 +79,21 @@ describe('MobileChat', () => {
   beforeEach(() => {
     orchestrationMock.isOrchestrationConfigured.mockReturnValue(true)
     orchestrationMock.startSession.mockReset()
-    voiceMock.isSupported.mockReset().mockReturnValue(true)
-    voiceMock.startRecognition.mockReset()
-    voiceMock.stopRecognition.mockReset()
   })
 
   it('renders empty state, header, and input controls', () => {
     renderWithProviders(<MobileChat />)
     expect(screen.getByText(/Start a conversation/i)).toBeInTheDocument()
     expect(screen.getByPlaceholderText(/Type a message/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/Voice input/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/Send message/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /New chat/i })).toBeInTheDocument()
+  })
+
+  it('does not render the mic / voice input button', () => {
+    renderWithProviders(<MobileChat />)
+    expect(screen.queryByLabelText(/Voice input/i)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/Stop voice input/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Listening/i)).not.toBeInTheDocument()
   })
 
   it('sends a text message and renders streaming assistant reply', async () => {
@@ -171,56 +166,6 @@ describe('MobileChat', () => {
       expect(screen.getByText('**not bold**')).toBeInTheDocument()
     })
     expect(container.querySelector('strong')).toBeNull()
-  })
-
-  it('mic FAB starts speech recognition and appends transcript to input', async () => {
-    let callbacks = null
-    voiceMock.startRecognition.mockImplementation((opts) => {
-      callbacks = opts
-      return { stop: vi.fn() }
-    })
-
-    const user = userEvent.setup()
-    renderWithProviders(<MobileChat />)
-
-    const input = screen.getByPlaceholderText(/Type a message/i)
-    await user.type(input, 'hello ')
-
-    await user.click(screen.getByLabelText(/Voice input/i))
-    expect(voiceMock.startRecognition).toHaveBeenCalledTimes(1)
-    expect(screen.getByText(/Listening/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/Stop voice input/i)).toBeInTheDocument()
-
-    act(() => {
-      callbacks.onResult({ transcript: 'world', isFinal: true })
-      callbacks.onEnd?.()
-    })
-
-    await waitFor(() => {
-      expect(input.value).toBe('hello world')
-    })
-    expect(screen.queryByText(/Listening/i)).not.toBeInTheDocument()
-  })
-
-  it('shows toast when speech recognition reports not-allowed (permission denied)', async () => {
-    let callbacks = null
-    voiceMock.startRecognition.mockImplementation((opts) => {
-      callbacks = opts
-      return { stop: vi.fn() }
-    })
-
-    const user = userEvent.setup()
-    renderWithProviders(<MobileChat />)
-
-    await user.click(screen.getByLabelText(/Voice input/i))
-    act(() => {
-      callbacks.onError({ code: 'not-allowed', message: 'denied' })
-      callbacks.onEnd?.()
-    })
-
-    await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent(/Microphone/i)
-    })
   })
 
   it('renders an approval card when chat.tool_call has requires_approval and approve dispatches', async () => {

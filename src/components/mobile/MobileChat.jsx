@@ -370,7 +370,13 @@ export default function MobileChat() {
                         : 'bg-white/5 border border-white/10 text-text-primary'
                   }`}
                 >
-                  {msg.content && <div className="whitespace-pre-wrap">{msg.content}</div>}
+                  {msg.content && (
+                    msg.role === 'assistant' && !msg.error ? (
+                      <Markdown text={msg.content} variant="chat" />
+                    ) : (
+                      <div className="whitespace-pre-wrap">{msg.content}</div>
+                    )
+                  )}
                   {msg.toolCall && (
                     <div className="mt-2 text-xs font-mono text-text-secondary">
                       {msg.toolCall.name}

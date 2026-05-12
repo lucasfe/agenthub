@@ -13,9 +13,10 @@ vi.mock('../lib/api', () => ({
 
 const mockSkill = {
   slug: 'grill-me',
+  category: 'meta',
   name: 'grill-me',
   description: 'Interview the user relentlessly about a plan',
-  sourceUrl: 'https://github.com/lucasfe/skills/tree/main/grill-me',
+  sourceUrl: 'https://github.com/lucasfe/skills/tree/main/meta/grill-me',
 }
 
 function setupClipboard() {

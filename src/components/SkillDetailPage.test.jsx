@@ -99,10 +99,11 @@ describe('SkillDetailPage', () => {
   it('copies the install command on click', async () => {
     getSkill.mockResolvedValue({
       slug: 'grill-me',
+      category: 'meta',
       name: 'grill-me',
       description: 'Interview the user',
       body: 'body',
-      sourceUrl: 'https://github.com/lucasfe/skills/tree/main/grill-me',
+      sourceUrl: 'https://github.com/lucasfe/skills/tree/main/meta/grill-me',
     })
     const user = userEvent.setup()
     const writeText = vi
@@ -115,7 +116,7 @@ describe('SkillDetailPage', () => {
     await user.click(button)
     await waitFor(() =>
       expect(writeText).toHaveBeenCalledWith(
-        'npx degit --mode=git lucasfe/skills/grill-me ~/.claude/skills/grill-me',
+        'npx degit --mode=git lucasfe/skills/meta/grill-me ~/.claude/skills/grill-me',
       ),
     )
   })

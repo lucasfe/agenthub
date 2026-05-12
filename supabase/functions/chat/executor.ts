@@ -15,8 +15,30 @@
 //
 // deno-lint-ignore-file no-explicit-any
 
+import {
+  createClient as defaultCreateAdminClient,
+  type SupabaseClient,
+} from 'jsr:@supabase/supabase-js@2'
 import { createIssue, listRepos } from './github.ts'
 import { filterAndSlim } from './githubFilters.ts'
+import {
+  buildNativeWebTools,
+  findFailedNativeSearches,
+} from './webResearchTools.ts'
+import {
+  captureHtmlToTaskOutput,
+  type CaptureDeps,
+  type ScreenshotPath,
+  type ScreenshotRequest,
+} from '../_shared/htmlScreenshotter.ts'
+import { mockImageRender, mockZernioPublish } from './mockTools.ts'
+
+// Tools whose client-side declaration is replaced with the Anthropic native
+// server-side tool (web_search_20250305 / web_fetch_20250910). The model uses
+// the native tool first; the Tavily-backed `web_search` handler stays as a
+// fallback when the native call returns zero results or errors.
+const NATIVE_WEB_TOOL_IDS = new Set(['web_search', 'web_fetch'])
+const WEB_FETCH_BETA_HEADER = 'web-fetch-2025-09-10'
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages'
 const DEFAULT_STEP_MODEL = 'claude-sonnet-4-6'
@@ -37,6 +59,14 @@ export interface ToolContext {
   stepId: number
   toolCallId: string
   userId?: string
+  // Optional template-mode context. When the executor is instantiated against
+  // a template-mode task (issue #354), it threads the real `task.id` and the
+  // 0-based step order through here so tools that emit artifacts (e.g.
+  // `render_html_to_image`) can build a deterministic Storage path. Chat-mode
+  // and free-form tasks leave them undefined and the tool falls back to
+  // ctx.toolCallId / ctx.stepId.
+  taskId?: string
+  stepOrder?: number
 }
 
 export interface ToolArtifact {
@@ -633,6 +663,139 @@ async function createGithubIssue(
   }
 }
 
+// ─── Render HTML to image (Browserless) ─────────────────────────────────────
+
+const MISSING_BROWSERLESS_TOKEN_ERROR =
+  'Browserless is not configured. Set BROWSERLESS_TOKEN in the Edge Function secrets to enable this tool.'
+const MISSING_SUPABASE_ADMIN_ERROR =
+  'render_html_to_image cannot reach Supabase Storage (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY missing).'
+
+// Indirection so unit tests can swap in a mock Supabase client without
+// pulling jsr:@supabase/supabase-js into the test sandbox.
+let _createAdminClient: (url: string, key: string) => SupabaseClient =
+  defaultCreateAdminClient as unknown as (
+    url: string,
+    key: string,
+  ) => SupabaseClient
+
+export function setCreateAdminClientForTests(
+  factory: ((url: string, key: string) => SupabaseClient) | null,
+): () => void {
+  const previous = _createAdminClient
+  _createAdminClient =
+    factory ??
+    (defaultCreateAdminClient as unknown as (
+      url: string,
+      key: string,
+    ) => SupabaseClient)
+  return () => {
+    _createAdminClient = previous
+  }
+}
+
+// Exported only so the executor.test.ts can override the conversion step
+// without resolving `npm:sharp` inside the test sandbox.
+export const _renderHtmlInternals = {
+  capture: captureHtmlToTaskOutput as (
+    deps: CaptureDeps,
+    request: ScreenshotRequest,
+    path: ScreenshotPath,
+    signal?: AbortSignal,
+  ) => Promise<{
+    storage_path: string
+    signed_url: string
+    mime_type: 'image/jpeg'
+    width: number
+    height: number
+  }>,
+}
+
+async function renderHtmlToImage(
+  input: {
+    html?: unknown
+    width?: unknown
+    height?: unknown
+    filename_prefix?: unknown
+  },
+  ctx: ToolContext,
+): Promise<ToolResult> {
+  const html = typeof input.html === 'string' ? input.html : ''
+  const width = typeof input.width === 'number' ? input.width : 0
+  const height = typeof input.height === 'number' ? input.height : 0
+  const filenamePrefix =
+    typeof input.filename_prefix === 'string' && input.filename_prefix.trim()
+      ? input.filename_prefix.trim()
+      : undefined
+
+  if (!html.trim()) {
+    return {
+      ok: false,
+      error: 'render_html_to_image requires a non-empty `html` string.',
+    }
+  }
+  if (width <= 0 || height <= 0) {
+    return {
+      ok: false,
+      error:
+        'render_html_to_image requires positive `width` and `height` viewport dimensions.',
+    }
+  }
+
+  const token = Deno.env.get('BROWSERLESS_TOKEN')
+  if (!token) {
+    return {
+      ok: false,
+      error: MISSING_BROWSERLESS_TOKEN_ERROR,
+      result: { error: 'not_configured' },
+    }
+  }
+
+  if (!ctx.userId) {
+    return {
+      ok: false,
+      error:
+        'render_html_to_image requires an authenticated user (ctx.userId is missing).',
+    }
+  }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+  if (!supabaseUrl || !serviceKey) {
+    return {
+      ok: false,
+      error: MISSING_SUPABASE_ADMIN_ERROR,
+      result: { error: 'not_configured' },
+    }
+  }
+
+  const taskId = ctx.taskId ?? `chat-${ctx.toolCallId}`
+  const stepOrder =
+    typeof ctx.stepOrder === 'number' ? ctx.stepOrder : ctx.stepId
+
+  try {
+    const supabase = _createAdminClient(supabaseUrl, serviceKey)
+    const result = await _renderHtmlInternals.capture(
+      { token, supabase },
+      { html, width, height, filenamePrefix },
+      { userId: ctx.userId, taskId, stepOrder },
+      ctx.signal,
+    )
+    return {
+      ok: true,
+      result,
+      summary: `Rendered ${width}×${height} screenshot → ${result.storage_path}`,
+      artifact: {
+        type: 'file',
+        name: result.storage_path.split('/').pop() || 'screenshot.jpg',
+        format: 'jpg',
+        content: result.signed_url,
+      },
+    }
+  } catch (err) {
+    return { ok: false, error: (err as Error).message }
+  }
+}
+
 export const TOOL_HANDLERS: Record<string, ToolHandler> = {
   web_search: webSearch,
   fetch_url: fetchUrl,
@@ -643,6 +806,11 @@ export const TOOL_HANDLERS: Record<string, ToolHandler> = {
   create_google_slides: createGoogleSlides,
   list_github_repos: listGithubRepos,
   create_github_issue: createGithubIssue,
+  render_html_to_image: renderHtmlToImage,
+  // Stubs for the Luiza template pipeline (issue #354). Slices #351 and #352
+  // replace these with real Browserless + Zernio implementations.
+  mock_image_render: mockImageRender,
+  mock_zernio_publish: mockZernioPublish,
 }
 
 // Which tools are functional in the current environment. Some tools depend on
@@ -657,6 +825,9 @@ export function getAvailableTools(): Set<string> {
     available.delete('list_github_repos')
     available.delete('create_github_issue')
   }
+  if (!Deno.env.get('BROWSERLESS_TOKEN')) {
+    available.delete('render_html_to_image')
+  }
   return available
 }
 
@@ -666,6 +837,9 @@ export function describeUnavailableReason(toolId: string): string {
   }
   if (toolId === 'list_github_repos' || toolId === 'create_github_issue') {
     return 'GITHUB_TOKEN is not configured in the Edge Function secrets.'
+  }
+  if (toolId === 'render_html_to_image') {
+    return 'BROWSERLESS_TOKEN is not configured in the Edge Function secrets.'
   }
   return 'Tool is not available in this environment.'
 }
@@ -727,7 +901,7 @@ function buildStepContext(
 
 type EmitFn = (type: string, payload?: Record<string, unknown>) => void
 
-async function runStep(
+export async function runStep(
   step: any,
   agentsContext: any[],
   toolsContext: any[],
@@ -762,7 +936,9 @@ async function runStep(
   const skippedIds: string[] = []
   for (const id of declaredIds) {
     if (!agentToolIds.has(id)) continue
-    if (!availableInEnv.has(id)) {
+    // Native web tools (web_search / web_fetch) run server-side on Anthropic
+    // and need no client config — they're always allowed when declared.
+    if (!availableInEnv.has(id) && !NATIVE_WEB_TOOL_IDS.has(id)) {
       skippedIds.push(id)
       continue
     }
@@ -789,9 +965,18 @@ async function runStep(
     })
   }
 
-  const anthropicTools = allowedIds
+  // For web_search / web_fetch we inject Anthropic's server-side tool def
+  // (`web_search_20250305` / `web_fetch_20250910`) instead of the client-side
+  // schema, so the model uses the native research path first.
+  const clientToolDefs = allowedIds
+    .filter((id) => !NATIVE_WEB_TOOL_IDS.has(id))
     .map((id) => buildAnthropicTool(id, toolsContext))
     .filter(Boolean) as any[]
+  const nativeToolDefs = buildNativeWebTools(
+    allowedIds.filter((id) => NATIVE_WEB_TOOL_IDS.has(id)),
+  )
+  const anthropicTools = [...clientToolDefs, ...nativeToolDefs] as any[]
+  const usesNativeWebFetch = nativeToolDefs.some((t) => t.type === 'web_fetch_20250910')
 
   const unavailableNotice =
     skippedIds.length > 0
@@ -828,6 +1013,8 @@ async function runStep(
   // Tracks repeated tool failures: if the same tool fails twice in a row,
   // abort the step rather than burning iterations on a broken loop.
   const consecutiveFailures = new Map<string, number>()
+  // Tavily fallback for the native web_search runs at most once per step.
+  let nativeFallbackUsed = false
 
   for (let iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
     const reqBody: any = {
@@ -838,17 +1025,22 @@ async function runStep(
     }
     if (anthropicTools.length > 0) reqBody.tools = anthropicTools
 
+    const headers: Record<string, string> = {
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json',
+    }
+    if (usesNativeWebFetch) {
+      headers['anthropic-beta'] = WEB_FETCH_BETA_HEADER
+    }
+
     // Fetch with a single retry on 429 (rate limit). Waits for the
     // Retry-After header value or 10s, whichever is smaller.
     let res: Response
     const doFetch = () =>
       fetch(ANTHROPIC_API_URL, {
         method: 'POST',
-        headers: {
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'content-type': 'application/json',
-        },
+        headers,
         body: JSON.stringify(reqBody),
         signal,
       })
@@ -888,7 +1080,52 @@ async function runStep(
 
     const toolUses = content.filter((b) => b.type === 'tool_use')
     if (toolUses.length === 0) {
-      // Model produced only text — step is done.
+      // Model produced only text — but first check whether the native
+      // server-side web_search returned zero results / errored. If so, run
+      // the Tavily-backed handler once and re-prompt with those results.
+      if (!nativeFallbackUsed) {
+        const failed = findFailedNativeSearches(content)
+        if (failed.length > 0) {
+          nativeFallbackUsed = true
+          const fallbackPayload: any[] = []
+          for (const f of failed) {
+            console.log(
+              JSON.stringify({
+                event: 'web_search.fallback.tavily',
+                step_id: step.id,
+                query: f.query,
+                reason: f.reason,
+              }),
+            )
+            const tavilyResult = await webSearch(
+              { query: f.query },
+              {
+                signal,
+                agentsContext,
+                stepId: step.id,
+                toolCallId: `fallback-${f.tool_use_id}`,
+                userId,
+              },
+            )
+            fallbackPayload.push({
+              query: f.query,
+              ok: tavilyResult.ok,
+              result: tavilyResult.result,
+              error: tavilyResult.error,
+            })
+          }
+          messages.push({ role: 'assistant', content })
+          messages.push({
+            role: 'user',
+            content: `The native web_search returned no usable results (${failed
+              .map((f) => f.reason)
+              .join(', ')}). Tavily fallback results follow — use them to complete the task:\n\n${JSON.stringify(
+              fallbackPayload,
+            ).slice(0, 4000)}`,
+          })
+          continue
+        }
+      }
       return { text: finalText, tokens_in: totalIn, tokens_out: totalOut }
     }
 

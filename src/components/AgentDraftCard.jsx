@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { Link } from 'react-router'
 import * as Icons from 'lucide-react'
-import { createAgent } from '../lib/api'
+import { createAgent } from '../lib/agentsRepo'
 import { useData } from '../context/DataContext'
 
 const VALID_CATEGORIES = ['Development Team', 'AI Specialists']

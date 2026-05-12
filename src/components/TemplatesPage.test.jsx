@@ -5,13 +5,20 @@ import TemplatesPage from './TemplatesPage'
 import { renderWithProviders } from '../test/test-utils'
 
 vi.mock('../lib/api', () => ({
-  fetchAgents: vi.fn().mockResolvedValue([]),
   fetchTeams: vi.fn().mockResolvedValue([]),
   fetchTools: vi.fn().mockResolvedValue([]),
   trackAgentUsage: vi.fn().mockResolvedValue(null),
 }))
 
-import { fetchAgents } from '../lib/api'
+vi.mock('../lib/agentsRepo', () => ({
+  listAgents: vi.fn().mockResolvedValue([]),
+  getAgent: vi.fn(),
+  createAgent: vi.fn(),
+  updateAgent: vi.fn(),
+  deleteAgent: vi.fn(),
+}))
+
+import { listAgents } from '../lib/agentsRepo'
 
 vi.mock('../lib/templatesApi', () => ({
   fetchTemplates: vi.fn(),
@@ -51,7 +58,7 @@ describe('TemplatesPage', () => {
   it('renders one card per template, each showing name and step count', async () => {
     // Seed every referenced agent so the missing-agent pill does not appear
     // and the only "2 steps" text on the card is the plan-summary label.
-    fetchAgents.mockResolvedValueOnce([
+    listAgents.mockResolvedValueOnce([
       { id: 'a', name: 'Agent A' },
       { id: 'b', name: 'Agent B' },
     ])
@@ -79,7 +86,7 @@ describe('TemplatesPage', () => {
     expect(screen.getByText('Feature template')).toBeInTheDocument()
     expect(screen.getByText(/for routine bug fixes/i)).toBeInTheDocument()
     expect(screen.getByText(/2 steps/i)).toBeInTheDocument()
-    expect(screen.getByText(/no plan yet/i)).toBeInTheDocument()
+    expect(screen.getByText(/0 steps/i)).toBeInTheDocument()
   })
 
   it('shows a loading indicator before the fetch resolves', () => {
@@ -93,6 +100,62 @@ describe('TemplatesPage', () => {
     renderWithProviders(<TemplatesPage />)
     expect(await screen.findByText(/failed to load templates/i)).toBeInTheDocument()
     expect(screen.getByText(/network down/i)).toBeInTheDocument()
+  })
+
+  describe('"Usar template" CTA (issue #356)', () => {
+    const sampleTemplate = {
+      id: 'tpl-go',
+      name: 'Reusable template',
+      description: 'A description',
+      task_title: 'Title',
+      task_description: '',
+      plan: { steps: [{ id: 1, agent_id: 'a' }] },
+      params_schema: {
+        properties: { topic: { type: 'string', required: true } },
+      },
+    }
+
+    it('renders a "Usar template" CTA button on every card', async () => {
+      fetchTemplates.mockResolvedValue([sampleTemplate])
+      renderWithProviders(<TemplatesPage />)
+
+      expect(
+        await screen.findByRole('button', { name: /usar template/i }),
+      ).toBeInTheDocument()
+    })
+
+    it('clicking the "Usar template" CTA opens the UseTemplateModal, not the edit drawer', async () => {
+      fetchTemplates.mockResolvedValue([sampleTemplate])
+      const user = userEvent.setup()
+      renderWithProviders(<TemplatesPage />)
+
+      await user.click(
+        await screen.findByRole('button', { name: /usar template/i }),
+      )
+
+      expect(
+        await screen.findByRole('heading', { name: /use template/i }),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('heading', { name: /edit template/i }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('shows "0 steps" on the card when plan is null (per acceptance criteria)', async () => {
+      fetchTemplates.mockResolvedValue([
+        {
+          id: 'tpl-zero',
+          name: 'No plan template',
+          description: 'plan is null',
+          task_title: 'Title',
+          task_description: '',
+          plan: null,
+        },
+      ])
+      renderWithProviders(<TemplatesPage />)
+
+      expect(await screen.findByText(/0 steps/i)).toBeInTheDocument()
+    })
   })
 
   describe('+ New template flow', () => {
@@ -507,7 +570,7 @@ describe('TemplatesPage', () => {
     }
 
     it('renders a "needs attention" pill when a template plan references a missing agent', async () => {
-      fetchAgents.mockResolvedValueOnce([
+      listAgents.mockResolvedValueOnce([
         { id: 'frontend-developer', name: 'Frontend Developer' },
       ])
       fetchTemplates.mockResolvedValue([templateWithMissingAgent])
@@ -517,7 +580,7 @@ describe('TemplatesPage', () => {
     })
 
     it('does not render the pill when every agent referenced by the plan resolves', async () => {
-      fetchAgents.mockResolvedValueOnce([
+      listAgents.mockResolvedValueOnce([
         { id: 'frontend-developer', name: 'Frontend Developer' },
         { id: 'ghost-agent', name: 'Ghost' },
       ])

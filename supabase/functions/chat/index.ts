@@ -13,8 +13,19 @@
 
 // deno-lint-ignore-file no-explicit-any
 
-import { analyzeRequirements, runExecutorBranch } from './executor.ts'
+import {
+  analyzeRequirements,
+  runExecutorBranch,
+  TOOL_HANDLERS,
+} from './executor.ts'
 import { runSelectedAgentBranch } from './selectedAgentBranch.ts'
+import {
+  resumeTemplateApprove,
+  resumeTemplateRetry,
+  runTemplateExecutor,
+  type TemplateExecutorDeps,
+} from './templateExecutorBranch.ts'
+import { rerenderStepFile } from './templateRerenderFile.ts'
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages'
 const CHAT_MODEL = Deno.env.get('CHAT_MODEL') || 'claude-sonnet-4-6'
@@ -705,6 +716,14 @@ Deno.serve(async (req: Request) => {
     original_task?: string
     step_answers?: Record<string, Record<string, string>>
     selected_agent_id?: string
+    // Template-mode fields (issue #354). Used when mode is one of
+    // template_execute / template_approve / template_retry.
+    task?: any
+    references?: Record<string, unknown>
+    params?: Record<string, string>
+    step_id?: number
+    file_idx?: number
+    feedback?: string
   }
   try {
     body = await req.json()
@@ -737,6 +756,12 @@ Deno.serve(async (req: Request) => {
       ? body.session_id
       : crypto.randomUUID()
 
+  const isTemplateMode =
+    mode === 'template_execute' ||
+    mode === 'template_approve' ||
+    mode === 'template_retry' ||
+    mode === 'template_rerender_file'
+
   const messages = Array.isArray(body.messages) ? body.messages : []
   const cleanMessages = messages
     .filter(
@@ -747,7 +772,10 @@ Deno.serve(async (req: Request) => {
     )
     .map((m) => ({ role: m.role, content: m.content }))
 
-  if (cleanMessages.length === 0) {
+  // Template-mode requests carry a `task` payload directly, not a chat
+  // history. Skip the messages requirement when running through the
+  // template executor branch.
+  if (cleanMessages.length === 0 && !isTemplateMode) {
     return new Response(
       JSON.stringify({ error: 'At least one user message is required' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
@@ -781,6 +809,167 @@ Deno.serve(async (req: Request) => {
       const emit = makeEmitter(controller, sessionId)
 
       try {
+        // Template mode (issue #354): run / resume / retry a template-mode
+        // task. The body carries the full task snapshot; persistence is the
+        // client's job — we relay every state transition via task.updated.
+        if (isTemplateMode) {
+          const task = body.task
+          if (!task || typeof task !== 'object' || !task.plan) {
+            emit('run.error', {
+              error: 'template-mode requires a `task` with a plan',
+            })
+            return
+          }
+          const stepId =
+            typeof body.step_id === 'number' ? body.step_id : null
+          if (
+            (mode === 'template_approve' ||
+              mode === 'template_retry' ||
+              mode === 'template_rerender_file') &&
+            stepId === null
+          ) {
+            emit('run.error', {
+              error: `${mode} requires a numeric step_id`,
+            })
+            return
+          }
+          if (mode === 'template_rerender_file') {
+            const fileIdx =
+              typeof body.file_idx === 'number' ? body.file_idx : -1
+            if (fileIdx < 0) {
+              emit('run.error', {
+                error: 'template_rerender_file requires a numeric file_idx',
+              })
+              return
+            }
+            emit('router.classified', { mode })
+            const timeoutController = new AbortController()
+            const timeoutId = setTimeout(
+              () => timeoutController.abort(),
+              RUN_TIMEOUT_MS,
+            )
+            try {
+              const renderHandler = TOOL_HANDLERS.render_html_to_image
+              if (!renderHandler) {
+                emit('run.error', {
+                  error: 'render_html_to_image tool is not registered',
+                })
+                return
+              }
+              const renderFile = async (req: {
+                html: string
+                width: number
+                height: number
+                feedback?: string
+              }) => {
+                const ctx = {
+                  userId,
+                  taskId:
+                    typeof task.id === 'string' ? task.id : `task-${task.id}`,
+                  stepId: stepId!,
+                  stepOrder: stepId!,
+                  toolCallId: `rerender-${stepId}-${fileIdx}-${Date.now()}`,
+                  signal: timeoutController.signal,
+                } as any
+                const out = await renderHandler(
+                  {
+                    html: req.html,
+                    width: req.width,
+                    height: req.height,
+                  },
+                  ctx,
+                )
+                if (!out.ok || !out.result) {
+                  throw new Error(
+                    out.error ||
+                      'render_html_to_image failed without an error message',
+                  )
+                }
+                return out.result as {
+                  storage_path: string
+                  signed_url: string
+                  mime_type: string
+                  width: number
+                  height: number
+                }
+              }
+              const result = await rerenderStepFile(
+                task,
+                stepId!,
+                fileIdx,
+                {
+                  renderFile,
+                  feedback:
+                    typeof body.feedback === 'string'
+                      ? body.feedback
+                      : undefined,
+                },
+              )
+              emit('step.file.rerendered', {
+                step_id: stepId,
+                file_idx: fileIdx,
+                file: result.newFile,
+              })
+              emit('task.updated', { task: result.task })
+              emit('run.done', { task_id: task.id })
+            } catch (err) {
+              emit('run.error', { error: (err as Error).message })
+            } finally {
+              clearTimeout(timeoutId)
+            }
+            return
+          }
+          emit('router.classified', { mode })
+          const timeoutController = new AbortController()
+          const timeoutId = setTimeout(
+            () => timeoutController.abort(),
+            RUN_TIMEOUT_MS,
+          )
+          const persistTask = async (t: any) => {
+            emit('task.updated', { task: t })
+          }
+          const deps: TemplateExecutorDeps = {
+            apiKey,
+            signal: timeoutController.signal,
+            emit,
+            agentsContext: agentsContextRaw,
+            toolsContext: toolsContextRaw,
+            references:
+              (body.references as Record<string, any>) || {},
+            params: body.params || {},
+            persistTask,
+            userId,
+          }
+          try {
+            let result
+            if (mode === 'template_approve') {
+              result = await resumeTemplateApprove(task, stepId!, deps)
+            } else if (mode === 'template_retry') {
+              const feedback =
+                typeof body.feedback === 'string' ? body.feedback : ''
+              result = await resumeTemplateRetry(task, stepId!, feedback, deps)
+            } else {
+              result = await runTemplateExecutor(task, deps)
+            }
+            // Final task snapshot — clients use this as the source of truth
+            // when persisting after the stream closes.
+            emit('task.updated', { task: result.task })
+            if (result.outcome.kind === 'all_done') {
+              emit('run.done', { task_id: task.id })
+            } else if (result.outcome.kind === 'error') {
+              emit('run.error', {
+                error:
+                  'error' in result.outcome
+                    ? result.outcome.error
+                    : 'unknown error',
+              })
+            }
+          } finally {
+            clearTimeout(timeoutId)
+          }
+          return
+        }
+
         // Execute mode: skip router+planner, run an already-approved plan.
         if (isExecute) {
           const plan = body.plan as any

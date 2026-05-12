@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import { fetchAgents, fetchTeams, fetchTools, trackAgentUsage } from '../lib/api'
+import { fetchTeams, fetchTools, trackAgentUsage } from '../lib/api'
+import { listAgents } from '../lib/agentsRepo'
 
 const DataContext = createContext()
 
@@ -13,7 +14,7 @@ export function DataProvider({ children }) {
   const loadData = useCallback(async () => {
     setLoading(true)
     const results = await Promise.allSettled([
-      fetchAgents(),
+      listAgents(),
       fetchTeams(),
       fetchTools(),
     ])
@@ -47,7 +48,7 @@ export function DataProvider({ children }) {
 
   const refreshAgents = async () => {
     try {
-      const data = await fetchAgents()
+      const data = await listAgents()
       setAgents(data)
     } catch (err) {
       console.error('Failed to refresh agents:', err)

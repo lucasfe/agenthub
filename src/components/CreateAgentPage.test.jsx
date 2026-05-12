@@ -30,14 +30,20 @@ const { mockTools } = vi.hoisted(() => ({
 }))
 
 vi.mock('../lib/api', () => ({
-  fetchAgents: vi.fn().mockResolvedValue([]),
   fetchTeams: vi.fn().mockResolvedValue([]),
   fetchTools: vi.fn().mockResolvedValue(mockTools),
-  createAgent: vi.fn().mockResolvedValue({ id: 'test-agent' }),
   trackAgentUsage: vi.fn().mockResolvedValue(null),
 }))
 
-const { createAgent } = await import('../lib/api')
+vi.mock('../lib/agentsRepo', () => ({
+  listAgents: vi.fn().mockResolvedValue([]),
+  getAgent: vi.fn(),
+  createAgent: vi.fn().mockResolvedValue({ id: 'test-agent' }),
+  updateAgent: vi.fn(),
+  deleteAgent: vi.fn(),
+}))
+
+const { createAgent } = await import('../lib/agentsRepo')
 
 describe('CreateAgentPage', () => {
   beforeEach(() => {

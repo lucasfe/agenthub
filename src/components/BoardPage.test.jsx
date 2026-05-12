@@ -5,10 +5,17 @@ import userEvent from '@testing-library/user-event'
 // ─── Mocks ────────────────────────────────────────────────────────────────
 
 vi.mock('../lib/api', () => ({
-  fetchAgents: vi.fn().mockResolvedValue([]),
   fetchTeams: vi.fn().mockResolvedValue([]),
   fetchTools: vi.fn().mockResolvedValue([]),
   trackAgentUsage: vi.fn().mockResolvedValue(null),
+}))
+
+vi.mock('../lib/agentsRepo', () => ({
+  listAgents: vi.fn().mockResolvedValue([]),
+  getAgent: vi.fn(),
+  createAgent: vi.fn(),
+  updateAgent: vi.fn(),
+  deleteAgent: vi.fn(),
 }))
 
 // Controllable mock of the SSE stream — same shape as in
@@ -102,7 +109,8 @@ vi.mock('../lib/supabase', () => {
 import BoardPage from './BoardPage'
 import { renderWithProviders } from '../test/test-utils'
 import { insertTemplate, fetchTemplates } from '../lib/templatesApi'
-import { fetchAgents, fetchTools } from '../lib/api'
+import { fetchTools } from '../lib/api'
+import { listAgents } from '../lib/agentsRepo'
 
 beforeEach(() => {
   streamMock.stream.mockClear()
@@ -111,7 +119,7 @@ beforeEach(() => {
   insertTemplate.mockClear()
   fetchTemplates.mockClear()
   fetchTemplates.mockResolvedValue([])
-  fetchAgents.mockResolvedValue([])
+  listAgents.mockResolvedValue([])
   fetchTools.mockResolvedValue([])
 })
 
@@ -586,7 +594,7 @@ describe('BoardPage missing-agent and missing-tool warnings', () => {
   })
 
   it('does not render the missing-agent banner when every agent in the plan resolves', async () => {
-    fetchAgents.mockResolvedValueOnce([
+    listAgents.mockResolvedValueOnce([
       { id: 'frontend-developer', name: 'Frontend Developer' },
     ])
 
@@ -604,7 +612,7 @@ describe('BoardPage missing-agent and missing-tool warnings', () => {
   })
 
   it('keeps Approve & run enabled when only a tool is missing from the catalog', async () => {
-    fetchAgents.mockResolvedValueOnce([
+    listAgents.mockResolvedValueOnce([
       { id: 'frontend-developer', name: 'Frontend Developer' },
     ])
     fetchTools.mockResolvedValueOnce([])
@@ -616,7 +624,7 @@ describe('BoardPage missing-agent and missing-tool warnings', () => {
   })
 
   it('renders a softer, separate warning listing missing tool ids', async () => {
-    fetchAgents.mockResolvedValueOnce([
+    listAgents.mockResolvedValueOnce([
       { id: 'frontend-developer', name: 'Frontend Developer' },
     ])
     fetchTools.mockResolvedValueOnce([])

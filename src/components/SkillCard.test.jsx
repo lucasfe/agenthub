@@ -64,7 +64,7 @@ describe('SkillCard — default variant', () => {
     const link = screen.getByRole('link', { name: /view on github/i })
     expect(link).toHaveAttribute(
       'href',
-      'https://github.com/lucasfe/skills/tree/main/grill-me',
+      'https://github.com/lucasfe/skills/tree/main/meta/grill-me',
     )
   })
 

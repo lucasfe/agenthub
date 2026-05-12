@@ -152,10 +152,71 @@ export default function MobileChat() {
           unsubscribe()
           break
         case 'run.started':
-          patchMessageAt(messageIdx, { planStatus: 'executing' })
+          patchMessageAt(messageIdx, {
+            planStatus: 'executing',
+            stepStates: {},
+          })
+          break
+        case 'step.started':
+          patchMessageAt(messageIdx, (msg) => ({
+            ...msg,
+            stepStates: {
+              ...(msg.stepStates || {}),
+              [event.step_id]: { status: 'running', text: '' },
+            },
+          }))
+          break
+        case 'step.text':
+          patchMessageAt(messageIdx, (msg) => {
+            const prev = msg.stepStates?.[event.step_id] || {
+              status: 'running',
+              text: '',
+            }
+            return {
+              ...msg,
+              stepStates: {
+                ...(msg.stepStates || {}),
+                [event.step_id]: {
+                  ...prev,
+                  text: (prev.text || '') + (event.value || ''),
+                },
+              },
+            }
+          })
+          break
+        case 'step.done':
+          patchMessageAt(messageIdx, (msg) => {
+            const prev = msg.stepStates?.[event.step_id] || { text: '' }
+            return {
+              ...msg,
+              stepStates: {
+                ...(msg.stepStates || {}),
+                [event.step_id]: { ...prev, status: 'done' },
+              },
+            }
+          })
+          break
+        case 'step.error':
+          patchMessageAt(messageIdx, (msg) => {
+            const prev = msg.stepStates?.[event.step_id] || { text: '' }
+            return {
+              ...msg,
+              stepStates: {
+                ...(msg.stepStates || {}),
+                [event.step_id]: {
+                  ...prev,
+                  status: 'error',
+                  error: event.error,
+                },
+              },
+            }
+          })
           break
         case 'run.done':
-          patchMessageAt(messageIdx, { planStatus: 'done' })
+          patchMessageAt(messageIdx, {
+            planStatus: 'done',
+            runSummary: event.summary || null,
+          })
           setIsStreaming(false)
           sessionRef.current = null
           unsubscribe()
@@ -338,6 +399,9 @@ export default function MobileChat() {
                     <MobilePlanCard
                       plan={msg.plan}
                       status={msg.planStatus || 'proposed'}
+                      stepStates={msg.stepStates}
+                      runError={msg.runError}
+                      runSummary={msg.runSummary}
                       onApprove={() => {
                         // Plan approval kicks off an execute session; this is a
                         // mobile-friendly pass-through that mirrors the desktop

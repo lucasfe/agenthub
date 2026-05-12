@@ -260,52 +260,6 @@ export default function MobileChat() {
     setInput('')
   }
 
-  const stopVoice = () => {
-    recognitionRef.current?.stop?.()
-    recognitionRef.current = null
-    setListening(false)
-  }
-
-  const startVoice = () => {
-    if (listening) {
-      stopVoice()
-      return
-    }
-    let finalText = ''
-    setListening(true)
-    const handle = startRecognition({
-      lang: 'pt-BR',
-      onResult: ({ transcript, isFinal }) => {
-        if (isFinal) {
-          finalText = transcript
-        }
-      },
-      onError: (err) => {
-        if (err?.code === 'not-allowed' || err?.code === 'service-not-allowed') {
-          setToast({
-            kind: 'error',
-            text: 'Microphone permission denied. Open iOS Settings → Safari → Microphone to allow it.',
-          })
-        } else if (err?.code === 'unsupported') {
-          setToast({
-            kind: 'error',
-            text: 'Voice input is not supported on this browser.',
-          })
-        } else if (err?.code) {
-          setToast({ kind: 'error', text: `Voice error: ${err.code}` })
-        }
-      },
-      onEnd: () => {
-        recognitionRef.current = null
-        setListening(false)
-        if (finalText) {
-          setInput((prev) => (prev ? `${prev}${finalText}` : finalText))
-        }
-      },
-    })
-    recognitionRef.current = handle
-  }
-
   const selectedAgent =
     selectedAgentId && Array.isArray(agents)
       ? agents.find((a) => a.id === selectedAgentId)

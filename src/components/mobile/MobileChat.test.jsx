@@ -69,14 +69,6 @@ const orchestrationMock = vi.hoisted(() => {
 
 vi.mock('../../lib/orchestration', () => orchestrationMock)
 
-const voiceMock = vi.hoisted(() => ({
-  isSupported: vi.fn(() => true),
-  startRecognition: vi.fn(),
-  stopRecognition: vi.fn(),
-}))
-
-vi.mock('../../lib/voice', () => voiceMock)
-
 function scriptSession(events) {
   orchestrationMock.startSession.mockImplementationOnce(() =>
     orchestrationMock._createFakeSession(events),
@@ -87,9 +79,6 @@ describe('MobileChat', () => {
   beforeEach(() => {
     orchestrationMock.isOrchestrationConfigured.mockReturnValue(true)
     orchestrationMock.startSession.mockReset()
-    voiceMock.isSupported.mockReset().mockReturnValue(true)
-    voiceMock.startRecognition.mockReset()
-    voiceMock.stopRecognition.mockReset()
   })
 
   it('renders empty state, header, and input controls', () => {

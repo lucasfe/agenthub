@@ -46,7 +46,7 @@ describe('SkillCard — default variant', () => {
     await user.click(screen.getByRole('button', { name: /copy install command/i }))
     expect(writeText).toHaveBeenCalledTimes(1)
     expect(writeText).toHaveBeenCalledWith(
-      'npx degit --mode=git lucasfe/skills/grill-me ~/.claude/skills/grill-me',
+      'npx degit --mode=git lucasfe/skills/meta/grill-me ~/.claude/skills/grill-me',
     )
   })
 

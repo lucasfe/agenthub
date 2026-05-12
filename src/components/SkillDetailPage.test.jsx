@@ -45,24 +45,27 @@ describe('SkillDetailPage', () => {
   it('renders the install command, body, and source link on success', async () => {
     getSkill.mockResolvedValue({
       slug: 'grill-me',
+      category: 'meta',
       name: 'grill-me',
       description: 'Interview the user',
       body: '## Heading\n\nFull body here.',
-      sourceUrl: 'https://github.com/lucasfe/skills/tree/main/grill-me',
+      sourceUrl: 'https://github.com/lucasfe/skills/tree/main/meta/grill-me',
     })
 
     renderAtSlug('grill-me')
 
     expect(await screen.findByRole('heading', { name: 'grill-me', level: 1 })).toBeInTheDocument()
     expect(
-      screen.getByText('npx degit --mode=git lucasfe/skills/grill-me ~/.claude/skills/grill-me'),
+      screen.getByText(
+        'npx degit --mode=git lucasfe/skills/meta/grill-me ~/.claude/skills/grill-me',
+      ),
     ).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /heading/i, level: 2 })).toBeInTheDocument()
     expect(screen.getByText(/full body here/i)).toBeInTheDocument()
     const sourceLink = screen.getByRole('link', { name: /view source on github/i })
     expect(sourceLink).toHaveAttribute(
       'href',
-      'https://github.com/lucasfe/skills/tree/main/grill-me',
+      'https://github.com/lucasfe/skills/tree/main/meta/grill-me',
     )
   })
 

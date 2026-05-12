@@ -96,9 +96,15 @@ describe('MobileChat', () => {
     renderWithProviders(<MobileChat />)
     expect(screen.getByText(/Start a conversation/i)).toBeInTheDocument()
     expect(screen.getByPlaceholderText(/Type a message/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/Voice input/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/Send message/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /New chat/i })).toBeInTheDocument()
+  })
+
+  it('does not render the mic / voice input button', () => {
+    renderWithProviders(<MobileChat />)
+    expect(screen.queryByLabelText(/Voice input/i)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/Stop voice input/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Listening/i)).not.toBeInTheDocument()
   })
 
   it('sends a text message and renders streaming assistant reply', async () => {

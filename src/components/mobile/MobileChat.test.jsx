@@ -226,6 +226,55 @@ describe('MobileChat', () => {
     expect(screen.getByText('Backend Developer')).toBeInTheDocument()
   })
 
+  it('expands plan card to show per-step results streamed from step events', async () => {
+    scriptSession([
+      {
+        type: 'plan.proposed',
+        plan: {
+          id: 'plan-1',
+          steps: [
+            {
+              id: 1,
+              agent_id: 'frontend-developer',
+              agent_name: 'Frontend Developer',
+              task: 'Build UI',
+            },
+          ],
+        },
+      },
+    ])
+    scriptSession([
+      { type: 'run.started', run_id: 'run-1' },
+      { type: 'step.started', step_id: 1 },
+      { type: 'step.text', step_id: 1, value: 'Component scaffolded.' },
+      { type: 'step.done', step_id: 1 },
+      { type: 'run.done', summary: { duration_ms: 1234 } },
+    ])
+
+    const user = userEvent.setup()
+    renderWithProviders(<MobileChat />)
+
+    await user.type(screen.getByPlaceholderText(/Type a message/i), 'plan it')
+    await user.click(screen.getByLabelText(/Send message/i))
+
+    await waitFor(() => {
+      expect(screen.getByText(/1 step/i)).toBeInTheDocument()
+    })
+
+    // Approve to kick off the execute session.
+    await user.click(screen.getByRole('button', { name: /^Approve$/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText(/^Done/i)).toBeInTheDocument()
+    })
+
+    // Expand and assert step text shows up.
+    await user.click(
+      screen.getByRole('button', { name: /show details|expand plan/i }),
+    )
+    expect(screen.getByText('Component scaffolded.')).toBeInTheDocument()
+  })
+
   it('agent picker bottom sheet selects an agent and forwards selectedAgentId to startSession', async () => {
     scriptSession([
       { type: 'chat.text', value: 'hello' },

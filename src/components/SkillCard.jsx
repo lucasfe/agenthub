@@ -31,7 +31,7 @@ export default function SkillCard({ skill, variant }) {
     )
   }
 
-  const installCommand = buildInstallCommand(skill.slug)
+  const installCommand = buildInstallCommand(skill.category, skill.slug)
 
   const handleCopy = async (e) => {
     e.preventDefault()

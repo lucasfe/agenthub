@@ -6,8 +6,8 @@ import Markdown from '../lib/markdown'
 import { getSkill } from '../lib/skills'
 import { useAuth } from '../context/AuthContext'
 
-function buildInstallCommand(slug) {
-  return `npx degit --mode=git lucasfe/skills/${slug} ~/.claude/skills/${slug}`
+function buildInstallCommand(category, slug) {
+  return `npx degit --mode=git lucasfe/skills/${category}/${slug} ~/.claude/skills/${slug}`
 }
 
 export default function SkillDetailPage() {

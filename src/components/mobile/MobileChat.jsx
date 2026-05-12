@@ -20,10 +20,7 @@ export default function MobileChat() {
   const [isStreaming, setIsStreaming] = useState(false)
   const [selectedAgentId, setSelectedAgentId] = useState(null)
   const [pickerOpen, setPickerOpen] = useState(false)
-  const [listening, setListening] = useState(false)
-  const [toast, setToast] = useState(null)
   const sessionRef = useRef(null)
-  const recognitionRef = useRef(null)
   const listRef = useRef(null)
 
   useEffect(() => {
@@ -33,15 +30,8 @@ export default function MobileChat() {
   useEffect(() => {
     return () => {
       sessionRef.current?.session?.cancel('unmount')
-      recognitionRef.current?.stop?.()
     }
   }, [])
-
-  useEffect(() => {
-    if (!toast) return
-    const handle = setTimeout(() => setToast(null), 4000)
-    return () => clearTimeout(handle)
-  }, [toast])
 
   const patchMessageAt = (index, patch) => {
     setMessages((prev) => {

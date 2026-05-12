@@ -399,6 +399,9 @@ export default function MobileChat() {
                     <MobilePlanCard
                       plan={msg.plan}
                       status={msg.planStatus || 'proposed'}
+                      stepStates={msg.stepStates}
+                      runError={msg.runError}
+                      runSummary={msg.runSummary}
                       onApprove={() => {
                         // Plan approval kicks off an execute session; this is a
                         // mobile-friendly pass-through that mirrors the desktop

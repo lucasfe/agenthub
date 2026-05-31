@@ -7,9 +7,11 @@ name: Ralph release
 #      it finds user-facing CC types (`feat:` / `fix:`), it opens (or
 #      updates) a Release PR that bumps `packages/ralph/package.json`
 #      and prepends a CHANGELOG entry.
-#   2. auto-merge-release-pr enables auto-merge on that PR (admin merge,
-#      squash). Once required checks pass, GitHub merges it. The merge
-#      triggers another `push: main` event → this workflow runs again.
+#   2. auto-merge-release-pr posts a `PR Title` success status on the
+#      Release PR (the required gate never fires on a token-authored PR)
+#      and enables squash auto-merge. Once required checks pass, GitHub
+#      merges it. The merge triggers another `push: main` event → this
+#      workflow runs again.
 #   3. publish (always-run, idempotent): reads
 #      `packages/ralph/package.json`, asks npm if that exact version is
 #      already published, and publishes only if it isn't. This is the
@@ -17,7 +19,7 @@ name: Ralph release
 #      version isn't on npm yet, this job fills the gap. If the version
 #      is already there, it's a no-op.
 #
-# No manual Release PR review. No `--admin` clicks. No close+reopen.
+# No manual Release PR review. No `--admin` clicks.
 
 on:
   push:
@@ -47,8 +49,13 @@ jobs:
     name: Auto-merge release-please PR
     needs: release-please
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      # Needed to post the `PR Title` commit status (see below).
+      statuses: write
     steps:
-      - name: Auto-merge any open release-please Release PR
+      - name: Satisfy the PR Title gate and enable auto-merge
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
@@ -71,16 +78,42 @@ jobs:
 
           echo "Found open release-please PR #$PR_NUMBER."
 
-          # release-please's PR was created via GITHUB_TOKEN, so the
-          # required `PR Title` check never fired on it. We can't admin-
-          # bypass with GITHUB_TOKEN (no admin override perms). Instead,
-          # close + reopen to emit a `pull_request: reopened` event,
-          # which DOES trigger downstream workflows (the `pr-title` job
-          # runs on that event type and will pass — release-please's
-          # titles are valid Conventional Commits like `chore(main):
-          # release ralph X.Y.Z`).
-          gh pr close "$PR_NUMBER" --repo "$REPO"
-          gh pr reopen "$PR_NUMBER" --repo "$REPO"
+          # The `PR Title` check (CI's pr-title job) is a REQUIRED status
+          # on `main`, but it NEVER runs on this PR: release-please opened
+          # it with the default GITHUB_TOKEN, and GitHub suppresses
+          # workflow triggers for token-authored events (anti-recursion).
+          # The old close/reopen trick to re-fire it didn't work either —
+          # that reopen is ALSO a GITHUB_TOKEN action, so it's suppressed
+          # too. So the gate stays forever pending → PR is BLOCKED →
+          # every release needed a manual `gh pr merge --admin`.
+          #
+          # Branch protection matches a required context by NAME and
+          # accepts a plain commit status, not only a check-run. So we
+          # validate the title ourselves (release-please always emits a
+          # valid Conventional Commit like `chore(main): release ...`)
+          # and post a `PR Title` success status directly on the head
+          # SHA. This runs on the `push` event, where GITHUB_TOKEN is
+          # free to write statuses. Release PRs are thus excluded from
+          # the human-authored title gate without weakening it for normal
+          # dev → main PRs (those still run the real pr-title job).
+          TITLE=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json title -q .title)
+          HEAD_SHA=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json headRefOid -q .headRefOid)
+          echo "Title: $TITLE"
+          echo "Head SHA: $HEAD_SHA"
+
+          # Guard: only vouch for genuinely valid Conventional Commit
+          # titles, so a malformed release PR still blocks.
+          if ! echo "$TITLE" | grep -qE '^(feat|fix|chore|docs|refactor|test|perf|ci|build|revert)(\([^)]+\))?!?: .+'; then
+            echo "::error::Release PR title is not a valid Conventional Commit: $TITLE"
+            exit 1
+          fi
+
+          gh api \
+            --method POST \
+            "repos/$REPO/statuses/$HEAD_SHA" \
+            -f state=success \
+            -f context='PR Title' \
+            -f description='Release PR title validated by ralph-release workflow'
 
           # Enable auto-merge so GitHub merges once required checks pass.
           gh pr merge "$PR_NUMBER" \

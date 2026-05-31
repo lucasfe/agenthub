@@ -13,9 +13,10 @@ vi.mock('../lib/api', () => ({
 
 const mockSkill = {
   slug: 'grill-me',
+  category: 'meta',
   name: 'grill-me',
   description: 'Interview the user relentlessly about a plan',
-  sourceUrl: 'https://github.com/lucasfe/skills/tree/main/grill-me',
+  sourceUrl: 'https://github.com/lucasfe/skills/tree/main/meta/grill-me',
 }
 
 function setupClipboard() {
@@ -45,7 +46,7 @@ describe('SkillCard — default variant', () => {
     await user.click(screen.getByRole('button', { name: /copy install command/i }))
     expect(writeText).toHaveBeenCalledTimes(1)
     expect(writeText).toHaveBeenCalledWith(
-      'npx degit --mode=git lucasfe/skills/grill-me ~/.claude/skills/grill-me',
+      'npx degit --mode=git lucasfe/skills/meta/grill-me ~/.claude/skills/grill-me',
     )
   })
 
@@ -63,7 +64,7 @@ describe('SkillCard — default variant', () => {
     const link = screen.getByRole('link', { name: /view on github/i })
     expect(link).toHaveAttribute(
       'href',
-      'https://github.com/lucasfe/skills/tree/main/grill-me',
+      'https://github.com/lucasfe/skills/tree/main/meta/grill-me',
     )
   })
 

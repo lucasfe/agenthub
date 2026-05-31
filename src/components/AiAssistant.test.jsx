@@ -108,6 +108,12 @@ describe('AiAssistant', () => {
     expect(screen.getByText(/Hi! I'm your AI assistant/)).toBeInTheDocument()
   })
 
+  it('does not render the mic / voice input button', () => {
+    renderWithProviders(<AiAssistant open={true} onClose={() => {}} />)
+    expect(screen.queryByLabelText(/Voice input/i)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/Stop voice input/i)).not.toBeInTheDocument()
+  })
+
   it('streams an assistant reply from the session', async () => {
     scriptSession([
       { type: 'router.classified', mode: 'chat' },

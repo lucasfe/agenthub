@@ -7,7 +7,8 @@ const PROXY_BASE = `${SUPABASE_URL}/functions/v1/skills`
 const ACCESS_TOKEN = 'test-access-token'
 
 const LIST_URL = `${PROXY_BASE}?op=list`
-const RAW_URL = (slug) => `${PROXY_BASE}?op=raw&slug=${slug}`
+const RAW_URL = (category, slug) =>
+  `${PROXY_BASE}?op=raw&category=${category}&slug=${slug}`
 
 function jsonResponse(body, init = {}) {
   return new Response(JSON.stringify(body), {
@@ -41,19 +42,27 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-describe('listSkills — happy path', () => {
-  it('lists folders, fetches each SKILL.md via the proxy, and returns the slim catalog shape', async () => {
+describe('listSkills — happy path (nested category layout)', () => {
+  it('lists every skill across categories, exposes the category, and points sourceUrl at the category-nested path', async () => {
     fetchMock.mockImplementation(async (url) => {
       if (url === LIST_URL) {
         return jsonResponse([
-          { type: 'dir', name: 'grill-me' },
-          { type: 'dir', name: 'to-prd' },
+          { slug: 'grill-me', category: 'meta', path: 'meta/grill-me/SKILL.md' },
+          { slug: 'tdd', category: 'development', path: 'development/tdd/SKILL.md' },
+          {
+            slug: 'to-prd',
+            category: 'project-management',
+            path: 'project-management/to-prd/SKILL.md',
+          },
         ])
       }
-      if (url === RAW_URL('grill-me')) {
+      if (url === RAW_URL('meta', 'grill-me')) {
         return textResponse(frontmatter('grill-me', 'Interview the user'))
       }
-      if (url === RAW_URL('to-prd')) {
+      if (url === RAW_URL('development', 'tdd')) {
+        return textResponse(frontmatter('tdd', 'Test-driven development'))
+      }
+      if (url === RAW_URL('project-management', 'to-prd')) {
         return textResponse(frontmatter('to-prd', 'Turn context into a PRD'))
       }
       throw new Error(`unexpected url: ${url}`)
@@ -64,15 +73,25 @@ describe('listSkills — happy path', () => {
     expect(skills).toEqual([
       {
         slug: 'grill-me',
+        category: 'meta',
         name: 'grill-me',
         description: 'Interview the user',
-        sourceUrl: 'https://github.com/lucasfe/skills/tree/main/grill-me',
+        sourceUrl: 'https://github.com/lucasfe/skills/tree/main/meta/grill-me',
+      },
+      {
+        slug: 'tdd',
+        category: 'development',
+        name: 'tdd',
+        description: 'Test-driven development',
+        sourceUrl: 'https://github.com/lucasfe/skills/tree/main/development/tdd',
       },
       {
         slug: 'to-prd',
+        category: 'project-management',
         name: 'to-prd',
         description: 'Turn context into a PRD',
-        sourceUrl: 'https://github.com/lucasfe/skills/tree/main/to-prd',
+        sourceUrl:
+          'https://github.com/lucasfe/skills/tree/main/project-management/to-prd',
       },
     ])
   })
@@ -101,16 +120,17 @@ describe('listSkills — happy path', () => {
 })
 
 describe('listSkills — filtering', () => {
-  it('drops non-directory entries (e.g. a top-level README.md)', async () => {
+  it('ignores list entries that are missing slug or category', async () => {
     fetchMock.mockImplementation(async (url) => {
       if (url === LIST_URL) {
         return jsonResponse([
-          { type: 'file', name: 'README.md' },
-          { type: 'file', name: 'LICENSE' },
-          { type: 'dir', name: 'tdd' },
+          { slug: 'tdd', category: 'development', path: 'development/tdd/SKILL.md' },
+          { slug: 'no-category', path: 'no-category/SKILL.md' },
+          { category: 'meta' },
+          null,
         ])
       }
-      if (url === RAW_URL('tdd')) {
+      if (url === RAW_URL('development', 'tdd')) {
         return textResponse(frontmatter('tdd', 'Test-driven development'))
       }
       throw new Error(`unexpected url: ${url}`)
@@ -118,23 +138,21 @@ describe('listSkills — filtering', () => {
 
     const skills = await listSkills({ accessToken: ACCESS_TOKEN })
 
-    expect(skills).toHaveLength(1)
-    expect(skills[0].slug).toBe('tdd')
-    expect(fetchMock).not.toHaveBeenCalledWith(RAW_URL('README.md'), expect.anything())
+    expect(skills.map((s) => s.slug)).toEqual(['tdd'])
   })
 
   it('skips a folder without a SKILL.md (404) instead of crashing the catalog', async () => {
     fetchMock.mockImplementation(async (url) => {
       if (url === LIST_URL) {
         return jsonResponse([
-          { type: 'dir', name: 'has-skill' },
-          { type: 'dir', name: 'orphan' },
+          { slug: 'has-skill', category: 'meta', path: 'meta/has-skill/SKILL.md' },
+          { slug: 'orphan', category: 'meta', path: 'meta/orphan/SKILL.md' },
         ])
       }
-      if (url === RAW_URL('has-skill')) {
+      if (url === RAW_URL('meta', 'has-skill')) {
         return textResponse(frontmatter('has-skill', 'A real skill'))
       }
-      if (url === RAW_URL('orphan')) {
+      if (url === RAW_URL('meta', 'orphan')) {
         return new Response('Not Found', { status: 404 })
       }
       throw new Error(`unexpected url: ${url}`)
@@ -149,14 +167,18 @@ describe('listSkills — filtering', () => {
     fetchMock.mockImplementation(async (url) => {
       if (url === LIST_URL) {
         return jsonResponse([
-          { type: 'dir', name: 'good' },
-          { type: 'dir', name: 'no-frontmatter' },
+          { slug: 'good', category: 'meta', path: 'meta/good/SKILL.md' },
+          {
+            slug: 'no-frontmatter',
+            category: 'meta',
+            path: 'meta/no-frontmatter/SKILL.md',
+          },
         ])
       }
-      if (url === RAW_URL('good')) {
+      if (url === RAW_URL('meta', 'good')) {
         return textResponse(frontmatter('good', 'Good skill'))
       }
-      if (url === RAW_URL('no-frontmatter')) {
+      if (url === RAW_URL('meta', 'no-frontmatter')) {
         return textResponse('# just a heading\n\nbody only, no frontmatter')
       }
       throw new Error(`unexpected url: ${url}`)
@@ -171,14 +193,14 @@ describe('listSkills — filtering', () => {
     fetchMock.mockImplementation(async (url) => {
       if (url === LIST_URL) {
         return jsonResponse([
-          { type: 'dir', name: 'no-name' },
-          { type: 'dir', name: 'no-desc' },
+          { slug: 'no-name', category: 'meta', path: 'meta/no-name/SKILL.md' },
+          { slug: 'no-desc', category: 'meta', path: 'meta/no-desc/SKILL.md' },
         ])
       }
-      if (url === RAW_URL('no-name')) {
+      if (url === RAW_URL('meta', 'no-name')) {
         return textResponse('---\ndescription: only a description\n---\nbody')
       }
-      if (url === RAW_URL('no-desc')) {
+      if (url === RAW_URL('meta', 'no-desc')) {
         return textResponse('---\nname: only-a-name\n---\nbody')
       }
       throw new Error(`unexpected url: ${url}`)
@@ -216,7 +238,9 @@ describe('listSkills — error surfacing', () => {
   it('throws a SkillsApiError when an individual SKILL.md returns 403', async () => {
     fetchMock.mockImplementation(async (url) => {
       if (url === LIST_URL) {
-        return jsonResponse([{ type: 'dir', name: 'limited' }])
+        return jsonResponse([
+          { slug: 'limited', category: 'meta', path: 'meta/limited/SKILL.md' },
+        ])
       }
       return new Response('rate limited', { status: 403 })
     })
@@ -235,14 +259,20 @@ describe('listSkills — error surfacing', () => {
   })
 })
 
-describe('getSkill', () => {
+describe('getSkill — nested category layout', () => {
   it('exists as an exported function', () => {
     expect(typeof getSkill).toBe('function')
   })
 
-  it('returns the skill with the rendered body, name, description, slug, and sourceUrl', async () => {
+  it('looks up the category via the catalog, then fetches the SKILL.md and returns the full shape', async () => {
     fetchMock.mockImplementation(async (url) => {
-      if (url === RAW_URL('grill-me')) {
+      if (url === LIST_URL) {
+        return jsonResponse([
+          { slug: 'grill-me', category: 'meta', path: 'meta/grill-me/SKILL.md' },
+          { slug: 'tdd', category: 'development', path: 'development/tdd/SKILL.md' },
+        ])
+      }
+      if (url === RAW_URL('meta', 'grill-me')) {
         return textResponse(
           '---\nname: grill-me\ndescription: Interview the user\n---\n# Heading\n\nFull body here.',
         )
@@ -254,17 +284,43 @@ describe('getSkill', () => {
 
     expect(skill).toEqual({
       slug: 'grill-me',
+      category: 'meta',
       name: 'grill-me',
       description: 'Interview the user',
       body: '# Heading\n\nFull body here.',
-      sourceUrl: 'https://github.com/lucasfe/skills/tree/main/grill-me',
+      sourceUrl: 'https://github.com/lucasfe/skills/tree/main/meta/grill-me',
     })
   })
 
-  it('returns null when the slug is missing on the remote (404)', async () => {
-    fetchMock.mockResolvedValue(new Response('Not Found', { status: 404 }))
+  it('returns null when the slug is not in the catalog', async () => {
+    fetchMock.mockImplementation(async (url) => {
+      if (url === LIST_URL) {
+        return jsonResponse([
+          { slug: 'tdd', category: 'development', path: 'development/tdd/SKILL.md' },
+        ])
+      }
+      throw new Error(`unexpected url: ${url}`)
+    })
 
     const skill = await getSkill('does-not-exist', { accessToken: ACCESS_TOKEN })
+
+    expect(skill).toBeNull()
+  })
+
+  it('returns null when the SKILL.md vanished between listing and fetching (404)', async () => {
+    fetchMock.mockImplementation(async (url) => {
+      if (url === LIST_URL) {
+        return jsonResponse([
+          { slug: 'gone', category: 'meta', path: 'meta/gone/SKILL.md' },
+        ])
+      }
+      if (url === RAW_URL('meta', 'gone')) {
+        return new Response('Not Found', { status: 404 })
+      }
+      throw new Error(`unexpected url: ${url}`)
+    })
+
+    const skill = await getSkill('gone', { accessToken: ACCESS_TOKEN })
 
     expect(skill).toBeNull()
   })
@@ -277,9 +333,21 @@ describe('getSkill', () => {
   })
 
   it('returns null when SKILL.md exists but has no frontmatter', async () => {
-    fetchMock.mockImplementation(async () =>
-      textResponse('# just a heading\n\nbody only, no frontmatter'),
-    )
+    fetchMock.mockImplementation(async (url) => {
+      if (url === LIST_URL) {
+        return jsonResponse([
+          {
+            slug: 'no-frontmatter',
+            category: 'meta',
+            path: 'meta/no-frontmatter/SKILL.md',
+          },
+        ])
+      }
+      if (url === RAW_URL('meta', 'no-frontmatter')) {
+        return textResponse('# just a heading\n\nbody only, no frontmatter')
+      }
+      throw new Error(`unexpected url: ${url}`)
+    })
 
     const skill = await getSkill('no-frontmatter', { accessToken: ACCESS_TOKEN })
 
@@ -287,16 +355,24 @@ describe('getSkill', () => {
   })
 
   it('returns null when the frontmatter is missing name or description', async () => {
-    fetchMock.mockImplementation(async () =>
-      textResponse('---\nname: only-a-name\n---\nbody'),
-    )
+    fetchMock.mockImplementation(async (url) => {
+      if (url === LIST_URL) {
+        return jsonResponse([
+          { slug: 'no-desc', category: 'meta', path: 'meta/no-desc/SKILL.md' },
+        ])
+      }
+      if (url === RAW_URL('meta', 'no-desc')) {
+        return textResponse('---\nname: only-a-name\n---\nbody')
+      }
+      throw new Error(`unexpected url: ${url}`)
+    })
 
     const skill = await getSkill('no-desc', { accessToken: ACCESS_TOKEN })
 
     expect(skill).toBeNull()
   })
 
-  it('throws a SkillsApiError on 403', async () => {
+  it('throws a SkillsApiError on 403 from the listing', async () => {
     fetchMock.mockResolvedValue(new Response('rate limited', { status: 403 }))
 
     await expect(
@@ -307,8 +383,15 @@ describe('getSkill', () => {
     ).rejects.toMatchObject({ status: 403 })
   })
 
-  it('throws a SkillsApiError on 5xx', async () => {
-    fetchMock.mockResolvedValue(new Response('boom', { status: 503 }))
+  it('throws a SkillsApiError on 5xx from the raw fetch', async () => {
+    fetchMock.mockImplementation(async (url) => {
+      if (url === LIST_URL) {
+        return jsonResponse([
+          { slug: 'grill-me', category: 'meta', path: 'meta/grill-me/SKILL.md' },
+        ])
+      }
+      return new Response('boom', { status: 503 })
+    })
 
     await expect(
       getSkill('grill-me', { accessToken: ACCESS_TOKEN }),

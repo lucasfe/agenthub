@@ -6,8 +6,8 @@ import Markdown from '../lib/markdown'
 import { getSkill } from '../lib/skills'
 import { useAuth } from '../context/AuthContext'
 
-function buildInstallCommand(slug) {
-  return `npx degit --mode=git lucasfe/skills/${slug} ~/.claude/skills/${slug}`
+function buildInstallCommand(category, slug) {
+  return `npx degit --mode=git lucasfe/skills/${category}/${slug} ~/.claude/skills/${slug}`
 }
 
 export default function SkillDetailPage() {
@@ -40,7 +40,7 @@ export default function SkillDetailPage() {
     return () => { cancelled = true }
   }, [slug, accessToken])
 
-  const installCommand = skill ? buildInstallCommand(skill.slug) : ''
+  const installCommand = skill ? buildInstallCommand(skill.category, skill.slug) : ''
 
   const handleCopy = async () => {
     if (!installCommand) return

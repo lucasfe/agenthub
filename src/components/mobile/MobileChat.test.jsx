@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { act, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import MobileChat from './MobileChat'
 import { renderWithProviders } from '../../test/test-utils'
@@ -69,14 +69,6 @@ const orchestrationMock = vi.hoisted(() => {
 
 vi.mock('../../lib/orchestration', () => orchestrationMock)
 
-const voiceMock = vi.hoisted(() => ({
-  isSupported: vi.fn(() => true),
-  startRecognition: vi.fn(),
-  stopRecognition: vi.fn(),
-}))
-
-vi.mock('../../lib/voice', () => voiceMock)
-
 function scriptSession(events) {
   orchestrationMock.startSession.mockImplementationOnce(() =>
     orchestrationMock._createFakeSession(events),
@@ -87,18 +79,21 @@ describe('MobileChat', () => {
   beforeEach(() => {
     orchestrationMock.isOrchestrationConfigured.mockReturnValue(true)
     orchestrationMock.startSession.mockReset()
-    voiceMock.isSupported.mockReset().mockReturnValue(true)
-    voiceMock.startRecognition.mockReset()
-    voiceMock.stopRecognition.mockReset()
   })
 
   it('renders empty state, header, and input controls', () => {
     renderWithProviders(<MobileChat />)
     expect(screen.getByText(/Start a conversation/i)).toBeInTheDocument()
     expect(screen.getByPlaceholderText(/Type a message/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/Voice input/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/Send message/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /New chat/i })).toBeInTheDocument()
+  })
+
+  it('does not render the mic / voice input button', () => {
+    renderWithProviders(<MobileChat />)
+    expect(screen.queryByLabelText(/Voice input/i)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/Stop voice input/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Listening/i)).not.toBeInTheDocument()
   })
 
   it('sends a text message and renders streaming assistant reply', async () => {
@@ -129,54 +124,48 @@ describe('MobileChat', () => {
     )
   })
 
-  it('mic FAB starts speech recognition and appends transcript to input', async () => {
-    let callbacks = null
-    voiceMock.startRecognition.mockImplementation((opts) => {
-      callbacks = opts
-      return { stop: vi.fn() }
-    })
+  it('renders markdown in assistant replies (bold, inline code, headings)', async () => {
+    scriptSession([
+      {
+        type: 'chat.text',
+        value: '## Heading\nA **bold** word and `inline()` code.',
+      },
+      { type: 'chat.done' },
+    ])
 
     const user = userEvent.setup()
-    renderWithProviders(<MobileChat />)
+    const { container } = renderWithProviders(<MobileChat />)
 
-    const input = screen.getByPlaceholderText(/Type a message/i)
-    await user.type(input, 'hello ')
-
-    await user.click(screen.getByLabelText(/Voice input/i))
-    expect(voiceMock.startRecognition).toHaveBeenCalledTimes(1)
-    expect(screen.getByText(/Listening/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/Stop voice input/i)).toBeInTheDocument()
-
-    act(() => {
-      callbacks.onResult({ transcript: 'world', isFinal: true })
-      callbacks.onEnd?.()
-    })
+    await user.type(screen.getByPlaceholderText(/Type a message/i), 'oi')
+    await user.click(screen.getByLabelText(/Send message/i))
 
     await waitFor(() => {
-      expect(input.value).toBe('hello world')
+      expect(container.querySelector('h2')).not.toBeNull()
     })
-    expect(screen.queryByText(/Listening/i)).not.toBeInTheDocument()
+    expect(container.querySelector('h2')).toHaveTextContent('Heading')
+    expect(container.querySelector('strong')).toHaveTextContent('bold')
+    expect(container.querySelector('code')).toHaveTextContent('inline()')
+    // Raw markdown markers must not leak through as literal text.
+    expect(container.textContent).not.toMatch(/\*\*bold\*\*/)
+    expect(container.textContent).not.toMatch(/^## /m)
   })
 
-  it('shows toast when speech recognition reports not-allowed (permission denied)', async () => {
-    let callbacks = null
-    voiceMock.startRecognition.mockImplementation((opts) => {
-      callbacks = opts
-      return { stop: vi.fn() }
-    })
+  it('preserves plain-text rendering for user messages (no markdown parsing)', async () => {
+    scriptSession([{ type: 'chat.done' }])
 
     const user = userEvent.setup()
-    renderWithProviders(<MobileChat />)
+    const { container } = renderWithProviders(<MobileChat />)
 
-    await user.click(screen.getByLabelText(/Voice input/i))
-    act(() => {
-      callbacks.onError({ code: 'not-allowed', message: 'denied' })
-      callbacks.onEnd?.()
-    })
+    await user.type(
+      screen.getByPlaceholderText(/Type a message/i),
+      '**not bold**',
+    )
+    await user.click(screen.getByLabelText(/Send message/i))
 
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent(/Microphone/i)
+      expect(screen.getByText('**not bold**')).toBeInTheDocument()
     })
+    expect(container.querySelector('strong')).toBeNull()
   })
 
   it('renders an approval card when chat.tool_call has requires_approval and approve dispatches', async () => {
@@ -235,6 +224,55 @@ describe('MobileChat', () => {
     })
     expect(screen.getByText('Frontend Developer')).toBeInTheDocument()
     expect(screen.getByText('Backend Developer')).toBeInTheDocument()
+  })
+
+  it('expands plan card to show per-step results streamed from step events', async () => {
+    scriptSession([
+      {
+        type: 'plan.proposed',
+        plan: {
+          id: 'plan-1',
+          steps: [
+            {
+              id: 1,
+              agent_id: 'frontend-developer',
+              agent_name: 'Frontend Developer',
+              task: 'Build UI',
+            },
+          ],
+        },
+      },
+    ])
+    scriptSession([
+      { type: 'run.started', run_id: 'run-1' },
+      { type: 'step.started', step_id: 1 },
+      { type: 'step.text', step_id: 1, value: 'Component scaffolded.' },
+      { type: 'step.done', step_id: 1 },
+      { type: 'run.done', summary: { duration_ms: 1234 } },
+    ])
+
+    const user = userEvent.setup()
+    renderWithProviders(<MobileChat />)
+
+    await user.type(screen.getByPlaceholderText(/Type a message/i), 'plan it')
+    await user.click(screen.getByLabelText(/Send message/i))
+
+    await waitFor(() => {
+      expect(screen.getByText(/1 step/i)).toBeInTheDocument()
+    })
+
+    // Approve to kick off the execute session.
+    await user.click(screen.getByRole('button', { name: /^Approve$/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText(/^Done/i)).toBeInTheDocument()
+    })
+
+    // Expand and assert step text shows up.
+    await user.click(
+      screen.getByRole('button', { name: /show details|expand plan/i }),
+    )
+    expect(screen.getByText('Component scaffolded.')).toBeInTheDocument()
   })
 
   it('agent picker bottom sheet selects an agent and forwards selectedAgentId to startSession', async () => {

@@ -145,7 +145,7 @@ describe('AiAssistant', () => {
 
   it('renders an AgentDraftCard when the session emits a draft_agent tool_call', async () => {
     scriptSession([
-      { type: 'chat.text', value: 'Beleza! Montei um draft:' },
+      { type: 'chat.text', value: 'Sure! I put together a draft:' },
       {
         type: 'chat.tool_call',
         name: 'draft_agent',
@@ -171,7 +171,7 @@ describe('AiAssistant', () => {
     await waitFor(() => {
       expect(screen.getByText('Security Auditor')).toBeInTheDocument()
     })
-    expect(screen.getByText(/Beleza! Montei um draft/)).toBeInTheDocument()
+    expect(screen.getByText(/Sure! I put together a draft/)).toBeInTheDocument()
     expect(screen.getByText(/Expert in OWASP/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /create agent/i })).toBeInTheDocument()
   })

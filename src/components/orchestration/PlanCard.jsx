@@ -1,6 +1,6 @@
 // Compact plan summary rendered inline in the chat message list.
 //
-// Shows the current phase status as a short "recibo" (1–2 lines) plus
+// Shows the current phase status as a short "receipt" (1–2 lines) plus
 // contextual action buttons. The full detail view lives in PlanReviewPanel,
 // opened via the "Review" button (or automatically in fullscreen when the
 // plan has required requirements).

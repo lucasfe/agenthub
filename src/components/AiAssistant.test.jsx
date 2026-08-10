@@ -178,7 +178,7 @@ describe('AiAssistant', () => {
 
   it('renders an AgentEditCard when the session emits an update_agent tool_call', async () => {
     scriptSession([
-      { type: 'chat.text', value: 'Entendi, vou propor essa alteração:' },
+      { type: 'chat.text', value: "Got it, I'll propose this change:" },
       {
         type: 'chat.tool_call',
         name: 'update_agent',
@@ -202,7 +202,7 @@ describe('AiAssistant', () => {
     await waitFor(() => {
       expect(screen.getByText(/Edit proposal/i)).toBeInTheDocument()
     })
-    expect(screen.getByText(/Entendi, vou propor/)).toBeInTheDocument()
+    expect(screen.getByText(/Got it, I'll propose this change/)).toBeInTheDocument()
     expect(screen.getByText('Frontend Developer')).toBeInTheDocument()
     expect(screen.getByText('color')).toBeInTheDocument()
     expect(screen.getByText('purple')).toBeInTheDocument()

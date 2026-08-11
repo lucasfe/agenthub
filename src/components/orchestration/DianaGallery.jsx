@@ -3,7 +3,7 @@
 // Replaces the textual approval gate (issue #355) for steps whose agent is
 // `diana-design`. Renders a grid of thumbnails — one per `output_files[]`
 // entry whose `mime_type` starts with `image/` — with three actions per
-// thumbnail: Aprovar, Pedir ajuste, Re-renderizar. The "Avançar" button at
+// thumbnail: Approve, Request edit, Re-render. The "Continue" button at
 // the bottom is disabled until every image has `approval_state === 'approved'`.
 //
 // All state mutations live in the parent: this component is a thin
@@ -44,7 +44,7 @@ function ThumbCard({
       return (
         <span className="absolute top-2 right-2 flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/90 text-white shadow">
           <Icons.Check size={10} />
-          Aprovado
+          Approved
         </span>
       )
     }
@@ -52,7 +52,7 @@ function ThumbCard({
       return (
         <span className="absolute top-2 right-2 flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/90 text-white shadow">
           <Icons.Pencil size={10} />
-          Ajuste pedido
+          Edit requested
         </span>
       )
     }
@@ -93,7 +93,7 @@ function ThumbCard({
           className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-md text-[11px] font-medium text-emerald-200 bg-emerald-500/15 border border-emerald-500/30 hover:bg-emerald-500/25 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <Icons.Check size={11} />
-          Aprovar
+          Approve
         </button>
         <button
           type="button"
@@ -102,7 +102,7 @@ function ThumbCard({
           className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-md text-[11px] font-medium text-amber-200 bg-amber-500/15 border border-amber-500/30 hover:bg-amber-500/25 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <Icons.Pencil size={11} />
-          Pedir ajuste
+          Request edit
         </button>
         <button
           type="button"
@@ -111,7 +111,7 @@ function ThumbCard({
           className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-md text-[11px] font-medium text-blue-200 bg-blue-500/15 border border-blue-500/30 hover:bg-blue-500/25 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <Icons.RotateCcw size={11} />
-          Re-renderizar
+          Re-render
         </button>
       </div>
 
@@ -123,7 +123,7 @@ function ThumbCard({
           <textarea
             value={feedback}
             onChange={(e) => setFeedback(e.target.value)}
-            placeholder="Descreva o ajuste desejado…"
+            placeholder="Describe the change you want…"
             rows={3}
             className="w-full px-2 py-1.5 rounded-md bg-bg-card border border-border-subtle text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-amber-500/30 resize-none"
           />
@@ -136,7 +136,7 @@ function ThumbCard({
               }}
               className="px-2 py-1 rounded-md text-[10px] text-text-secondary hover:bg-bg-card transition-colors"
             >
-              Cancelar
+              Cancel
             </button>
             <button
               type="button"
@@ -147,7 +147,7 @@ function ThumbCard({
               disabled={!feedback.trim()}
               className="px-2 py-1 rounded-md text-[10px] font-medium text-white bg-amber-500 hover:bg-amber-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              Enviar feedback
+              Send feedback
             </button>
           </div>
         </div>
@@ -178,7 +178,7 @@ export default function DianaGallery({
       >
         <Icons.Image size={28} className="text-text-muted mx-auto mb-2" />
         <p className="text-sm text-text-secondary">
-          Nenhum arquivo de imagem disponível para revisão neste passo.
+          No image files available for review in this step.
         </p>
       </div>
     )
@@ -189,7 +189,7 @@ export default function DianaGallery({
       <div className="px-4 py-3 border-b border-border-subtle flex items-center gap-3">
         <Icons.Image size={16} className="text-purple-400" />
         <h3 className="text-sm font-semibold text-text-primary flex-1">
-          Galeria — aprove cada imagem
+          Gallery — approve each image
         </h3>
         <span
           data-testid="diana-counter"
@@ -197,7 +197,7 @@ export default function DianaGallery({
             fullyApproved ? 'text-emerald-300' : 'text-text-secondary'
           }`}
         >
-          {approved} / {total} aprovados
+          {approved} / {total} approved
         </span>
       </div>
 
@@ -223,12 +223,12 @@ export default function DianaGallery({
           title={
             fullyApproved
               ? undefined
-              : 'Aprove todas as imagens antes de avançar'
+              : 'Approve all images before continuing'
           }
           className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium text-white bg-blue-500 hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Icons.ArrowRight size={12} />
-          Avançar
+          Continue
         </button>
       </div>
     </div>

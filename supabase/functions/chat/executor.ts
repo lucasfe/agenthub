@@ -1258,7 +1258,7 @@ async function insertRunLog(run: Record<string, unknown>): Promise<void> {
 //
 // Runs AFTER the planner has produced a validated plan, BEFORE the user sees
 // it. For each step in the plan, reads the chosen agent's system prompt and
-// extracts the questions it would ask the user ("pergunte antes de começar..."
+// extracts the questions it would ask the user ("ask before starting..."
 // / "ask the user about..."). Skips questions whose answers are already
 // derivable from the original task or the step task. Always inlines a
 // `suggested` default. Returns the plan with a `requirements` array attached
@@ -1272,7 +1272,7 @@ const REQUIREMENTS_ANALYZER_SYSTEM_PROMPT = `You are a requirements analyst for 
 2. **Skip already-answered questions.** If the user's original task or the step task already tells the agent the answer (even implicitly), skip it.
 3. **Always pre-fill \`suggested\`.** Infer the most likely answer from the original task and step context. Even a best-guess default is more useful than a blank.
 4. **Max ${MAX_REQUIREMENTS_PER_STEP} questions per step.** Prioritize the ones the agent prompt calls out most directly.
-5. **Short, concrete questions.** Avoid open-ended philosophical framing. Use the same language as the user's original task (Portuguese in, Portuguese out).
+5. **Short, concrete questions.** Avoid open-ended philosophical framing. Always write the questions in English.
 6. **\`required: true\`** only if the agent cannot reasonably produce output without the answer. Default to false for nice-to-have details.
 
 ## Response

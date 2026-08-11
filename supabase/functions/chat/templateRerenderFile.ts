@@ -1,6 +1,6 @@
 // Per-file rerender for Diana steps (issue #357).
 //
-// When the user clicks "Re-renderizar" on a single thumbnail in the Diana
+// When the user clicks "Re-render" on a single thumbnail in the Diana
 // gallery, the chat function dispatches into this helper. It locates the
 // target step + output_file, re-invokes `render_html_to_image` for that
 // single file via the supplied `renderFile` callback, and returns a fresh

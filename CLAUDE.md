@@ -29,7 +29,7 @@ These are hard constraints, not preferences:
 See [docs/architecture.md](docs/architecture.md) for the full conventions, naming table, and component patterns.
 
 ### Mind the auto-commit + branch flow
-Every file edit is auto-committed and pushed to **`dev`** by a hook — assume your edits ship to `dev` immediately. **`main`** is protected and takes PRs only, and each `dev → main` PR title **must be a Conventional Commit** (`feat:`, `fix:`, `chore:`, etc.) or CI blocks the merge. The PR title also drives release-please versioning. Details in [docs/releasing.md](docs/releasing.md).
+Every file edit is auto-committed and pushed to **`dev`** by a hook — assume your edits ship to `dev` immediately. **`main`** is protected and takes PRs only, and each `dev → main` PR title **must be a Conventional Commit** (`feat:`, `fix:`, `chore:`, etc.) or CI blocks the merge (the `pr-title` gate). This keeps `main`'s history clean — it no longer drives any release-please versioning in agenthub (Ralph is released from its own [`lucasfe/ralph`](https://github.com/lucasfe/ralph) repo). Details in [docs/releasing.md](docs/releasing.md).
 
 ## Development Commands
 
@@ -54,5 +54,5 @@ npm run test:functions:integration # Run real-API integration tests (deno, hits 
 | Supabase Google OAuth + email allowlist gate, env vars, onboarding/revoking access | [docs/auth.md](docs/auth.md) |
 | GitHub Issue Creator agent, Skills catalog, Skill Creator agent, AI Assistant ↔ board sync, native web research tools | [docs/features.md](docs/features.md) |
 | Three test suites, conventions, integration-test secrets | [docs/testing.md](docs/testing.md) |
-| Branching, CI/CD, branch protection, release-please / Ralph publishing | [docs/releasing.md](docs/releasing.md) |
+| Branching, CI/CD, branch protection, how Ralph is consumed/released | [docs/releasing.md](docs/releasing.md) |
 | The `/project:*` AI dev-team slash commands and workflow | [docs/ai-dev-team.md](docs/ai-dev-team.md) |

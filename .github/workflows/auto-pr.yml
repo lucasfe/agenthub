@@ -40,10 +40,11 @@ jobs:
           COMMITS=$(git log origin/main..HEAD --since="$SINCE" --oneline | head -20)
 
           # Compute the highest-impact Conventional Commit type across the
-          # rollforward window so the squash subject on main carries that
-          # signal forward to release-please. Without this, `chore:` always
-          # wins and release-please ignores the merge — so a `feat:` buried
-          # in dev never bumps the version. Order: feat! > feat > fix > chore.
+          # rollforward window so the squash subject on main is a valid
+          # Conventional Commit (required by the `pr-title` CI check) that
+          # represents the most significant change in the window. Without
+          # this, a `chore:`-titled rollforward would hide a `feat:` buried
+          # in dev from main's history. Order: feat! > feat > fix > chore.
           BODIES=$(git log origin/main..HEAD --since="$SINCE" --pretty=%B)
           if echo "$BODIES" | grep -qE '^(feat|fix|chore|docs|refactor|test|perf|ci|build|revert)(\([^)]+\))?!:|BREAKING CHANGE'; then
             CC_TYPE='feat!'
